@@ -877,6 +877,49 @@ button { font-family: inherit; }
 .mp-st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); margin-right: 6px; }
 .mp-st i { width: 8px; height: 8px; border-radius: 50%; background: #8a94b0; } .mp-st.good i { background: #4ad06a; box-shadow: 0 0 6px #4ad06a; } .mp-st.bad { color: #ffb0a0; } .mp-st.bad i { background: #ff6a5a; }
 .row.me { border-color: rgba(255, 224, 74, .45); }
+
+/* ---- party ---- */
+#hud-party { position: absolute; top: 206px; left: 10px; width: 210px; padding: 6px 8px 8px; border-radius: 8px; background: linear-gradient(180deg, rgba(14, 40, 26, .84), rgba(10, 14, 28, .8)); border: 1px solid rgba(122, 255, 154, .35); font-size: 12px; }
+#hud-party .ph { font-family: var(--f-title); color: #9affb0; font-size: 13px; margin-bottom: 4px; }
+#hud-party .ph small { float: right; color: var(--muted); font-family: var(--f-num); font-weight: 400; font-size: 11px; }
+#hud-party .pm { display: flex; gap: 6px; align-items: center; padding: 3px 2px; border-radius: 6px; cursor: pointer; }
+#hud-party .pm:hover { background: rgba(255, 255, 255, .06); }
+#hud-party .pm.far { opacity: .55; }
+#hud-party .pi { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; border: 2px solid #7aff9a; flex: none; background: radial-gradient(circle at 40% 30%, #6a8a7a, #1a2a22); }
+#hud-party .pm.lead .pi { border-color: var(--gold); }
+#hud-party .pi img { width: 100%; height: 100%; object-fit: cover; }
+#hud-party .pt { flex: 1; min-width: 0; }
+#hud-party .pt b { display: block; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud-party .pt small { color: var(--muted); font-size: 10px; }
+#hud-party .bar { height: 6px; margin-top: 2px; border-radius: 3px; background: rgba(0, 0, 0, .6); overflow: hidden; position: relative; }
+#hud-party .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #ff7a6a, #c8202a); transition: width .3s; }
+#hud-party .pt em { display: block; font-style: normal; color: #ffcf7a; font-size: 10px; }
+#hud-party .pt em:empty { display: none; }
+#hud-party .pm-wait { color: var(--dim); font-size: 11px; }
+#hud-wb { top: calc(206px + var(--party-h, 0px)); }
+#party-invite { position: absolute; left: 50%; top: 140px; transform: translateX(-50%); width: 320px; padding: 10px 12px 12px; font-size: 13px; z-index: 7; animation: toastIn .3s; }
+#party-invite .th { font-family: var(--f-title); color: #9affb0; font-size: 14px; margin-bottom: 4px; }
+#party-invite .tt { color: var(--muted); line-height: 1.45; }
+#party-invite .tt b { color: var(--ink); }
+#party-invite .ta { display: flex; gap: 8px; margin-top: 8px; }
+#party-invite .tf { height: 4px; margin-top: 8px; border-radius: 2px; background: rgba(0, 0, 0, .5); overflow: hidden; }
+#party-invite .tf i { display: block; height: 100%; width: 100%; background: #7aff9a; transition: width .25s linear; }
+#tg-invite { margin-left: 6px; pointer-events: auto; }
+.np.rp.party .n { color: #7aff9a; }
+.chat-log .c-party { color: #c8ffd8; }
+.chat-log .c-party .ch { color: #7aff9a; }
+.ftxt.pexp { color: #8affc0; font-size: 15px; }
+.party-box { margin-bottom: 10px; }
+.party-box .crown { font-size: 10px; color: #241a08; background: var(--gold); border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
+@media (max-width: 900px) {
+  #hud-party { top: 196px; transform: scale(.85); transform-origin: top left; }
+  #hud-wb { top: calc(196px + var(--party-h, 0px) * .85); }
+}
+@media (max-width: 640px) {
+  #hud-party { top: 172px; transform: scale(.78); }
+  #hud-wb { top: calc(172px + var(--party-h, 0px) * .78); }
+  #party-invite { width: calc(100% - 20px); top: 96px; }
+}
 </style>
 </head>
 <body>
@@ -951,13 +994,13 @@ button { font-family: inherit; }
     </div>
 
     <div id="hud-quest">
-      <div class="qt-head"><button class="sel">Quests</button><button id="qt-team">Team</button><button class="tog" id="qt-tog" aria-label="Collapse quest tracker">−</button></div>
+      <div class="qt-head"><button class="sel">Quests</button><button id="qt-team">Party</button><button class="tog" id="qt-tog" aria-label="Collapse quest tracker">−</button></div>
       <div id="qt-list"></div>
     </div>
 
     <button class="rbtn" id="chat-toggle" aria-label="Chat"></button>
     <div id="hud-chat">
-      <div class="chat-tabs" id="chat-tabs"><button class="sel" data-c="all">All</button><button data-c="world">World</button><button data-c="guild">Guild</button><button data-c="system">System</button></div>
+      <div class="chat-tabs" id="chat-tabs"><button class="sel" data-c="all">All</button><button data-c="world">World</button><button data-c="guild">Guild</button><button data-c="party">Party</button><button data-c="system">System</button></div>
       <div class="chat-log" id="chat-log"></div>
       <form class="chat-input" id="chat-form"><input id="chat-in" maxlength="80" placeholder="Press Enter to chat…" autocomplete="off"><button type="submit">Send</button></form>
     </div>

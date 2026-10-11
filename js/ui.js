@@ -7,6 +7,7 @@ import { RARITY, LEGENDARY_ITEMS, itemLines, itemScore, namedBySource } from './
 import { ico } from './icons.js';
 import { installSystemsUI } from './ui-systems.js';
 import { installLifeUI } from './ui-life.js';
+import { installPartyUI, partyMembers } from './party.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 
@@ -17,7 +18,7 @@ const RARC = PET_TIER.map((t) => RARITY[t].color);
 const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-const CHN = { world: 'World', system: 'System', guild: 'Guild', announce: 'Announce', player: 'Player' };
+const CHN = { world: 'World', system: 'System', guild: 'Guild', announce: 'Announce', player: 'Player', party: 'Party' };
 
 export class UI {
   constructor() {
@@ -83,7 +84,7 @@ export class UI {
     $('btn-sound').onclick = () => { g.setSetting('sound', !S.settings.sound); this.refreshSound(); };
     $('hud-pet').onclick = () => this.togglePanel('pets');
     $('qt-tog').onclick = () => { const l = $('qt-list'); l.hidden = !l.hidden; $('qt-tog').textContent = l.hidden ? '+' : '−'; };
-    $('qt-team').onclick = () => this.togglePanel('quests');
+    $('qt-team').onclick = () => this.togglePanel('online');
     $('chat-toggle').onclick = () => $('hud-chat').classList.toggle('open');
     $('chat-tabs').querySelectorAll('button').forEach((b) => b.onclick = () => {
       $('chat-tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
@@ -147,6 +148,7 @@ export class UI {
   }
   refreshTarget() {
     const g = this.g, t = g?.player?.target, el = $('hud-target');
+    this.refreshPartyBtn(t);
     if (!t || t.dead) { el.hidden = true; this.tgShown = null; return; }
     el.hidden = false;
     if (this.tgShown !== t) {
@@ -238,7 +240,7 @@ export class UI {
     for (const m of g.monsters) if (!m.dead && (m.map || g.world) === g.map) dot(m.pos.x, m.pos.z, m.def0.boss ? '#ff3aa8' : m.def0.aggressive ? '#ff4a3a' : '#ff9a6a', m.def0.boss ? 5 : 2.2);
     for (const L of g.loots) if (L.map === g.map) dot(L.pos.x, L.pos.z, RARITY[L.q].color, 2.4);
     if (!g.map.isDungeon) {
-      if (g.S.settings.others) for (const e of g.rplayers || []) if (!e.netHidden) dot(e.pos.x, e.pos.z, '#ffe04a', 3.2);
+      if (g.S.settings.others) for (const e of g.rplayers || []) if (!e.netHidden) dot(e.pos.x, e.pos.z, g.partyHas(e.peerId) ? '#7aff9a' : '#ffe04a', 3.2);
       for (const n of g.npcs) {
         dot(n.pos.x, n.pos.z, '#ffe066', 3);
         if (n.markChar && n.markChar !== '…') { const sx = (n.pos.x - p.x + R) * k, sy = (n.pos.z - p.z + R) * k; c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx - 3, sy - 4); c.fillText(n.markChar, sx - 3, sy - 4); }
@@ -693,8 +695,10 @@ export class UI {
     body.appendChild(h('div', 'lbl', '<br>Bounty'));
     const B = S.bounty;
     body.appendChild(h('div', 'row', `<div class="ic">${ico('bounty')}</div><div class="tx">${B ? `<b>Defeat ${B.count} ${esc(MONSTERS[B.target].name)}</b>Progress ${B.prog}/${B.count}${B.status === 'complete' ? ' — report to Captain Elena' : ''}` : g.bountyUnlocked() ? '<b>No active bounty</b>Captain Elena by the east gate has work for you.' : '<b>Locked</b>Bounties unlock after "Swift as the Wind".'}</div>`));
-    body.appendChild(h('div', 'lbl', '<br>Team'));
-    body.appendChild(h('div', 'row', `<div class="ic">${ico('cls_' + S.cls)}</div><div class="tx"><b>Solo adventurer</b>Your pet${S.activePet ? ` ${esc(PETS.find((x) => x.id === S.activePet).name)}` : ''}${S.activeSprite ? ` and sprite ${esc(SPRITES.find((x) => x.id === S.activeSprite).name)}` : ''} fight at your side.</div>`));
+    body.appendChild(h('div', 'lbl', '<br>Party'));
+    const mates = partyMembers().filter((x) => !x.me);
+    if (mates.length) body.appendChild(h('div', 'row', `<div class="ic">${ico('cls_' + S.cls)}</div><div class="tx"><b>Party of ${mates.length + 1}</b>With ${mates.map((x) => esc(x.pr.info.name)).join(', ')}. Members nearby share EXP from kills.</div>`));
+    else body.appendChild(h('div', 'row', `<div class="ic">${ico('cls_' + S.cls)}</div><div class="tx"><b>Solo adventurer</b>Your pet${S.activePet ? ` ${esc(PETS.find((x) => x.id === S.activePet).name)}` : ''}${S.activeSprite ? ` and sprite ${esc(SPRITES.find((x) => x.id === S.activeSprite).name)}` : ''} fight at your side.</div>`));
   }
 
   panel_map(body) {
@@ -846,6 +850,7 @@ export class UI {
 
 installSystemsUI(UI);
 installLifeUI(UI);
+installPartyUI(UI);
 
 function linkify(obj) {
   return esc(obj).replace(/(Talk to |Return to |Defeat |Collect )(.+?)( \(|$)/, (m, a, b, c) => `${a}<u>${b}</u>${c}`);

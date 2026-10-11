@@ -87,6 +87,11 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
   Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
   key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
+- **Parties**: click another player and press **Invite** (or use the Online panel) to team up, up to 4 players.
+  Party members within 60 m of a kill share its EXP: the kill's EXP is split between everyone nearby, plus 10% per extra
+  member, and each member's own level penalty and EXP boosts apply to their share. The party frame under your wallet
+  shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
+  the earliest member leads and can remove players, and reloading the page keeps you in your party.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
   and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
@@ -136,6 +141,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
+| `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
 | `js/toon.js` | Cel-shaded materials, ink outlines and canvas textures |
 | `js/models.js` | Procedural chibi characters, monsters, pets, mounts and sprites |

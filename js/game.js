@@ -16,6 +16,7 @@ import { installEconomy, initEconomySave } from './economy.js';
 import { installUpgrade, stoneFor } from './upgrade.js';
 import { installLive, liveBoost } from './live.js';
 import { installMp } from './mp.js';
+import { installParty } from './party.js';
 import { buildExtraMonster, EXTRA_MONSTER_MODELS } from './models-monsters.js';
 import { buildExtraPet, buildExtraMount, EXTRA_PET_MODELS, EXTRA_MOUNT_MODELS } from './models-extra.js';
 import { MAX_LEVEL, curveStats, DUNGEON_RULES, RELIC_SETS } from './data-world.js';
@@ -779,11 +780,8 @@ export class Game {
     const K = this.killScale(d, m.level);
     // exp
     const cs = d.curve ? curveStats(m.level, d.curve) : null;
-    const EL = this.elixirMods ? this.elixirMods() : {};
-    let exp = cs ? cs.exp : d.exp * K.exp;
-    if (this.S.level - m.level > 4) exp *= 0.4;
-    const LB = liveBoost();
-    exp = Math.round(exp * (1 + this.stat('expGain') / 100 + (EL.exp || 0)) * (LB ? LB.exp : 1));
+    const EL = this.elixirMods ? this.elixirMods() : {}, LB = liveBoost();
+    const exp = this.personalExp(this.partyShareExp(m, cs ? cs.exp : d.exp * K.exp), m.level);
     this.after(0.3, () => { this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.3), `+${exp} EXP`, 'exp'); this.gainExp(exp); });
     // gold
     const gold = Math.round((cs ? rnd(cs.gold[0], cs.gold[1]) : rnd(d.gold[0], d.gold[1]) * K.gold) * (1 + this.stat('goldFind') / 100 + (EL.gold || 0)) * (LB ? LB.gold : 1));
@@ -900,6 +898,12 @@ export class Game {
     this.ui.toast(`Obtained [${name}]`, 'item');
   }
 
+  // EXP from a monster of level lvl after your level penalty, EXP Gain, elixirs and live events (also used for party shares)
+  personalExp(base, lvl) {
+    const EL = this.elixirMods ? this.elixirMods() : {}, LB = liveBoost();
+    if (this.S.level - lvl > 4) base *= 0.4;
+    return Math.round(base * (1 + this.stat('expGain') / 100 + (EL.exp || 0)) * (LB ? LB.exp : 1));
+  }
   gainExp(n) {
     const S = this.S;
     if (S.level >= MAX_LEVEL) return;
@@ -1417,6 +1421,8 @@ export class Game {
   }
   sendChat(text) {
     text = text.trim().slice(0, 80); if (!text) return;
+    const pm = /^\/p(arty)?\s+/i.exec(text);
+    if (pm || this.ui.chatFilter === 'party') { this.partySay(pm ? text.slice(pm[0].length) : text); return; }
     this.ui.chat('world', esc(text), this.S.name);
     if (this.mpSendChat) this.mpSendChat(text);
   }
@@ -2174,3 +2180,4 @@ installEconomy(Game);
 installUpgrade(Game);
 installLive(Game);
 installMp(Game);
+installParty(Game);

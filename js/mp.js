@@ -1,6 +1,6 @@
 // Real-time multiplayer for the public website. Players on the same server (S1-S6 on the title screen) join one
-// Supabase Realtime channel: presence carries who is online (name, class, level, look, zone) and broadcasts carry
-// movement and chat. Monsters, loot and progress stay per player. No database tables are used.
+// Supabase Realtime channel: presence carries who is online (name, class, level, look, zone, party) and broadcasts
+// carry movement, chat and party messages (party.js). Monsters, loot and progress stay per player. No database tables are used.
 // Inside the claude.ai page (window.claude present) or without a configured key, multiplayer stays off.
 import * as THREE from 'three';
 import { PETS, MOUNTS, CLASSES } from './data.js';
@@ -22,7 +22,7 @@ const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2;
 const _off = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _pt = new THREE.Vector3();
 const SERVER_KEY = 'aetherheim_server';
 
-export const mp = { status: 'off', server: 'S1', id: null, client: null, channel: null, peers: new Map(), error: '' };
+export const mp = { status: 'off', server: 'S1', id: null, client: null, channel: null, peers: new Map(), error: '', party: { id: null, pj: 0 } };
 export function mpEnabled() { return !!(MP_CONFIG.url && MP_CONFIG.key) && !(window.claude && typeof window.claude.use === 'function'); }
 export function getServer() { try { return localStorage.getItem(SERVER_KEY) || 'S1'; } catch { return 'S1'; } }
 export function setServer(s) { try { localStorage.setItem(SERVER_KEY, s); } catch { /* storage unavailable */ } }
@@ -52,6 +52,7 @@ function cleanInfo(m) {
     mount: MOUNTS.some((x) => x.id === m.mount) ? m.mount : null, pet: PETS.some((x) => x.id === m.pet) ? m.pet : null,
     zone: str(m.zone, 40), map: m.map === 'world' ? 'world' : 'away', br: num(m.br, 0, 1e9, 0) | 0,
     x: num(m.x, -400, 400, 0), z: num(m.z, -400, 400, 9),
+    party: /^[a-z0-9]{4,16}$/.test(m.party) ? m.party : null, pj: num(m.pj, 0, 1e13, 0),
   };
 }
 
@@ -62,6 +63,7 @@ const M = {
     this.mpPresT = 0; this.mpLastSent = null; this.mpChatT = 0; this.mpPrev = null; this.mpVx = 0; this.mpVz = 0;
     if (!mpEnabled()) { mp.status = 'off'; return; }
     mp.server = getServer();
+    this.partyInit();
     mp.id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).replace(/-/g, '').slice(0, 16);
     mp.status = 'connecting'; this.ui.refreshOnline && this.ui.refreshOnline();
     try {
@@ -76,6 +78,7 @@ const M = {
     ch.on('presence', { event: 'sync' }, () => this.mpSync())
       .on('broadcast', { event: 'm' }, ({ payload }) => this.mpMove(payload))
       .on('broadcast', { event: 'c' }, ({ payload }) => this.mpChat(payload))
+      .on('broadcast', { event: 'p' }, ({ payload }) => this.partyMsg(payload))
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           const first = mp.status !== 'online';
@@ -96,13 +99,21 @@ const M = {
       id: mp.id, name: S.name, cls: S.cls, gender: S.gender, hair: S.hair, eye: S.eye, level: S.level, guild: S.guild?.name || null,
       wings: !!S.wings, wingColor: S.wingColor || null, costume: S.costume || {}, mount: this.mounted ? S.activeMount : null, pet: S.activePet || null,
       zone: this.dg ? this.dg.def.name : this.war ? 'Guild War' : (this.zone?.name || 'Carlyle'), map: where, br: this.br || 0,
+      party: mp.party.id, pj: mp.party.pj,
     };
     if (!stable) { info.x = Math.round(p.pos.x * 10) / 10; info.z = Math.round(p.pos.z * 10) / 10; }
     return info;
   },
+  // publish presence right away (joining or leaving a party)
+  mpTrackNow() {
+    if (mp.status !== 'online' || !mp.channel) return;
+    this.mpLastInfo = JSON.stringify(this.mpInfo(true));
+    mp.channel.track(this.mpInfo()).catch(() => {});
+  },
   // ============================================================ per frame
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
+    this.partyUpdate(dt);
     if (mp.status !== 'online' || !mp.channel) return;
     const p = this.player;
     // presence: only when what others see changes (look, level, zone, mount, pet)
@@ -123,7 +134,8 @@ const M = {
     const st = p.dead ? 4 : p.state === 'attack' ? 2 : p.state === 'cast' ? 3 : this.mpMoving ? 1 : 0;
     if (!mp.peers.size) { this.mpLastSent = null; return; } // alone on the server: nobody to tell
     const w = this.dg || this.war ? 0 : 1, L = this.mpLastSent, gap = L ? now - L.t : Infinity;
-    let send = !L || gap > SEND_IDLE || w !== L.w || (st !== L.s && gap > 60);
+    const hp = Math.round((100 * p.hp) / p.maxHp); // shown on party frames
+    let send = !L || gap > SEND_IDLE || w !== L.w || (st !== L.s && gap > 60) || (!!mp.party.id && Math.abs(hp - L.h) >= 8 && gap > 500);
     if (!send && gap > SEND_MIN) {
       // where the others currently draw us
       const a = Math.min(gap / 1000, EXTRAP), ex = L.x + L.vx * a, ez = L.z + L.vz * a;
@@ -132,7 +144,7 @@ const M = {
     }
     if (!send) return;
     const r2 = (v) => Math.round(v * 100) / 100;
-    const cur = { x: r2(p.pos.x), z: r2(p.pos.z), y: r2(p.yaw), s: st, w, vx: r2(this.mpVx), vz: r2(this.mpVz) };
+    const cur = { x: r2(p.pos.x), z: r2(p.pos.z), y: r2(p.yaw), s: st, w, vx: r2(this.mpVx), vz: r2(this.mpVz), h: hp };
     this.mpLastSent = { ...cur, t: now };
     mp.channel.send({ type: 'broadcast', event: 'm', payload: { i: mp.id, ...cur } }).catch(() => {});
   },
@@ -160,6 +172,7 @@ const M = {
       this.mpRemove(key);
       this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
     }
+    this.partySync();
     this.ui.refreshOnline && this.ui.refreshOnline();
   },
   mpMove(m) {
@@ -167,7 +180,7 @@ const M = {
     const pr = mp.peers.get(str(m.i, 40)); if (!pr) return;
     pr.net = {
       x: num(m.x, -5200, 5200, pr.net?.x || 0), z: num(m.z, -400, 5200, pr.net?.z || 0), vx: num(m.vx, -40, 40, 0), vz: num(m.vz, -40, 40, 0),
-      y: num(m.y, -10, 10, 0), s: num(m.s, 0, 4, 0) | 0, w: m.w ? 1 : 0, t: performance.now(),
+      y: num(m.y, -10, 10, 0), s: num(m.s, 0, 4, 0) | 0, w: m.w ? 1 : 0, h: num(m.h, 0, 100, pr.net?.h ?? 100), t: performance.now(),
     };
   },
   mpChat(m) {
@@ -267,6 +280,7 @@ const M = {
   },
   mpSwitchServer(s) {
     if (s === mp.server) return;
+    this.partyLeave('You left the party (parties stay on one server).');
     setServer(s);
     if (mp.channel && mp.client) { mp.client.removeChannel(mp.channel); mp.channel = null; }
     for (const key of [...mp.peers.keys()]) { mp.peers.delete(key); this.mpRemove(key); }

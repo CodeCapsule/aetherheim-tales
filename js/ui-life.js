@@ -339,10 +339,12 @@ const P = {
     for (const sv of MP_SERVERS) { const b = h('button', 'chip' + (sv === mp.server ? ' sel' : ''), sv); b.onclick = () => g.mpSwitchServer(sv); head.appendChild(b); }
     if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
     body.appendChild(head);
+    this.partyBlock(body);
     const L = h('div', 'list');
     const row = (info, me, key) => {
       const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.heroIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
-        <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}</div>`);
+        <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}${!me && g.partyHas(key) ? ' · <span class="good">Party</span>' : !me && info.party ? ' · <span class="muted">in a party</span>' : ''}</div>`);
+      if (!me && !g.partyHas(key) && !info.party) { const b = h('button', 'btn small green', 'Invite'); b.disabled = mp.status !== 'online'; b.onclick = () => g.partyInvite(key); r.appendChild(b); }
       if (!me) { const b = h('button', 'btn small blue', 'Go to'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
       L.appendChild(r);
     };
