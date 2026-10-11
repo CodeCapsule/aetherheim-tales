@@ -2,7 +2,7 @@
 // charms) and the extended gem system (arcane gems, five gem levels, Soulstones with named powers, the Socket Drill and
 // the Soul Forge). installUpgrade(Game) adds the methods.
 import {
-  MATERIALS, GEMS, GEM_LV, GEM_MAX, GEM_COMBINE, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, SOCKETS,
+  MATERIALS, GEMS, GEM_MAX, GEM_COMBINE, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, SOCKETS,
   ENH_MAX, ENH_RATE, ENH_STONES, ENH_FAIL_BONUS, ENH_FAIL_MAX, ENH_LUCK, enhCost, enhRisk, REFINE,
 } from './systems-data.js';
 import { RARITY, EFFECTS, fitSockets } from './loot.js';

@@ -1,20 +1,19 @@
 // Panels for the life & economy systems: professions (gathering, farm, alchemy, smithing, Crimson Forge), relic
-// collection, wardrobe, NPC shops, the Auction House, direct trades and the bag's Sell All box.
+// collection, wardrobe, NPC shops, the Auction House and the bag's Sell All box.
 // installLifeUI(UI) mixes these into UI.prototype.
 import { ITEMS, SLOTS, SLOT_INFO, DUNGEONS } from './data.js';
 import {
-  PROF, PROF_MAX, profNeed, TIER_REQ, GATHER, CROPS, FARM_PLOTS, ALCHEMY, ELIXIRS, SMITHING, COSTUMES, RELICS, RELIC_SETS,
+  PROF, PROF_MAX, profNeed, TIER_REQ, GATHER, CROPS, FARM_PLOTS, ALCHEMY, SMITHING, COSTUMES, RELICS, RELIC_SETS,
   COLLECTION_BONUS, SHOPS, AUCTION, BAG_MAX, BAG_STEP,
 } from './data-world.js';
 import { MATERIALS } from './systems-data.js';
 import { RARITY } from './loot.js';
-import { fmtLeft, COSTUME_SLOTS } from './life.js';
+import { fmtLeft } from './life.js';
 import { shopEntry, goodName, goodQuality, goodIcon } from './economy.js';
 import { ico } from './icons.js';
 import { mp, mpEnabled, MP_SERVERS } from './mp.js';
 import { CLASSES } from './data.js';
 
-const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -50,7 +49,7 @@ const P = {
     this['life_' + tab](body);
   },
   life_gather(body) {
-    const g = this.g, S = g.S;
+    const g = this.g;
     const grid = h('div', 'prof-grid');
     for (const k of Object.keys(PROF)) grid.appendChild(h('div', '', this.profBar(k)));
     body.appendChild(grid);
@@ -73,7 +72,7 @@ const P = {
     body.appendChild(h('div', 'note', `Click ore veins, herbs and trees in the wilds to gather. Each node gives three harvests, then regrows. Higher tiers grow in the outer zones and need a higher profession level. Gathering, farming, alchemy and smithing level up to ${PROF_MAX}.`));
   },
   life_farm(body) {
-    const g = this.g, S = g.S, now = Date.now();
+    const g = this.g, now = Date.now();
     body.appendChild(h('div', '', this.profBar('farming')));
     const seeds = Object.keys(CROPS).filter((k) => g.countItem('seed_' + k) > 0);
     let seed = this.sel.seed && g.countItem(this.sel.seed) > 0 ? this.sel.seed : (seeds.length ? 'seed_' + seeds[seeds.length - 1] : null);
@@ -231,8 +230,8 @@ const P = {
     body.appendChild(h('div', 'wallet-row', `<span class="price"><span class="coin"></span>${fmt(S.gold)}</span><span class="muted">Won ${A.won} · Sold ${A.sold} · ${Math.round(AUCTION.fee * 100)}% fee on sales</span>`));
     const lotRow = (L, mine) => {
       const q = goodQuality(L), left = L.ends - now;
-      const top = L.bidder === 'me' ? '<span class="deal good">YOUR BID</span>' : L.bidder ? `<span class="muted">${esc(L.bidder)}</span>` : '<span class="muted">no bids</span>';
-      const r = h('div', 'row slim auc' + (L.bidder === 'me' ? ' lead' : ''), `<div class="ic q${q}">${ico(goodIcon(L))}</div><div class="tx"><b style="color:${RARITY[q].color}">${esc(goodName(L))}</b>${mine ? '' : `${esc(L.seller)} · `}<span class="${left < 60000 ? 'hot' : ''}">${fmtLeft(left)} left</span> · ${L.bids} bid${L.bids === 1 ? '' : 's'}</div><div class="auc-p"><span class="price"><span class="coin"></span>${fmt(L.bid || L.start)}</span>${top}${L.buyout ? `<small>Buyout ${fmt(L.buyout)}</small>` : ''}</div>`);
+      const top = L.bidder === 'me' ? '<span class="deal good">YOUR BID</span>' : L.bidder ? '<span class="muted">rival bid</span>' : '<span class="muted">no bids</span>';
+      const r = h('div', 'row slim auc' + (L.bidder === 'me' ? ' lead' : ''), `<div class="ic q${q}">${ico(goodIcon(L))}</div><div class="tx"><b style="color:${RARITY[q].color}">${esc(goodName(L))}</b><span class="${left < 60000 ? 'hot' : ''}">${fmtLeft(left)} left</span> · ${L.bids} bid${L.bids === 1 ? '' : 's'}</div><div class="auc-p"><span class="price"><span class="coin"></span>${fmt(L.bid || L.start)}</span>${top}${L.buyout ? `<small>Buyout ${fmt(L.buyout)}</small>` : ''}</div>`);
       if (L.kind === 'gear') this.tip(r.querySelector('.ic'), () => this.equipTip(L.eq) + this.compare(L.eq));
       else this.tip(r.querySelector('.ic'), () => `<b>${esc(goodName(L))}</b>${esc((L.kind === 'item' ? ITEMS[L.id]?.desc : MATERIALS[L.id]?.desc) || '')}<br><span class="ts">Worth ~${fmt(g.goodValue(L))} Gold</span>`);
       return r;
@@ -299,58 +298,9 @@ const P = {
     }
   },
 
-  // ------------------------------------------------------------ direct trade window
-  panel_trade(body) {
-    const g = this.g, S = g.S, T = g.trade;
-    if (!T) { body.appendChild(h('div', 'note', 'No trade open. Click another adventurer and press Trade.')); return; }
-    const v = g.tradeValues();
-    body.appendChild(h('div', 'trade-msg', `<b>${esc(T.who)}</b> (Lv ${T.level}): “${esc(T.msg)}”`));
-    const cols = h('div', 'trade-cols');
-    const theirs = h('div', 'trade-side', `<h4>${esc(T.who)} offers <small>~${fmt(v.theirs)}</small></h4>`);
-    T.theirs.forEach((x, i) => {
-      const q = goodQuality(x);
-      const r = h('button', 'trow' + (x.want ? ' on' : ''), `<span class="ic q${q}">${ico(goodIcon(x))}</span><span class="tn" style="color:${RARITY[q].color}">${esc(goodName(x))}</span><span class="tv">${fmt(g.goodValue(x))}</span>`);
-      r.onclick = () => g.tradeToggle(i);
-      if (x.kind === 'gear') this.tip(r, () => this.equipTip(x.eq) + this.compare(x.eq));
-      theirs.appendChild(r);
-    });
-    if (T.theirGold) theirs.appendChild(h('div', 'trow on', `<span class="ic">${ico('gold')}</span><span class="tn">${fmt(T.theirGold)} Gold</span>`));
-    const mine = h('div', 'trade-side', `<h4>You offer <small>~${fmt(v.mine)}</small></h4>`);
-    T.mine.forEach((x, i) => {
-      const q = goodQuality(x);
-      const r = h('button', 'trow on', `<span class="ic q${q}">${ico(goodIcon(x))}</span><span class="tn" style="color:${RARITY[q].color}">${esc(goodName(x))}</span><span class="tv">✕</span>`);
-      r.onclick = () => g.tradeRemove(i); mine.appendChild(r);
-    });
-    const gold = h('label', 'tgold', `Gold <input type="number" id="tr-gold" min="0" max="${S.gold}" value="${T.myGold}">`);
-    mine.appendChild(gold);
-    cols.appendChild(theirs); cols.appendChild(mine); body.appendChild(cols);
-    gold.querySelector('input').onchange = (e) => g.tradeGold(+e.target.value);
-    // pick from your bag
-    const grid = h('div', 'grid-bag sm');
-    S.bag.forEach((b, i) => {
-      if (b.eq ? b.eq.lock : ITEMS[b.id]?.type === 'quest') return;
-      const c = h('button', `cell q${b.eq ? b.eq.quality : ITEMS[b.id].quality}`, `${ico(b.eq ? b.eq.icon : b.id)}${b.eq ? '' : `<span class="cnt">${b.qty}</span>`}`);
-      c.onclick = () => g.tradeAdd({ bag: i }, b.eq ? 1 : b.qty);
-      this.tip(c, () => (b.eq ? this.equipTip(b.eq) : `<b>${esc(ITEMS[b.id].name)}</b>`)); grid.appendChild(c);
-    });
-    Object.keys(S.mats).filter((id) => !MATERIALS[id].notrade).forEach((id) => {
-      const c = h('button', `cell q${MATERIALS[id].quality}`, `${ico(MATERIALS[id].icon)}<span class="cnt">${fmt(S.mats[id])}</span>`);
-      c.onclick = () => g.tradeAdd({ mat: id }, Math.min(S.mats[id], 5));
-      this.tip(c, () => `<b>${esc(MATERIALS[id].name)}</b>Click to add 5`); grid.appendChild(c);
-    });
-    body.appendChild(h('div', 'muted', 'Click your items to offer them (materials add 5 at a time). Click their goods to include or skip them.'));
-    body.appendChild(grid);
-    const row = h('div', 'acts-row');
-    if (T.ask && !T.agreed) { const add = h('button', 'btn small', `Add ${fmt(T.ask)} Gold`); add.disabled = S.gold < T.myGold + T.ask; add.onclick = () => { g.tradeGold(T.myGold + T.ask); T.ask = 0; }; row.appendChild(add); }
-    const pr = h('button', 'btn blue', T.agreed ? 'Agreed!' : 'Propose'); pr.disabled = T.agreed; pr.onclick = () => g.tradePropose(); row.appendChild(pr);
-    const ok = h('button', 'btn green', 'Confirm Trade'); ok.disabled = !T.agreed; ok.onclick = () => g.tradeConfirm(); row.appendChild(ok);
-    const cx = h('button', 'btn gray', 'Cancel'); cx.onclick = () => g.tradeCancel(); row.appendChild(cx);
-    body.appendChild(row);
-  },
-
   // ------------------------------------------------------------ bag: sell all & expansion
   bagTools(body) {
-    const g = this.g, S = g.S;
+    const g = this.g;
     const row = h('div', 'acts-row bag-tools');
     const sa = h('button', 'btn small', `${ico('sell_all', 'ico inl')} Sell All…`); sa.onclick = () => { this.sel.sellAll = !this.sel.sellAll; this.renderPanel(); }; row.appendChild(sa);
     if (g.bagMax() < BAG_MAX) {
@@ -391,7 +341,7 @@ const P = {
     body.appendChild(head);
     const L = h('div', 'list');
     const row = (info, me, key) => {
-      const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.botIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
+      const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.heroIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
         <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}</div>`);
       if (!me) { const b = h('button', 'btn small blue', 'Go to'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
       L.appendChild(r);
@@ -407,13 +357,6 @@ const P = {
     const lbl = A.querySelector('.al'); if (lbl) lbl.textContent = mp.status === 'online' ? `Online ${n + 1}` : 'Online';
     A.classList.toggle('glow', n > 0);
     if (this.panelName === 'online') this.softRefresh();
-  },
-
-  // target frame: trade button for other adventurers
-  refreshTradeBtn(t) {
-    let b = $('tg-trade');
-    if (!b) { b = h('button', 'btn small blue', 'Trade'); b.id = 'tg-trade'; b.onclick = (e) => { e.stopPropagation(); const tt = this.g.player.target; if (tt && tt.kind === 'bot') this.g.openTrade(tt); }; $('hud-target').appendChild(b); }
-    b.hidden = !(t && t.kind === 'bot');
   },
 };
 

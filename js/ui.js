@@ -1,6 +1,6 @@
 // HUD, panels, dialogs, chat, minimap and world map.
 import {
-  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOTS, SLOT_INFO, NPCS, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, BOT_NAMES, DUNGEONS, WEAPON_ICONS,
+  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, NPCS, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
 } from './data.js';
 import { needExp, fmt, esc, PET_TIER } from './game.js';
 import { RARITY, LEGENDARY_ITEMS, itemLines, itemScore, namedBySource } from './loot.js';
@@ -17,7 +17,7 @@ const RARC = PET_TIER.map((t) => RARITY[t].color);
 const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-const CHN = { world: 'World', system: 'System', guild: 'Guild', team: 'Team', announce: 'Announce', whisper: 'Whisper', player: 'Player' };
+const CHN = { world: 'World', system: 'System', guild: 'Guild', announce: 'Announce', player: 'Player' };
 
 export class UI {
   constructor() {
@@ -147,7 +147,6 @@ export class UI {
   }
   refreshTarget() {
     const g = this.g, t = g?.player?.target, el = $('hud-target');
-    this.refreshTradeBtn(t);
     if (!t || t.dead) { el.hidden = true; this.tgShown = null; return; }
     el.hidden = false;
     if (this.tgShown !== t) {
@@ -158,7 +157,7 @@ export class UI {
         const tag = t.def0.boss ? '<em>BOSS</em>' : t.def0.elite ? '<em>ELITE</em>' : '';
         $('tg-name').innerHTML = `Lv${t.level} ${esc(t.def0.name)}${tag}`;
       } else {
-        $('tg-img').src = g.botIcon(t);
+        $('tg-img').src = g.heroIcon(t);
         $('tg-name').innerHTML = `Lv${t.level} ${esc(t.name)} <em style="color:#9ad0ff">${CLASSES[t.cls]?.name || ''}</em>`;
       }
     }
@@ -239,8 +238,7 @@ export class UI {
     for (const m of g.monsters) if (!m.dead && (m.map || g.world) === g.map) dot(m.pos.x, m.pos.z, m.def0.boss ? '#ff3aa8' : m.def0.aggressive ? '#ff4a3a' : '#ff9a6a', m.def0.boss ? 5 : 2.2);
     for (const L of g.loots) if (L.map === g.map) dot(L.pos.x, L.pos.z, RARITY[L.q].color, 2.4);
     if (!g.map.isDungeon) {
-      if (g.S.settings.others) for (const b of g.bots) dot(b.pos.x, b.pos.z, '#6ac8ff', 2.2);
-      for (const e of g.rplayers || []) if (!e.netHidden) dot(e.pos.x, e.pos.z, '#ffe04a', 3.2);
+      if (g.S.settings.others) for (const e of g.rplayers || []) if (!e.netHidden) dot(e.pos.x, e.pos.z, '#ffe04a', 3.2);
       for (const n of g.npcs) {
         dot(n.pos.x, n.pos.z, '#ffe066', 3);
         if (n.markChar && n.markChar !== '…') { const sx = (n.pos.x - p.x + R) * k, sy = (n.pos.z - p.z + R) * k; c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx - 3, sy - 4); c.fillText(n.markChar, sx - 3, sy - 4); }
@@ -466,7 +464,7 @@ export class UI {
     this.panelName = name;
     const dot = this.menuBtns[name]?.querySelector('.dotn'); if (dot) dot.remove();
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
-      online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House', trade: this.g.trade ? `Trade · ${this.g.trade.who}` : 'Trade',
+      online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
       missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss' };
     const widths = { char: 600, bag: 460, skills: 520, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640 };
     const p = h('div', 'panel frame');

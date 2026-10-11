@@ -1,8 +1,8 @@
-// Economy mixed into Game: bag expansion and bulk selling, NPC shops, the Auction House (real-time lots with bidding,
-// buyout and rival bidders) and direct trade windows with other adventurers. installEconomy(Game) adds the methods.
-import { ITEMS, PETS, MOUNTS, BOT_NAMES, DUNGEONS } from './data.js';
+// Economy mixed into Game: bag expansion and bulk selling, NPC shops and the Auction House (real-time merchant lots with
+// bidding, buyout and rival bids). installEconomy(Game) adds the methods.
+import { ITEMS, PETS, MOUNTS, DUNGEONS } from './data.js';
 import { BAG_BASE, BAG_MAX, BAG_STEP, SHOPS, AUCTION, COSTUMES, RELIC_SETS, MAX_LEVEL, GATHER } from './data-world.js';
-import { MATERIALS, EXTRA_NAMES, GEMS, gemId, SOULS, soulId } from './systems-data.js';
+import { MATERIALS, GEMS, gemId, SOULS, soulId } from './systems-data.js';
 import { RARITY, sellPrice } from './loot.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
@@ -10,7 +10,6 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const NAMES = () => [...BOT_NAMES, ...EXTRA_NAMES];
 const dgLv = (id) => DUNGEONS.find((d) => d.id === id)?.lv || 1;
 
 // shop entry: [ref, qty, price, minLevel?, farmingLevel?]; ref prefixes m: material, p: pet, r: mount, c: costume
@@ -22,7 +21,7 @@ export function shopEntry(e) {
   const quality = kind === 'mat' ? MATERIALS[id]?.quality : kind === 'item' ? ITEMS[id]?.quality : kind === 'pet' ? [1, 2, 3, 5][PETS.find((p) => p.id === id)?.rarity || 0] : 4;
   return { ref, kind, id, qty, price, minLv, farmLv, name: name || id, quality: quality || 0 };
 }
-// a lot / trade good: { kind: 'gear' | 'mat' | 'item', eq?, id?, qty }
+// a lot: { kind: 'gear' | 'mat' | 'item', eq?, id?, qty }
 export const goodName = (L) => (L.kind === 'gear' ? L.eq.name : `${L.kind === 'item' ? ITEMS[L.id]?.name : MATERIALS[L.id]?.name}${L.qty > 1 ? ` x${L.qty}` : ''}`);
 export const goodQuality = (L) => (L.kind === 'gear' ? L.eq.quality : L.kind === 'item' ? ITEMS[L.id]?.quality || 0 : MATERIALS[L.id]?.quality || 0);
 export const goodIcon = (L) => (L.kind === 'gear' ? L.eq.icon : L.kind === 'item' ? L.id : MATERIALS[L.id]?.icon || L.id);
@@ -30,14 +29,13 @@ export const goodIcon = (L) => (L.kind === 'gear' ? L.eq.icon : L.kind === 'item
 export function initEconomySave(S) {
   S.bagMax = clamp(S.bagMax || BAG_BASE, BAG_BASE, BAG_MAX);
   S.auc = S.auc || { lots: [], mine: [], claims: [], next: 1, won: 0, sold: 0 };
-  S.trades = S.trades || 0;
   return S;
 }
 
 const E = {
   initEconomy() {
     initEconomySave(this.S);
-    this.trade = null; this.ecoT = 0;
+    this.ecoT = 0;
     this.aucTick(true);
   },
   updateEconomy(dt) {
@@ -166,7 +164,7 @@ const E = {
     else L = { kind: 'item', id: pick(['costume_box', 'bag_scroll', 'elixir_wisdom', 'elixir_fortune', 'elixir_might', 'pet_egg', 'phoenix_draught']), qty: 1 };
     const fair = this.goodValue(L);
     Object.assign(L, {
-      aid: 'a' + S.auc.next++, seller: pick(NAMES()), start: Math.max(10, Math.round(fair * rnd(0.4, 0.75))), bid: 0, bidder: null, bids: 0,
+      aid: 'a' + S.auc.next++, start: Math.max(10, Math.round(fair * rnd(0.4, 0.75))), bid: 0, bidder: null, bids: 0,
       buyout: Math.random() < 0.75 ? Math.round(fair * rnd(1.25, 1.75)) : 0, cap: Math.round(fair * rnd(0.85, 1.35)),
       ends: Date.now() + pick(AUCTION.durations) * 60000 * rnd(0.25, 1),
     });
@@ -202,9 +200,9 @@ const E = {
       A.mine.splice(A.mine.indexOf(L), 1); changed = true;
       if (L.bidder) {
         const net = Math.round(L.bid * (1 - AUCTION.fee));
-        A.claims.push({ kind: 'gold', gold: net, note: `${goodName(L)} sold to ${L.bidder}` }); A.sold++;
+        A.claims.push({ kind: 'gold', gold: net, note: `${goodName(L)} sold` }); A.sold++;
         this.ui.toast(`Auction: ${goodName(L)} sold for ${fmt(L.bid)} Gold`, 'good');
-        this.ui.chat('system', `<b>[Auction]</b> ${esc(L.bidder)} won your ${esc(goodName(L))} for <b>${fmt(L.bid)}</b> Gold (after the ${Math.round(AUCTION.fee * 100)}% fee: ${fmt(net)}). Collect it from the Auction House.`);
+        this.ui.chat('system', `<b>[Auction]</b> Your ${esc(goodName(L))} sold for <b>${fmt(L.bid)}</b> Gold (after the ${Math.round(AUCTION.fee * 100)}% fee: ${fmt(net)}). Collect it from the Auction House.`);
         this.track('trade'); this.track('marketGold', net); this.sfx.play('coin');
       } else {
         A.claims.push({ ...this.goodOf(L), note: 'Returned unsold' });
@@ -225,7 +223,7 @@ const E = {
       this.ui.toast(`Outbid on ${goodName(L)} — ${fmt(L.bid)} Gold refunded`, 'warn');
       this.ui.chat('system', `<b>[Auction]</b> You were outbid on <b>${esc(goodName(L))}</b> (${fmt(amount)} Gold). Your ${fmt(L.bid)} Gold was refunded.`);
     }
-    L.bid = amount; L.bidder = pick(NAMES().filter((n) => n !== L.seller && n !== S.name)); L.bids++;
+    L.bid = amount; L.bidder = 'rival'; L.bids++;
     if (buyout) L.ends = Date.now();
   },
   aucBid(aid, amount) {
@@ -283,7 +281,7 @@ const E = {
     }
     S.gold -= deposit;
     const fair = this.goodValue(L);
-    Object.assign(L, { aid: 'm' + A.next++, mineLot: true, seller: S.name, start, buyout, bid: 0, bidder: null, bids: 0, cap: Math.round(fair * rnd(0.75, 1.3)), ends: Date.now() + clamp(mins, 1, 60) * 60000 });
+    Object.assign(L, { aid: 'm' + A.next++, mineLot: true, start, buyout, bid: 0, bidder: null, bids: 0, cap: Math.round(fair * rnd(0.75, 1.3)), ends: Date.now() + clamp(mins, 1, 60) * 60000 });
     A.mine.push(L);
     this.sfx.play('coin'); this.ui.toast(`Auction started: ${goodName(L)} (deposit ${fmt(deposit)} Gold)`, 'good');
     this.ui.sel.aucSrc = null; this.ui.refreshWallet(); this.ui.refreshPanel(); this.ui.refreshSkills(); this.save();
@@ -313,116 +311,6 @@ const E = {
     if (keep.length && !quiet) this.ui.toast('Bag is full — some items are still waiting', 'warn');
     this.ui.refreshWallet(); this.ui.refreshPanel(); this.ui.refreshActs && this.ui.acts && this.ui.refreshActs(); this.save();
   },
-
-  // ============================================================ direct trade with another adventurer
-  tradeGoods(lv) {
-    const t = Math.min(4, Math.floor(lv / 42)), out = [], n = 2 + ((Math.random() * 3) | 0);
-    for (let i = 0; i < n; i++) {
-      const r = Math.random();
-      if (r < 0.25) out.push({ kind: 'gear', eq: this.makeEquip(null, clamp(lv + Math.round(rnd(-2, 2)), 1, MAX_LEVEL), Math.random() < 0.15 ? 4 : Math.random() < 0.5 ? 3 : 2), qty: 1 });
-      else if (r < 0.65) out.push({ kind: 'mat', id: pick([GATHER.ore, GATHER.herb, GATHER.tree]).mats[t], qty: Math.round(rnd(3, 12)) });
-      else if (r < 0.8) out.push({ kind: 'mat', id: pick(['spirit_shard', 'spirit_dust', 'star_essence']), qty: Math.round(rnd(1, 4)) });
-      else if (r < 0.9) out.push({ kind: 'mat', id: gemId(pick(Object.keys(GEMS)), Math.random() < 0.3 ? 2 : 1), qty: 1 });
-      else out.push({ kind: 'item', id: pick(['elixir_might', 'elixir_swift', 'potion_hp2', 'pet_treat', 'fertilizer', 'teleport_scroll']), qty: Math.round(rnd(1, 3)) });
-    }
-    for (const g of out) g.want = true;
-    return out;
-  },
-  openTrade(b) {
-    if (this.dg || this.war) { this.ui.toast('Finish what you are doing first', 'warn'); return; }
-    if (!b || b.kind !== 'bot') return;
-    if (Math.random() < 0.12) { this.ui.chat('whisper', pick(['busy rn sorry!', 'in a dungeon, later?', 'afk~']), b.name); this.ui.toast(`${b.name} declined the trade`, 'warn'); return; }
-    const S = this.S;
-    const mate = S.guild && b.guild === S.guild.name;
-    this.trade = { who: b.name, cls: b.cls, level: b.level || S.level, theirs: this.tradeGoods(b.level || S.level), mine: [], myGold: 0, theirGold: 0, greed: rnd(0.92, 1.12) * (mate ? 0.9 : 1), tries: 0, agreed: false, msg: pick(['hi! here is what I can offer', 'sure, let us trade~', 'looking for mats, what do you have?']) };
-    this.ui.chat('whisper', esc(this.trade.msg), b.name);
-    this.sfx.play('open');
-    this.ui.togglePanel('trade', true);
-  },
-  tradeValues() {
-    const T = this.trade; if (!T) return { mine: 0, theirs: 0 };
-    const theirs = T.theirs.filter((g) => g.want).reduce((a, g) => a + this.goodValue(g), 0) + T.theirGold;
-    const mine = T.mine.reduce((a, g) => a + this.goodValue(g), 0) + T.myGold;
-    return { mine, theirs };
-  },
-  tradeAdd(src, qty = 1) {
-    const T = this.trade, S = this.S; if (!T) return;
-    if (src.mat) {
-      const m = MATERIALS[src.mat]; if (!m || m.notrade) { this.ui.toast('That cannot be traded', 'warn'); return; }
-      const have = this.matCount(src.mat) - T.mine.filter((g) => g.kind === 'mat' && g.id === src.mat).reduce((a, g) => a + g.qty, 0);
-      qty = clamp(Math.round(qty), 1, have); if (qty <= 0 || have <= 0) return;
-      const ex = T.mine.find((g) => g.kind === 'mat' && g.id === src.mat);
-      if (ex) ex.qty += qty; else T.mine.push({ kind: 'mat', id: src.mat, qty });
-    } else {
-      const b = S.bag[src.bag]; if (!b) return;
-      if (b.eq) { if (b.eq.lock) { this.ui.toast('Locked items cannot be traded', 'warn'); return; } if (T.mine.some((g) => g.eq === b.eq)) return; T.mine.push({ kind: 'gear', eq: b.eq, qty: 1 }); }
-      else {
-        const it = ITEMS[b.id]; if (it.type === 'quest') return;
-        const have = this.countItem(b.id) - T.mine.filter((g) => g.kind === 'item' && g.id === b.id).reduce((a, g) => a + g.qty, 0);
-        qty = clamp(Math.round(qty), 1, have); if (have <= 0) return;
-        const ex = T.mine.find((g) => g.kind === 'item' && g.id === b.id);
-        if (ex) ex.qty += qty; else T.mine.push({ kind: 'item', id: b.id, qty });
-      }
-    }
-    T.agreed = false; this.ui.refreshPanel();
-  },
-  tradeRemove(i) { const T = this.trade; if (!T) return; T.mine.splice(i, 1); T.agreed = false; this.ui.refreshPanel(); },
-  tradeToggle(i) { const T = this.trade; if (!T || !T.theirs[i]) return; T.theirs[i].want = !T.theirs[i].want; T.agreed = false; this.ui.refreshPanel(); },
-  tradeGold(n) { const T = this.trade; if (!T) return; T.myGold = clamp(Math.round(n) || 0, 0, this.S.gold); T.agreed = false; this.ui.refreshPanel(); },
-  tradePropose() {
-    const T = this.trade; if (!T) return;
-    const v = this.tradeValues();
-    if (!v.theirs && !v.mine) { this.ui.toast('Add something to the trade first', 'warn'); return; }
-    T.tries++;
-    if (v.mine >= v.theirs * T.greed) {
-      T.agreed = true; T.ask = 0;
-      if (v.theirs > 0 && v.mine > v.theirs * 1.5 && T.theirGold === 0) {
-        T.theirGold = Math.round((v.mine - v.theirs * 1.2) * 0.8);
-        T.msg = `that's way too generous! I'll add ${fmt(T.theirGold)} gold~`;
-      } else T.msg = pick(['deal!', 'sounds fair~', 'ok! confirm when ready', 'pleasure doing business']);
-    } else if (T.tries >= 4) {
-      T.msg = pick(['nvm, good luck!', 'not worth it for me, bye~', 'I think I will pass']);
-      this.ui.chat('whisper', esc(T.msg), T.who);
-      this.ui.toast(`${T.who} left the trade`, 'warn');
-      this.trade = null; this.ui.closePanels(); return;
-    } else {
-      T.ask = Math.ceil(v.theirs * T.greed - v.mine);
-      T.msg = pick([`hmm, that's ${fmt(T.ask)} gold short...`, `add about ${fmt(T.ask)} gold and it's a deal`, `my stuff is worth more, ${fmt(T.ask)} gold more?`]);
-    }
-    this.ui.chat('whisper', esc(T.msg), T.who);
-    this.ui.refreshPanel();
-  },
-  tradeConfirm() {
-    const T = this.trade, S = this.S; if (!T || !T.agreed) return;
-    // validate what you are giving
-    for (const g of T.mine) {
-      if (g.kind === 'gear' && !S.bag.some((b) => b.eq === g.eq)) { this.ui.toast('An offered item is gone', 'warn'); T.agreed = false; return; }
-      if (g.kind === 'item' && this.countItem(g.id) < g.qty) { this.ui.toast('An offered item is gone', 'warn'); T.agreed = false; return; }
-      if (g.kind === 'mat' && this.matCount(g.id) < g.qty) { this.ui.toast('An offered material is gone', 'warn'); T.agreed = false; return; }
-    }
-    if (S.gold < T.myGold) { this.ui.toast('Not enough Gold', 'warn'); return; }
-    const got = T.theirs.filter((g) => g.want);
-    const gearIn = got.filter((g) => g.kind === 'gear').length, gearOut = T.mine.filter((g) => g.kind === 'gear').length;
-    if (S.bag.length - gearOut + gearIn + got.filter((g) => g.kind === 'item' && !S.bag.some((b) => b.id === g.id)).length > this.bagMax()) { this.ui.toast('Not enough bag space', 'warn'); return; }
-    for (const g of T.mine) {
-      if (g.kind === 'gear') S.bag.splice(S.bag.findIndex((b) => b.eq === g.eq), 1);
-      else if (g.kind === 'item') this.removeItem(g.id, g.qty);
-      else this.takeMat(g.id, g.qty);
-    }
-    S.gold += T.theirGold - T.myGold;
-    for (const g of got) {
-      if (g.kind === 'gear') { g.eq.uid = S.uid++; this.addEquip(g.eq); }
-      else if (g.kind === 'item') this.addItem(g.id, g.qty);
-      else this.addMat(g.id, g.qty, true);
-    }
-    S.trades++; this.track('trade');
-    this.ui.chat('system', `<b>[Trade]</b> Trade with ${esc(T.who)} complete: received ${got.map((g) => esc(goodName(g))).join(', ') || 'nothing'}${T.theirGold ? ` and ${fmt(T.theirGold)} Gold` : ''}.`);
-    this.ui.chat('whisper', pick(['ty!! <3', 'thanks, gl out there!', 'nice trade~']), T.who);
-    this.sfx.play('quest'); this.fx.buff(this.player, '#7aff9a');
-    this.trade = null;
-    this.ui.closePanels(); this.ui.refreshWallet(); this.ui.refreshSkills(); this.save();
-  },
-  tradeCancel() { if (!this.trade) return; this.ui.chat('whisper', pick(['ok np', 'maybe later~', 'cya']), this.trade.who); this.trade = null; this.ui.closePanels(); },
 };
 
 export function installEconomy(Game) { Object.assign(Game.prototype, E); }

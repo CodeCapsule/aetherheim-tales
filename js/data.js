@@ -3,14 +3,6 @@ import {
   NEW_ZONES, NEW_MONSTERS, DUNGEON_MONSTERS, NEW_SPAWNS, NEW_DUNGEONS, NEW_ITEMS, NEW_PETS, NEW_MOUNTS, NEW_NPCS, NEW_TELEPORTS, NEW_TITLES, NEW_DROPS,
 } from './data-world.js';
 
-export const QUALITY = [
-  { name: 'Common', color: '#e8e8e8', mult: 1.0 },
-  { name: 'Uncommon', color: '#5ee05a', mult: 1.3 },
-  { name: 'Rare', color: '#4aa8ff', mult: 1.7 },
-  { name: 'Epic', color: '#c46bff', mult: 2.2 },
-  { name: 'Legendary', color: '#ff9a2e', mult: 3.0 },
-];
-
 export const CLASSES = {
   knight: {
     name: 'Knight', element: 'Earth', elemColor: '#d9a441', icon: 'cls_knight',
@@ -259,7 +251,6 @@ export const SLOT_INFO = {
 };
 export const WEAPON_NAMES = { knight: 'Longsword', assassin: 'Twin Daggers', mage: 'Ember Staff', priest: 'Tidal Scepter' };
 export const WEAPON_ICONS = { knight: 'w_sword', assassin: 'w_daggers', mage: 'w_staff', priest: 'w_scepter' };
-export const QUALITY_PREFIX = ['Worn', 'Sturdy', 'Sylvan', 'Elven', 'Yggdrasil'];
 export const SLOT_BASE = { helm: 'Helm', armor: 'Tunic', boots: 'Boots', necklace: 'Amulet', ring: 'Ring' };
 
 export const NPCS = [
@@ -366,40 +357,9 @@ export const MALL = [
 ];
 
 export const BOT_NAMES = ['Lunaria', 'xXShadowXx', 'MochiMochi', 'Kirito77', 'SakuraBloom', 'Valkyr', 'Pudding', 'Aerith', 'NoobSlayer', 'Celestine', 'Tofu', 'RuneKnight', 'Mirabelle', 'Zephyrus', 'Bubbles', 'DarkAngel', 'Yuki', 'Ignis', 'Mercy', 'Felix'];
-export const GUILDS = ['Moonlight', 'Starfall', 'Sakura', 'Valhalla', 'Dreamers', ''];
 export const TITLES = ['Novice Adventurer', 'Jelly Hunter', 'Pet Lover', 'Rising Star', 'Guardian of Carlyle', 'Spirit Chosen',
   'Guild Hero', 'Titan Slayer', 'Market Mogul', 'Codex Keeper', 'Lorekeeper of Aetherheim', 'Season Veteran', 'Season Champion', 'Harvest Lord', 'Starlight Guardian', 'Blossom Dancer', 'Warlord'];
 
-export const CHAT_LINES = [
-  'LF2M Treant King, need healer!!',
-  'WTS Mystery Pet Egg 800g pm me',
-  'anyone know where the Pet Keeper is?',
-  'my Scoopy is sooo cute omg',
-  '<Moonlight> recruiting Lv10+, friendly guild~',
-  'how do you get the Pegasus?',
-  'gz on the level up!',
-  'is the boss up? ruins are empty',
-  'Fluffbuns stole my potions lol',
-  'just got Sparky from Yggr!!! finally',
-  'tip: click the quest tracker to auto-path',
-  'who wants to farm golems together?',
-  'Frost Wolf mount is worth every gold',
-  'Daily sign-in day 7 gives a Panda mount!',
-  'brb dinner',
-  'Mage or Priest for a new player?',
-  'Knight guardian talent is so tanky',
-  'sell Elven ring, 2k gold',
-  'online gift gives Pengu after 5 min btw',
-  'love the music in Sylvan Haven',
-  'world boss at the Storm Altar soon, who is coming?',
-  'WTB Spirit Shards, paying well',
-  'my guild won the war 3-0 today!!',
-  'anyone know the best gem for crit builds?',
-  'reforged my ring 5 times for lifesteal lol',
-  'season pass tier 20 already~',
-  'daily missions done, chest time',
-  'Star Essence prices are crazy today',
-];
 
 export const TIPS = [
   'Click a quest in the tracker to auto-path to your objective.',

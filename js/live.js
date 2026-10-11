@@ -38,14 +38,13 @@ export async function connectLive() {
   live.ready = true; emit();
   return live;
 }
-export const liveConfig = () => live.config || {};
 export function liveBoost(now = Date.now()) {
   const b = live.config?.boost;
   return b && b.until > now ? { exp: Math.max(1, +b.exp || 1), gold: Math.max(1, +b.gold || 1), name: b.name || 'Live Event', until: b.until } : null;
 }
 
 // status document for one player (kept small: no ids beyond the doc key, no account names)
-export function playerStatus(g) {
+function playerStatus(g) {
   const S = g.S, p = g.player;
   const eq = SLOTS.map((s) => S.equip[s] && { slot: s, name: S.equip[s].name, q: S.equip[s].quality, enh: S.equip[s].enh || 0, lvl: S.equip[s].lvl }).filter(Boolean);
   return {
@@ -56,7 +55,7 @@ export function playerStatus(g) {
     dgClears: Object.values(S.dgn?.clears || {}).reduce((a, b) => a + b, 0), guild: S.guild?.name || null, title: TITLES[S.title] || '',
     equip: eq, prof: Object.fromEntries(Object.entries(S.prof || {}).map(([k, v]) => [k, v.lv])), collSets: g.collSets ? g.collSets() : 0,
     red: S.life?.red || 0, pets: Object.keys(S.pets || {}).length, mounts: (S.mounts || []).length, costumes: (S.costumes || []).length,
-    bag: [S.bag.length, g.bagMax ? g.bagMax() : 48], auction: { won: S.auc?.won || 0, sold: S.auc?.sold || 0 }, trades: S.trades || 0,
+    bag: [S.bag.length, g.bagMax ? g.bagMax() : 48], auction: { won: S.auc?.won || 0, sold: S.auc?.sold || 0 },
     device: matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop', version: LIVE_VERSION,
     firstSeen: S.stats?.firstSeen || Date.now(), lastSeen: Date.now(), events: (g.liveEvents || []).slice(0, 25), errors: live.errors.slice(0, 10),
   };

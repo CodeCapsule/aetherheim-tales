@@ -86,7 +86,7 @@ export class FX {
   ring(pos, color = 0xffffff, radius = 4, dur = 0.5, y = 0.15) {
     const m = new THREE.Mesh(this.geo.ring, this.basic(color));
     m.rotation.x = -Math.PI / 2; m.position.copy(pos); m.position.y += y;
-    this.add(m, dur, (k) => { const s = radius * (1.05 - k * 0.9 + 0.05); m.scale.setScalar(Math.max(0.1, radius * (1 - k) + 0.3)); m.material.opacity = k; }, () => m.material.dispose());
+    this.add(m, dur, (k) => { m.scale.setScalar(Math.max(0.1, radius * (1 - k) + 0.3)); m.material.opacity = k; }, () => m.material.dispose());
   }
 
   circle(pos, color = '#ffd36b', radius = 2.5, dur = 1.2, follow = null) {

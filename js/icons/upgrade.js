@@ -104,7 +104,7 @@ add('online', svg(lg('z-online-a', ['#bfe8ff', '#4aa8ff', '#1a5ac8']) + lg('z-on
 <circle cx="52" cy="12" r="6" fill="#4ae86a" ${INK2}/>${glint(19, 18, 2)}`));
 
 // soulstones: one per named power
-export const SOUL_LOOK = {
+const SOUL_LOOK = {
   crit_heal: [['#ff9ab8', '#ff3a6a', '#7a0a2a'], 'leaf'], chain: [['#c8f0ff', '#3ab8ff', '#0a3a8a'], 'bolt'], stun_chance: [['#ffe0a0', '#c8862a', '#5a3008'], 'star'],
   thorn_aura: [['#c8ffb0', '#4ac83a', '#0a5a1a'], 'leaf'], swift: [['#d8fff4', '#4ae8c0', '#0a6a5a'], 'swirl'], mana_font: [['#c8d8ff', '#4a7aff', '#101a7a'], 'swirl'],
   meteor_proc: [['#ffc8a0', '#ff5a1a', '#7a1a00'], 'star'], phoenix: [['#fff0a0', '#ff9a1a', '#8a2a00'], 'leaf'], frenzy: [['#ffb0a0', '#ff2a2a', '#6a0000'], 'eye'],

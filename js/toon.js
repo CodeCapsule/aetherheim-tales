@@ -207,7 +207,7 @@ export function facePatch(radius, texture, { width = 1.7, top = 0.9, height = 1.
   return m;
 }
 
-export function lighten(hex, amt) {
+function lighten(hex, amt) {
   const c = new THREE.Color(hex);
   c.lerp(new THREE.Color('#ffffff'), amt);
   return '#' + c.getHexString();

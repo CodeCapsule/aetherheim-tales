@@ -156,7 +156,7 @@ export class Dungeon {
   track(x) { this.disposables.push(x); return x; }
 
   build() {
-    const def = this.def, O = def.origin, T = this.theme;
+    const def = this.def, O = def.origin;
     this.root = new THREE.Group(); this.root.name = 'dungeon-' + def.id; this.scene.add(this.root);
     // rooms & corridors (world coords)
     this.rooms = def.rooms.map((r, i) => {
@@ -331,7 +331,7 @@ export class Dungeon {
   }
 
   buildDecor() {
-    const T = this.theme, rng = mulberry(this.def.id.charCodeAt(1) * 131);
+    const rng = mulberry(this.def.id.charCodeAt(1) * 131);
     const mouths = [];
     this.rooms.forEach((r, i) => { if (i < this.rooms.length - 1) mouths.push({ x: r.x, z: r.minZ }); if (i > 0) mouths.push({ x: r.x, z: r.maxZ }); });
     mouths.push({ x: this.start.x, z: this.start.z });

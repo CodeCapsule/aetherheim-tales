@@ -1,14 +1,13 @@
 // Panels and HUD widgets for the live systems (missions, guild & war, world boss, market, forge, codex, season pass,
 // festival and leaderboards). installSystemsUI(UI) mixes these into UI.prototype.
-import { CLASSES, MONSTERS, ITEMS, SLOTS, SLOT_INFO, PETS, TITLES, DUNGEONS } from './data.js';
+import { CLASSES, MONSTERS, ITEMS, SLOTS, SLOT_INFO, TITLES, DUNGEONS } from './data.js';
 import {
   MATERIALS, GEMS, GEM_LV, GEM_MAX, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, ENH_MAX, ENH_RATE, ENH_LUCK, enhCost, enhRisk, REFINE,
   RECIPES, SOCKETS, GEM_COMBINE, ASCEND, reforgeCost, retemperCost, salvageYield, CODEX_MILESTONES,
-  DAILY_CHESTS, WEEKLY_CHESTS, GUILD_LIST, GUILD_EXP, GUILD_MAX, GUILD_CREATE, GUILD_JOIN_LV, guildBuff, GUILD_DONATE, GUILD_SHOP, GUILD_EMBLEMS,
-  WAR, WORLD_BOSS, WB_RANK_REWARDS, MARKET, EVENTS, nextEvent, eventEnds, seasonInfo, PASS, passReward, SEASON_RANK_REWARDS,
+  DAILY_CHESTS, WEEKLY_CHESTS, GUILD_LIST, GUILD_EXP, GUILD_MAX, GUILD_CREATE, GUILD_JOIN_LV, guildBuff, GUILD_DONATE, GUILD_SHOP, WAR, WORLD_BOSS, WB_REWARDS, MARKET, EVENTS, nextEvent, eventEnds, seasonInfo, PASS, passReward, SEASON_RANK_REWARDS,
   secsToDayEnd, secsToWeekEnd, fmtDur,
 } from './systems-data.js';
-import { RARITY, NAMED_LIST, EFFECTS, iconKey, itemScore, enhMult, enhAffixMult } from './loot.js';
+import { RARITY, NAMED_LIST, EFFECTS, iconKey, enhMult, enhAffixMult } from './loot.js';
 import { missionDef, matName } from './systems.js';
 import { fmt, esc } from './game.js';
 import { ico } from './icons.js';
@@ -40,7 +39,7 @@ const P = {
   // ------------------------------------------------------------ setup & refresh hooks
   bindSystems() {
     const hud = $('hud');
-    for (const [id, cls] of [['hud-wb', ''], ['hud-war', 'stroke'], ['trade-offer', 'frame']]) {
+    for (const [id, cls] of [['hud-wb', ''], ['hud-war', 'stroke']]) {
       if ($(id)) continue;
       const el = h('div', cls); el.id = id; el.hidden = true; hud.appendChild(el);
     }
@@ -96,14 +95,14 @@ const P = {
       this.txt(lbl, live ? 'Live!' : st.active && g.S.wb.done ? fmtDur(st.nextIn) : st.active ? 'Live!' : fmtDur(st.nextIn));
       if (live !== this.wbLive) { this.wbLive = live; A.worldboss.classList.toggle('glow', !!live); this.setBadge(A.worldboss, !!live); }
     }
-    // world boss damage meter
+    // world boss: your damage and fight time
     const wbEl = $('hud-wb');
-    const showWb = g.wb && !g.wb.e.dead && !g.dg && !g.war && (g.wb.dmg.has(g.S.name) || Math.hypot(g.player.pos.x - WORLD_BOSS.site.x, g.player.pos.z - WORLD_BOSS.site.z) < 70);
+    const showWb = g.wb && !g.wb.e.dead && !g.dg && !g.war && (g.wb.dmg > 0 || Math.hypot(g.player.pos.x - WORLD_BOSS.site.x, g.player.pos.z - WORLD_BOSS.site.z) < 70);
     wbEl.hidden = !showWb;
     if (showWb) {
-      const rank = g.wbRanking(), me = rank.findIndex((r) => r.me), e = g.wb.e;
-      const rows = rank.slice(0, 5).map((r, i) => `<div class="wr ${r.me ? 'me' : ''}"><span>${i + 1}</span><span>${esc(r.name)}</span><span>${fmt(r.dmg)}</span></div>`).join('');
-      wbEl.innerHTML = `<div class="wt">${ico('worldboss', 'ico inl')}${esc(e.def0.name)} <small>${Math.ceil((e.hp / e.maxHp) * 100)}%</small></div><div class="bar"><i style="width:${pct(e.hp, e.maxHp)}"></i></div><div class="wl">${rows || '<div class="wr"><span></span><span>No damage yet</span><span></span></div>'}${me >= 5 ? `<div class="wr me"><span>${me + 1}</span><span>${esc(g.S.name)}</span><span>${fmt(rank[me].dmg)}</span></div>` : ''}</div><div class="wf">Ends in ${fmtDur(st.endsIn)}</div>`;
+      const e = g.wb.e, secs = g.wbFightSecs(), tier = WB_REWARDS.find((t) => secs <= t.upTo);
+      const row = (k, v, cls = '') => `<div class="wr ${cls}"><span></span><span>${k}</span><span>${v}</span></div>`;
+      wbEl.innerHTML = `<div class="wt">${ico('worldboss', 'ico inl')}${esc(e.def0.name)} <small>${Math.ceil((e.hp / e.maxHp) * 100)}%</small></div><div class="bar"><i style="width:${pct(e.hp, e.maxHp)}"></i></div><div class="wl">${row('Your damage', fmt(g.wb.dmg), 'me')}${row('Fight time', g.wb.first ? fmtDur(secs) : '—')}${row('Reward pace', tier.label)}</div><div class="wf">Ends in ${fmtDur(st.endsIn)}</div>`;
     }
     // guild war scoreboard
     const W = g.war, wEl = $('hud-war');
@@ -112,20 +111,8 @@ const P = {
       const a = W.ourCrystal, b = W.theirCrystal;
       wEl.innerHTML = `<div class="ws"><div class="side us"><b>${esc(g.S.guild?.name || 'You')}</b><div class="bar"><i style="width:${pct(a.hp, a.maxHp)}"></i></div></div><div class="mid"><div class="sc">${W.score.us} : ${W.score.them}</div><div class="tm">${W.started ? fmtDur(Math.max(0, W.left)) : 'Get ready!'}</div></div><div class="side them"><b>${esc(W.opp.name)}</b><div class="bar"><i style="width:${pct(b.hp, b.maxHp)}"></i></div></div></div>`;
     }
-    // trade offer countdown
-    const o = g.market?.offer, tEl = $('trade-offer');
-    if (o && !tEl.hidden) { const f = tEl.querySelector('.tf i'); if (f) f.style.width = pct(o.expires - g.time, 25); }
     if (this.panelName === 'worldboss' && this.sysFrame % 60 === 0) this.renderPanel();
     if (this.panelName === 'market' && this.sysFrame % 120 === 0) this.softRefresh();
-  },
-  tradeOffer(o) {
-    const el = $('trade-offer'); if (!el) return;
-    if (!o) { el.hidden = true; return; }
-    el.hidden = false;
-    el.innerHTML = `<div class="th">${ico('trade', 'ico inl')}Trade request</div><div class="tt"><b>${esc(o.who)}</b> ${o.text}</div><div class="ta"></div><div class="tf"><i></i></div>`;
-    const yes = h('button', 'btn small green', 'Accept'), no = h('button', 'btn small gray', 'Decline');
-    yes.onclick = () => this.g.answerOffer(true); no.onclick = () => this.g.answerOffer(false);
-    el.querySelector('.ta').append(yes, no);
   },
   enterWar() { this.closePanels(); this.closeDialog(); this.refreshQuest(); this.refreshActs(); $('hud').classList.add('in-dungeon', 'in-war'); },
   leaveWar() { $('hud').classList.remove('in-dungeon', 'in-war'); this.refreshQuest(); this.refreshActs(); this.closeModal(); },
@@ -283,14 +270,14 @@ const P = {
   panel_worldboss(body) {
     const g = this.g, S = g.S, type = g.wbType(), d = MONSTERS[type], st = g.wbState();
     const live = g.wb && !g.wb.e.dead;
-    const L = Math.max(8, Math.min(32, S.level + 3)), stats = g.wbStats(L);
+    const L = g.wbLevel(), stats = g.wbStats(L);
     const det = h('div', 'dg-detail');
-    det.innerHTML = `<div class="dg-hero"><img alt="" src="${g.monsterIcon(type)}"><div><div class="dg-name">${esc(d.name)}</div><div class="dg-sub">World Boss · ${WORLD_BOSS.name}${g.event ? ` · <span style="color:${g.event.color}">${esc(g.event.short)} special</span>` : ''}</div><p>Every ${WORLD_BOSS.every / 60} minutes a world boss descends on the ${WORLD_BOSS.name}, north-east of Breezy Meadow. Adventurers from all over Carlyle join in; rewards depend on your damage ranking.</p></div></div>
+    det.innerHTML = `<div class="dg-hero"><img alt="" src="${g.monsterIcon(type)}"><div><div class="dg-name">${esc(d.name)}</div><div class="dg-sub">World Boss · ${WORLD_BOSS.name}${g.event ? ` · <span style="color:${g.event.color}">${esc(g.event.short)} special</span>` : ''}</div><p>Every ${WORLD_BOSS.every / 60} minutes a world boss descends on the ${WORLD_BOSS.name}, north-east of Breezy Meadow. Bring it down before it retreats: the faster you win, the better the rewards.</p></div></div>
       <div class="wb-status ${live ? 'live' : ''}">${live ? `LIVE · ${Math.ceil((g.wb.e.hp / g.wb.e.maxHp) * 100)}% HP · ends in ${fmtDur(st.endsIn)}` : st.active && S.wb.done ? `Defeated! Next in ${fmtDur(st.nextIn)}` : st.active ? 'Arriving...' : `Next appearance in ${fmtDur(st.nextIn)}`}</div>
       <div class="dg-stats"><span>Level</span><span>Lv ${L} · ${fmt(stats.hp)} HP (scales with you)</span><span>Your best</span><span>${fmt(S.lb.wbBest || 0)} damage</span><span>Attacks</span><span>${(d.skills || []).map((x) => ({ slam: 'Stomp', storm: d.model === 'pumpkinking' ? 'Lantern Rain' : 'Thunderstorm', nova: 'Shockwave', breath: 'Storm Breath', roots: 'Vine Burst', summon: 'Summon Jackpuffs' }[x])).join(', ')}</span></div>
-      <div class="lbl">Ranking rewards</div>`;
+      <div class="lbl">Rewards by fight time</div>`;
     const rl = h('div', 'list');
-    for (const t of WB_RANK_REWARDS) rl.appendChild(h('div', 'row slim', `<div class="tx"><b>${t.label}</b>${t.diamonds} Diamonds · ${Object.entries(t.mats || {}).map(([k, n]) => `${matName(k)} x${n}`).join(', ')}${t.items ? ` · ${t.items.map(([k, n]) => `${ITEMS[k].name} x${n}`).join(', ')}` : ''} · ${Math.round(t.gearChance * 100)}% ${RARITY[t.gear].name} gear</div>`));
+    for (const t of WB_REWARDS) rl.appendChild(h('div', 'row slim', `<div class="tx"><b>${t.label}</b>${t.diamonds} Diamonds · ${Object.entries(t.mats || {}).map(([k, n]) => `${matName(k)} x${n}`).join(', ')}${t.items ? ` · ${t.items.map(([k, n]) => `${ITEMS[k].name} x${n}`).join(', ')}` : ''} · ${Math.round(t.gearChance * 100)}% ${RARITY[t.gear].name} gear</div>`));
     det.appendChild(rl);
     const acts = h('div', 'acts-row');
     const go = h('button', 'btn big', live ? 'Join the Battle!' : `Go to the ${WORLD_BOSS.name}`); go.onclick = () => g.goToWorldBoss();
@@ -314,7 +301,7 @@ const P = {
         const icon = it.kind === 'gear' ? ico(it.eq.icon) : it.kind === 'item' ? ico(ITEMS[it.id].icon) : ico(MATERIALS[it.id].icon);
         const tr = it.kind === 'gear' ? 0 : g.mkTrend(it.id);
         const r = h('div', 'row slim');
-        r.innerHTML = `<div class="ic q${q}">${icon}</div><div class="tx"><b style="color:${RARITY[q].color}">${esc(nm)}${it.kind !== 'gear' ? ` x${it.qty}` : ''}</b><span class="muted">${esc(it.seller)}${it.note ? ` · "${esc(it.note)}"` : ''}</span></div><div class="mk-price">${it.deal ? '<span class="deal">DEAL</span>' : ''}<span class="price"><span class="coin"></span>${fmt(it.price)}</span>${tr ? `<span class="trend ${tr > 0 ? 'up' : 'down'}">${tr > 0 ? '▲' : '▼'}</span>` : ''}</div>`;
+        r.innerHTML = `<div class="ic q${q}">${icon}</div><div class="tx"><b style="color:${RARITY[q].color}">${esc(nm)}${it.kind !== 'gear' ? ` x${it.qty}` : ''}</b></div><div class="mk-price">${it.deal ? '<span class="deal">DEAL</span>' : ''}<span class="price"><span class="coin"></span>${fmt(it.price)}</span>${tr ? `<span class="trend ${tr > 0 ? 'up' : 'down'}">${tr > 0 ? '▲' : '▼'}</span>` : ''}</div>`;
         if (it.kind === 'gear') this.tip(r.querySelector('.ic'), () => this.equipTip(it.eq) + this.compare(it.eq));
         const b = h('button', 'btn small', 'Buy'); b.disabled = S.gold < it.price; b.onclick = () => g.buyListing(it.lid);
         r.appendChild(b); L.appendChild(r);
@@ -358,7 +345,7 @@ const P = {
         body.appendChild(f);
         const qi = f.querySelector('#mk-qty'); if (qi) qi.onchange = (e) => { this.sel.mkQty = Math.max(1, Math.min(sel.max, +e.target.value || 1)); this.sel.mkPrice = null; this.renderPanel(); };
         f.querySelector('#mk-price').onchange = (e) => { this.sel.mkPrice = Math.max(1, +e.target.value || 1); this.renderPanel(); };
-      } else body.appendChild(h('div', 'note', 'Pick something to list. Other adventurers buy listings over time; cheaper listings sell faster. Bots may also whisper you trade offers.'));
+      } else body.appendChild(h('div', 'note', 'Pick something to list. Listings sell over time; cheaper listings sell faster.'));
     } else {
       const L = h('div', 'list');
       if (!S.market.mine.length) L.appendChild(h('div', 'note', 'No active listings.'));
@@ -460,7 +447,7 @@ const P = {
 
   // ------------------------------------------------------------ forge: enhancement +1 to +15
   forgeEnhance(body) {
-    const g = this.g, S = g.S;
+    const g = this.g;
     const eq = this.forgePicker(body);
     if (!eq) { body.appendChild(h('div', 'note', 'Pick any piece of gear (equipped items are marked E). Enhancement raises base stats up to +15, with bonus steps at +5, +10 and +15. Stones drop from monsters and dungeons and are sold by Hilda.')); this.refinery(body); return; }
     const ref = this.sel.forgeRef, e = eq.enh || 0, maxed = e >= ENH_MAX;

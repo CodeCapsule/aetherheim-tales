@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { toon, glow, mesh, outlineMaterial, critterFace, glowTexture, magicCircleTexture } from './toon.js';
 import { buildQuad } from './models.js';
 
-export const EVENT_MONSTER_MODELS = new Set(['behemoth', 'pumpkinking', 'jackpuff', 'warcrystal']);
 export const EVENT_PET_MODELS = new Set(['pumpkin', 'snowpuff', 'blossom']);
 
 // ---------------------------------------------------------------- shared helpers

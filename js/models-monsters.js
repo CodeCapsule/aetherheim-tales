@@ -1211,7 +1211,7 @@ function drake(v) {
   body.add(crystal ? faceted(neck, vc({ emissive: C.em }), 0.05) : part(neck, vc(), 0, 0, 0, { ow: 0.055 }));
   // glowing chest and belly plates following the throat and underside
   const plates = G(key + 'pl', () => {
-    const L = [], q = new THREE.Vector3(), tg = new THREE.Vector3(), c = new THREE.Color();
+    const L = [], q = new THREE.Vector3(), tg = new THREE.Vector3();
     for (let i = 0; i < 5; i++) {
       const u = 0.08 + i * 0.2; neckCurve.getPointAt(u, q); neckCurve.getTangentAt(u, tg);
       const n = new THREE.Vector3(0, -tg.z, tg.y), at = q.clone().addScaledVector(n, S(0.25 * (1 - u * 0.28)) * 0.98);

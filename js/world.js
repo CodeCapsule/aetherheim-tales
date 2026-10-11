@@ -6,7 +6,7 @@ import { NEW_ZONES, FARM, OUTPOSTS } from './data-world.js';
 import { buildDungeonEntrance } from './dungeon.js';
 import { toon, glow, outlineMaterial, grassTexture, stoneTexture, cloudTexture, glowTexture, magicCircleTexture, getGradient } from './toon.js';
 
-export const SIZE = 800, HALF = 400;
+const SIZE = 800, HALF = 400;
 export const WATER_Y = -1.0;
 const SEG = 400;
 const CELL = 2, GN = SIZE / CELL;
@@ -25,19 +25,19 @@ const ROADS = [
   [[-180, 0], [-228, 140], [-262, 262]],
   [[-180, 0], [-222, -140], [-256, -262]],
 ];
-export const BRIDGES = [{ x: 70.5, z: 0.5, len: 26, w: 6, axis: 'x' }, { x: 102, z: 118, len: 24, w: 5, axis: 'x' }];
+const BRIDGES = [{ x: 70.5, z: 0.5, len: 26, w: 6, axis: 'x' }, { x: 102, z: 118, len: 24, w: 5, axis: 'x' }];
 export const ARENA = { x: -150, z: -112, r: 21 };
-export const ALTAR = { x: 128, z: -86, r: 13 }; // Storm Altar: world boss stage
-export const OVERLOOK = { x: 0, z: -160 };
+const ALTAR = { x: 128, z: -86, r: 13 }; // Storm Altar: world boss stage
+const OVERLOOK = { x: 0, z: -160 };
 export const TELEPORT_CIRCLE = { x: 0, z: -46 };
-export const WORLD_TREE = { x: 0, z: -760 };
+const WORLD_TREE = { x: 0, z: -760 };
 const PLATFORMS = [{ x: 0, z: 0, r: 17.2, y: 0.3 }, { x: -150, z: -112, r: 21.5, y: 0.55 }, { x: 0, z: -160, r: 8, y: 1.95 }, { x: 0, z: -46, r: 4.6, y: 0.2 }, { x: ALTAR.x, z: ALTAR.z, r: ALTAR.r + 0.4, y: 0.5 }];
 const nearAltar = (x, z, m = 6) => Math.hypot(x - ALTAR.x, z - ALTAR.z) < ALTAR.r + m;
 const nearFarm = (x, z, m = 4) => Math.hypot(x - FARM.x, z - FARM.z) < FARM.r + m;
 const nearOutpost = (x, z, m = 9) => OUTPOSTS.some((o) => Math.hypot(x - o.x, z - o.z) < m);
 // Biome weight of a zone at a point (1 in the core, fading out at the rim) and the strongest biome there.
 function biomeW(x, z, zn) { return 1 - smooth(zn.r * 0.55, zn.r * 1.05, Math.hypot(x - zn.x, z - zn.z)); }
-export function biomeAt(x, z) {
+function biomeAt(x, z) {
   let best = null, bw = 0.35;
   for (const zn of NEW_ZONES) { const w = biomeW(x, z, zn); if (w > bw) { bw = w; best = zn.biome; } }
   return best;
@@ -165,7 +165,7 @@ const GEO = {
   dode: new THREE.DodecahedronGeometry(1, 0),
   oct: new THREE.OctahedronGeometry(1, 0),
 };
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
 function M(x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) {
   _e.set(rx, ry, rz); _q.setFromEuler(_e); _s.set(sx, sy, sz); _p.set(x, y, z);
   return new THREE.Matrix4().compose(_p, _q, _s);

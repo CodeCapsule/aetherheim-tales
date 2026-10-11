@@ -187,7 +187,7 @@ const REL = [
   ['d10', 'Astral', '#ffd84a', '#ffffff', ['Star Crown', 'Celestial Seal', 'Seraph Idol', 'Astral Atlas']],
   ['d11', 'Worldtree', '#7aff7a', '#ffd84a', ['Crown of Yggdrasil', 'Seal of Fenrir', 'Worldroot Idol', 'Saga of Ragnarok']],
 ];
-export const RELIC_SHAPES = ['crown', 'seal', 'idol', 'tome'];
+const RELIC_SHAPES = ['crown', 'seal', 'idol', 'tome'];
 export const RELICS = {}; // id -> { name, dungeon, shape, c1, c2 }
 export const RELIC_SETS = {}; // dungeonId -> { adj, ids: [4], c1, c2 }
 for (const [dg, adj, c1, c2, names] of REL) {
@@ -355,7 +355,6 @@ export const COSTUMES = [
 ];
 
 // ---------------------------------------------------------------- NPCs with shops, outposts, teleports
-const tier = (L) => (L < 30 ? 'potion_hp2' : 'potion_hp3');
 export const SHOPS = {
   general: { name: "Hilda's Supplies", items: [['hp_potion', 10, { gold: 380 }], ['mp_potion', 10, { gold: 380 }], ['potion_hp2', 10, { gold: 1100 }, 20], ['potion_mp2', 10, { gold: 1100 }, 20], ['potion_hp3', 10, { gold: 3600 }, 60], ['potion_mp3', 10, { gold: 3600 }, 60], ['teleport_scroll', 5, { gold: 900 }], ['bag_scroll', 1, { gold: 20000 }], ['bag_scroll', 1, { diamonds: 120 }], ['exp_scroll', 1, { gold: 600 }],
     ['m:enh_stone', 5, { gold: 6000 }], ['m:enh_stone2', 3, { gold: 15000 }, 40], ['m:enh_stone3', 1, { diamonds: 60 }, 90], ['enh_luck', 1, { diamonds: 40 }], ['enh_protect', 1, { diamonds: 120 }]] },

@@ -89,7 +89,6 @@ const yid = (k) => String(k).replace(/[^A-Za-z0-9_-]/g, '_');
 
 // palettes (light -> mid -> dark)
 const GOLD = ['#fff7b8', '#ffcc33', '#d9800f'];
-const SILVER = ['#ffffff', '#cfdcef', '#7d8fb3'];
 const BLUE = ['#c8f4ff', '#4cb4ff', '#2251d1'];
 const RED = ['#ffb9a8', '#ff4b3e', '#b3172f'];
 const GREEN = ['#d8ffb0', '#5ad04a', '#1f8a3a'];

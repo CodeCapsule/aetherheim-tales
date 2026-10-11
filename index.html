@@ -246,7 +246,6 @@ button { font-family: inherit; }
 .chat-log .c-system { color: #ffe066; }
 .chat-log .c-system .ch { color: #ffd04a; }
 .chat-log .c-guild .ch { color: #6cf06a; }
-.chat-log .c-team .ch { color: #6ac8ff; }
 .chat-log .c-announce { color: #ff9ad0; }
 .chat-log .who { color: #8ad8ff; }
 .chat-log .it { font-weight: 900; }
@@ -589,17 +588,6 @@ button { font-family: inherit; }
 #hud-war .sc { font-family: var(--f-num); font-weight: 400; font-size: 22px; color: #fff; }
 #hud-war .tm { font-family: var(--f-num); font-weight: 400; font-size: 12px; color: var(--gold); }
 
-/* trade offers */
-#trade-offer { position: absolute; left: 10px; bottom: 250px; width: 300px; padding: 10px 12px 12px; font-size: 13px; z-index: 6; animation: toastIn .3s; }
-#trade-offer .th { font-family: var(--f-title); color: #ff9ad0; font-size: 13px; margin-bottom: 4px; }
-#trade-offer .tt { color: var(--muted); line-height: 1.45; }
-#trade-offer .tt b { color: var(--ink); }
-#trade-offer .ta { display: flex; gap: 8px; margin-top: 8px; }
-#trade-offer .tf { height: 4px; margin-top: 8px; border-radius: 2px; background: rgba(0, 0, 0, .5); overflow: hidden; }
-#trade-offer .tf i { display: block; height: 100%; background: #ff9ad0; transition: width .4s linear; }
-.chat-log .c-whisper { color: #ffb0e0; }
-.chat-log .c-whisper .ch { color: #ff7ac8; }
-
 /* market */
 .wallet-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
 .list.mk { max-height: 360px; overflow-y: auto; padding-right: 4px; }
@@ -736,7 +724,6 @@ button { font-family: inherit; }
 @media (max-width: 900px) {
   #hud-acts { grid-template-columns: repeat(6, 46px); }
   #hud-wb { top: 196px; left: 10px; transform: scale(.85); transform-origin: top left; }
-  #trade-offer { bottom: 340px; }
   #hud-war { top: auto; bottom: 336px; }
 }
 @media (max-width: 640px) {
@@ -749,14 +736,13 @@ button { font-family: inherit; }
   .don-row, .ev-how { grid-template-columns: 1fr; }
   .codex-ms { grid-template-columns: repeat(3, 1fr); }
   .gem-row { grid-template-columns: 76px repeat(3, 1fr); font-size: 11px; }
-  #trade-offer { width: calc(100% - 20px); bottom: 330px; font-size: 12px; padding: 8px 10px; }
   .g-head { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-/* ---- life skills, collection, wardrobe, shops, auction, trade, Red tier ---- */
+/* ---- life skills, collection, wardrobe, shops, auction, Red tier ---- */
 .cell.q6 { border-color: var(--q6); box-shadow: inset 0 0 16px rgba(255, 59, 59, .75), 0 0 12px rgba(255, 59, 59, .8); animation: redGlow 1.3s ease-in-out infinite; }
 @keyframes redGlow { 50% { box-shadow: inset 0 0 24px rgba(255, 120, 100, .95), 0 0 22px rgba(255, 40, 40, .95); } }
 .lcard.q6 { border-color: var(--q6); box-shadow: 0 0 22px rgba(255, 59, 59, .95); }
@@ -796,20 +782,11 @@ button { font-family: inherit; }
 .sell-ctl select, .sellall select { background: #10183a; color: #fff; border: 1px solid #4a5a8a; border-radius: 4px; padding: 2px; }
 .sellall label { margin-right: 8px; font-size: 12px; white-space: nowrap; } .sellall .dtx b { font-size: 15px; }
 .bag-tools { margin-top: 8px; } .bag-tools .ico.inl { width: 16px; height: 16px; }
-.trade-msg { padding: 8px 10px; border-radius: 8px; background: rgba(90, 160, 255, .12); border: 1px solid rgba(90, 160, 255, .3); font-size: 13px; color: var(--muted); margin-bottom: 8px; } .trade-msg b { color: #9ad0ff; }
-.trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
-.trade-side { padding: 8px; border-radius: 8px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(243, 199, 91, .25); display: flex; flex-direction: column; gap: 4px; min-height: 120px; }
-.trade-side h4 { margin: 0 0 4px; font-size: 13px; color: var(--ink); } .trade-side h4 small { color: var(--gold); font-weight: 400; }
-.trow { display: flex; align-items: center; gap: 6px; padding: 3px 5px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); color: var(--muted); cursor: pointer; font-size: 12px; text-align: left; font-family: inherit; opacity: .55; }
-.trow.on { opacity: 1; border-color: rgba(122, 255, 122, .4); } .trow .ic { width: 28px; height: 28px; flex: none; border-radius: 5px; border: 1.5px solid #4a5a8a; display: grid; place-items: center; }
-.trow .ic .ico { width: 90%; height: 90%; } .trow .tn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .trow .tv { font-family: var(--f-num); color: var(--gold); }
-.tgold { font-size: 12px; color: var(--muted); margin-top: auto; } .tgold input { width: 110px; }
-#tg-trade { margin-left: 6px; pointer-events: auto; }
 .buff.elx { border-color: #c8a0ff; }
 @media (max-width: 640px) {
-  .farm-grid { grid-template-columns: repeat(2, 1fr); } .prof-grid, .trade-cols { grid-template-columns: 1fr; }
+  .farm-grid { grid-template-columns: repeat(2, 1fr); } .prof-grid { grid-template-columns: 1fr; }
   .wd-wrap { flex-direction: column; align-items: center; } .wd-grid { width: 100%; }
-  .list.mk .row, .row.auc, .row.red, .life-list .row { flex-wrap: wrap; }
+  .list.mk .row, .row.auc, .row.red { flex-wrap: wrap; }
   .list.mk .row .tx, .row.auc .tx, .row.red .tx { flex: 1 1 calc(100% - 64px); }
   .list.mk .row .mk-price, .row.auc .auc-p { margin-left: auto; }
 }
@@ -980,7 +957,7 @@ button { font-family: inherit; }
 
     <button class="rbtn" id="chat-toggle" aria-label="Chat"></button>
     <div id="hud-chat">
-      <div class="chat-tabs" id="chat-tabs"><button class="sel" data-c="all">All</button><button data-c="world">World</button><button data-c="guild">Guild</button><button data-c="whisper">Whisper</button><button data-c="system">System</button></div>
+      <div class="chat-tabs" id="chat-tabs"><button class="sel" data-c="all">All</button><button data-c="world">World</button><button data-c="guild">Guild</button><button data-c="system">System</button></div>
       <div class="chat-log" id="chat-log"></div>
       <form class="chat-input" id="chat-form"><input id="chat-in" maxlength="80" placeholder="Press Enter to chat…" autocomplete="off"><button type="submit">Send</button></form>
     </div>

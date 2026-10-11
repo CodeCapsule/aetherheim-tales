@@ -1,19 +1,18 @@
 // Live systems layered onto Game: daily/weekly missions, guilds, guild wars, world bosses, materials, crafting, the player
-// market and bot trade offers, gear progression (reforge / re-temper / ascend / gems), the named-item codex, festivals,
+// market, gear progression (reforge / re-temper / ascend / gems), the named-item codex, festivals,
 // the season pass and leaderboards. installSystems(Game) mixes these methods into Game.prototype.
 import * as THREE from 'three';
 import {
-  CLASSES, MONSTERS, PETS, ITEMS, SLOTS, BOT_NAMES, TITLES, DUNGEONS,
-} from './data.js';
+  CLASSES, MONSTERS, PETS, ITEMS, SLOTS, BOT_NAMES, TITLES, } from './data.js';
 import {
-  dayKey, weekKey, monthKey, secsToDayEnd, rng32, shuffled, hashStr, monthProgress,
-  MATERIALS, GEMS, GEM_LV, gemId, parseGem, SOULS, soulId, MAT_DROPS, RECIPES, SOCKETS, GEM_COMBINE, ASCEND, reforgeCost, retemperCost, salvageYield, CODEX_MILESTONES,
+  dayKey, weekKey, monthKey, fmtDur, rng32, shuffled, hashStr, monthProgress,
+  MATERIALS, GEMS, GEM_LV, gemId, parseGem, SOULS, soulId, MAT_DROPS, RECIPES, ASCEND, reforgeCost, retemperCost, salvageYield, CODEX_MILESTONES,
   DAILY_POOL, WEEKLY_POOL, DAILY_CHESTS, WEEKLY_CHESTS,
-  GUILD_LIST, GUILD_EXP, GUILD_MAX, GUILD_CREATE, GUILD_JOIN_LV, guildBuff, GUILD_DONATE, GUILD_SHOP, EXTRA_NAMES, GUILD_CHAT, GUILD_ROLES,
-  WAR, WAR_DEF, WORLD_BOSS, WB_RANK_REWARDS, MARKET, MARKET_GOODS, MARKET_LINES,
+  GUILD_LIST, GUILD_EXP, GUILD_MAX, GUILD_CREATE, GUILD_JOIN_LV, guildBuff, GUILD_DONATE, GUILD_SHOP, EXTRA_NAMES, GUILD_ROLES,
+  WAR, WAR_DEF, WORLD_BOSS, WB_REWARDS, MARKET, MARKET_GOODS,
   activeEvent, EVENT_SHOP, seasonInfo, PASS, passReward, SEASON_EXP, SEASON_RANK_REWARDS,
 } from './systems-data.js';
-import { RARITY, genEquip, genNamed, NAMED_LIST, reforgeItem, retemperItem, ascendItem, fitSockets, sellPrice, itemScore } from './loot.js';
+import { RARITY, NAMED_LIST, reforgeItem, retemperItem, ascendItem, fitSockets, sellPrice, itemScore } from './loot.js';
 import { Dungeon } from './dungeon.js';
 import { buildHumanoid, classLook, HAIR_COLORS, EYE_COLORS } from './models.js';
 import { buildEventMonster } from './models-event.js';
@@ -30,9 +29,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const MISSIONS = new Map([...DAILY_POOL, ...WEEKLY_POOL].map((m) => [m.id, m]));
 export const missionDef = (id) => MISSIONS.get(id);
 export const matName = (id) => MATERIALS[id]?.name || id;
-export const tokenOf = (ev) => (ev ? ev.currency : null);
 // Festival monster spawn areas: one per overworld zone so every level range can farm tokens.
-export const EVENT_SPAWNS = [
+const EVENT_SPAWNS = [
   { x: 100, z: 38, r: 16, count: 5, lvl: [2, 4] },
   { x: 26, z: 98, r: 14, count: 5, lvl: [6, 8] },
   { x: -98, z: 22, r: 14, count: 5, lvl: [11, 13] },
@@ -62,8 +60,8 @@ const M = {
     const S = this.S;
     initSystemsSave(S);
     this.event = activeEvent();
-    this.market = { listings: [], refreshAt: 0, offer: null, offerT: rnd(...MARKET.offerEvery) };
-    this.sysT = 0; this.guildChatT = rnd(20, 40); this.recruitT = 200;
+    this.market = { listings: [], refreshAt: 0 };
+    this.sysT = 0; this.recruitT = 200;
     this.ensureResets(true);
     this.seasonCheck(true);
     if (this.event) {
@@ -168,7 +166,7 @@ const M = {
 
   // ============================================================ drops from kills
   onKillSystems(m) {
-    const d = m.def0, S = this.S;
+    const d = m.def0;
     this.track('kill');
     if (d.elite || d.boss) this.track('killElite');
     this.addSeasonExp(d.boss ? SEASON_EXP.boss : d.elite ? SEASON_EXP.elite : SEASON_EXP.kill);
@@ -279,12 +277,11 @@ const M = {
     const me = { name: S.name, cls: S.cls, lv: S.level, br: this.br, role: G.own ? 'Leader' : 'Member', contrib: G.contribTotal || 0, online: true, me: true };
     if (G.own) return [me, ...G.members.map((m) => ({ ...m, online: (hashStr(m.name + Math.floor(Date.now() / 600000)) % 3) === 0 }))];
     const def = this.guildDef(G.name), rand = rng32('roster' + G.name);
-    const inWorld = this.bots.filter((b) => b.guild === G.name).map((b) => b.name);
-    const names = [...new Set([def.leader, ...inWorld, ...shuffled([...BOT_NAMES, ...EXTRA_NAMES], rand)])].filter((n) => n !== S.name).slice(0, Math.min(def.size - 1, 24));
+    const names = [...new Set([def.leader, ...shuffled([...BOT_NAMES, ...EXTRA_NAMES], rand)])].filter((n) => n !== S.name).slice(0, Math.min(def.size - 1, 24));
     const cls = Object.keys(CLASSES);
     const out = names.map((name, i) => {
       const lv = clamp(Math.round(30 - i * 0.7 - rand() * 6), 6, 30);
-      return { name, cls: cls[(rand() * 4) | 0], lv, br: Math.round(900 + lv * lv * 28 * (0.8 + rand() * 0.5)), role: GUILD_ROLES[i] || 'Member', contrib: Math.round((4000 - i * 120) * (0.5 + rand())), online: inWorld.includes(name) || (hashStr(name + Math.floor(Date.now() / 600000)) % 3) === 0 };
+      return { name, cls: cls[(rand() * 4) | 0], lv, br: Math.round(900 + lv * lv * 28 * (0.8 + rand() * 0.5)), role: GUILD_ROLES[i] || 'Member', contrib: Math.round((4000 - i * 120) * (0.5 + rand())), online: (hashStr(name + Math.floor(Date.now() / 600000)) % 3) === 0 };
     });
     out.splice(Math.min(out.length, 6), 0, me);
     return out;
@@ -295,7 +292,6 @@ const M = {
     if (S.level < GUILD_JOIN_LV) { this.ui.toast(`Guilds unlock at Lv ${GUILD_JOIN_LV}`, 'warn'); return; }
     S.guild = this.newGuildState({ name, own: false, lv: def.lv, color: def.color, emblem: def.emblem });
     this.afterGuildJoin(`You joined <b>&lt;${esc(name)}&gt;</b>! Welcome, guildmate~`);
-    this.ui.chat('guild', `${esc(def.leader)}: welcome to ${esc(name)}, ${esc(S.name)}! say hi everyone~`);
   },
   createGuild(name, emblem, color) {
     const S = this.S;
@@ -374,12 +370,6 @@ const M = {
   },
   updateGuildLife() {
     const S = this.S, G = S.guild; if (!G) return;
-    this.guildChatT -= 1;
-    if (this.guildChatT <= 0) {
-      this.guildChatT = rnd(25, 55);
-      const r = this.guildRoster().filter((m) => !m.me && m.online);
-      if (r.length) this.ui.chat('guild', esc(pick(GUILD_CHAT)), pick(r).name);
-    }
     if (G.own && G.members.length + 1 < this.guildCap(G.lv)) {
       this.recruitT -= 1;
       if (this.recruitT <= 0) {
@@ -664,7 +654,8 @@ const M = {
     const active = into < WORLD_BOSS.lasts;
     return { slot, active, endsIn: WORLD_BOSS.lasts - into, nextIn: WORLD_BOSS.every - into };
   },
-  wbStats(L) { const c = curveStats(L, { hp: 90, atk: 2.2, def: 1.2 }); return { level: L, hp: c.hp, atk: c.atk, def: c.def }; },
+  wbLevel() { return clamp(this.S.level + 3, 8, MAX_LEVEL + 3); },
+  wbStats(L) { const c = curveStats(L, { hp: 35, atk: 2, def: 1.2 }); return { level: L, hp: c.hp, atk: c.atk, def: c.def }; },
   updateWorldBoss() {
     const S = this.S, st = this.wbState();
     if (!st.active && st.nextIn < 120 && S.wb.warned !== st.slot + 1) {
@@ -677,28 +668,15 @@ const M = {
   },
   spawnWorldBoss(slot) {
     const S = this.S, type = this.wbType(), site = WORLD_BOSS.site;
-    const L = clamp(S.level + 3, 8, MAX_LEVEL + 3);
+    const L = this.wbLevel();
     const e = this.createMonster({ type, x: site.x, z: site.z, r: 0 }, { exact: true, fixed: this.wbStats(L) });
     e.wb = true; e.yaw = e.yawT = Math.atan2(-site.x, -site.z); e.skillT = 6;
-    this.wb = { e, slot, dmg: new Map(), start: this.time, bots: [] };
+    this.wb = { e, slot, dmg: 0, first: 0 };
     S.wb.slot = slot; S.wb.done = false;
     this.fx.pillar(e.pos, 0x9ad8ff, 4, 20, 1.6); this.fx.spawnPuff(e.pos, 0xc8e8ff);
-    this.ui.chat('announce', `<b>[World Boss]</b> ${esc(e.def0.name)} has descended on the ${WORLD_BOSS.name}! Everyone, gather!`);
+    this.ui.chat('announce', `<b>[World Boss]</b> ${esc(e.def0.name)} has descended on the ${WORLD_BOSS.name}! Defeat it before it retreats.`);
     if (!this.dg && !this.war) this.ui.banner(e.def0.name, `World Boss · ${WORLD_BOSS.name}`, 'boss');
     this.sfx.play('boom');
-    // other adventurers teleport in over the next half minute
-    const pool = shuffled(this.bots, Math.random).slice(0, WORLD_BOSS.bots);
-    pool.forEach((b, i) => this.after(2 + i * rnd(2, 5), () => {
-      if (!this.wb || this.wb.e.dead || this.wb.e !== e) return;
-      const a = Math.random() * Math.PI * 2, r = rnd(9, 14);
-      const [x, z] = this.world.nearestFree(site.x + Math.cos(a) * r, site.z + Math.sin(a) * r);
-      b.wbHome = { role: b.role, x: b.pos.x, z: b.pos.z, goal: b.goal };
-      b.role = 'wboss'; b.target = e; b.goal = null;
-      b.pos.set(x, this.world.heightAt(x, z), z);
-      this.fx.pillar(b.pos, 0x7ad8ff, 1.4, 8, 0.8);
-      this.wb.bots.push(b);
-      if (i % 3 === 0) this.ui.chat('world', esc(pick(['omw to the boss!!', 'here!', 'go go go', 'tank pls', 'I brought potions', 'lets get top dmg'])), b.name);
-    }));
     this.ui.refreshQuest(); this.ui.refreshActs();
   },
   despawnWorldBoss() {
@@ -706,54 +684,32 @@ const M = {
     this.ui.chat('announce', `<b>[World Boss]</b> ${esc(W.e.def0.name)} retreats into the storm...`);
     this.fx.pillar(W.e.pos, 0x9ad8ff, 4, 20, 1.4);
     this.removeEnt(W.e);
-    this.releaseWbBots();
     this.wb = null; this.ui.refreshQuest(); this.ui.refreshActs();
   },
-  releaseWbBots() {
-    const W = this.wb; if (!W) return;
-    W.bots.forEach((b, i) => this.after(3 + i * 0.7, () => {
-      if (b.role !== 'wboss' || !b.wbHome) return;
-      this.fx.pillar(b.pos, 0x7ad8ff, 1.4, 8, 0.6);
-      b.role = b.wbHome.role; b.target = null; b.goal = null;
-      const [x, z] = this.world.nearestFree(b.wbHome.x, b.wbHome.z);
-      b.pos.set(x, this.world.heightAt(x, z), z); b.wbHome = null;
-    }));
-  },
   wbHit(src, dst, dmg) {
-    const W = this.wb; if (!W || W.e !== dst || dmg <= 0) return;
-    const name = src === this.player || src.kind === 'pet' ? this.S.name : src.name || '?';
-    W.dmg.set(name, (W.dmg.get(name) || 0) + dmg);
+    const W = this.wb; if (!W || W.e !== dst || dmg <= 0 || !(src === this.player || src.kind === 'pet')) return;
+    W.dmg += dmg; if (!W.first) W.first = this.time;
   },
-  wbBotAttack(b, t) {
-    const W = this.wb, n = Math.max(3, W.bots.length);
-    const per = t.maxHp / 230 / n * 1.4;
-    return per * rnd(0.7, 1.35);
-  },
-  wbRanking() {
-    const W = this.wb; if (!W) return [];
-    return [...W.dmg.entries()].map(([name, dmg]) => ({ name, dmg, me: name === this.S.name })).sort((a, b) => b.dmg - a.dmg);
-  },
-  onWorldBossKilled(m, lastHitByMe) {
+  wbFightSecs() { const W = this.wb; return W && W.first ? (W.finished || this.time) - W.first : 0; },
+  onWorldBossKilled(m) {
     const W = this.wb, S = this.S; if (!W || W.e !== m) return;
     W.finished = this.time; S.wb.done = true;
-    const rank = this.wbRanking(), idx = rank.findIndex((r) => r.me), myDmg = idx >= 0 ? rank[idx].dmg : 0;
-    if (myDmg > 0) this.logEvent('worldboss', `Fought ${m.def0.name} · rank ${idx + 1} · ${Math.round(myDmg).toLocaleString('en-US')} dmg`, true);
-    this.ui.chat('announce', `<b>[World Boss]</b> ${esc(m.def0.name)} has been defeated! Top damage: <b>${esc(rank[0]?.name || '?')}</b>.`);
-    this.releaseWbBots();
+    const myDmg = W.dmg, secs = this.wbFightSecs();
     if (myDmg <= 0) { this.ui.refreshQuest(); return; }
-    const place = idx + 1, tier = WB_RANK_REWARDS.find((t) => place <= t.upTo);
+    const tier = WB_REWARDS.find((t) => secs <= t.upTo);
+    this.logEvent('worldboss', `Defeated ${m.def0.name} in ${fmtDur(secs)} · ${Math.round(myDmg).toLocaleString('en-US')} dmg`, true);
+    this.ui.chat('announce', `<b>[World Boss]</b> You defeated ${esc(m.def0.name)} in <b>${fmtDur(secs)}</b>!`);
     S.lb.wbBest = Math.max(S.lb.wbBest || 0, Math.round(myDmg));
     S.season.wbBest = Math.max(S.season.wbBest || 0, Math.round(myDmg));
     this.track('worldboss'); this.addSeasonExp(SEASON_EXP.worldboss);
-    if (place === 1) this.unlockTitle('Titan Slayer');
+    if (tier === WB_REWARDS[0]) this.unlockTitle('Titan Slayer');
     const items = [];
     if (Math.random() < tier.gearChance) items.push(this.makeEquip(null, m.level, tier.gear));
     else items.push(this.makeEquip(null, m.level, Math.max(2, tier.gear - 1)));
     const r = { diamonds: tier.diamonds, mats: { ...(tier.mats || {}) }, items: tier.items };
-    if (lastHitByMe) r.mats.star_essence = (r.mats.star_essence || 0) + 1;
     this.giveReward(r, true);
     for (const eq of items) if (!this.addEquip(eq)) this.dropLoot({ eq }, this.player.pos);
-    this.after(1.4, () => this.ui.lootPopup(items, { diamonds: r.diamonds, title: `${m.def0.name} · Rank #${place}`, note: `${fmt(myDmg)} damage (${tier.label})${lastHitByMe ? ' · Last hit bonus!' : ''}`, mats: r.mats }));
+    this.after(1.4, () => this.ui.lootPopup(items, { diamonds: r.diamonds, title: `${m.def0.name} · ${tier.label}`, note: `Defeated in ${fmtDur(secs)} · ${fmt(myDmg)} damage`, mats: r.mats }));
     this.ui.refreshQuest(); this.save();
   },
   goToWorldBoss() {
@@ -917,14 +873,13 @@ const M = {
     K.refreshAt = this.time + MARKET.refresh;
     const goods = MARKET_GOODS.filter((g) => g[4] <= S.level);
     const total = goods.reduce((a, g) => a + g[3], 0);
-    const sellers = [...BOT_NAMES, ...EXTRA_NAMES];
     K.listings = [];
     for (let i = 0; i < 16; i++) {
       let r = Math.random() * total, g = goods[0];
       for (const x of goods) { r -= x[3]; if (r <= 0) { g = x; break; } }
       const [kind, id, [a, b]] = g, qty = Math.round(rnd(a, b));
       const deal = Math.random() < 0.18 ? rnd(0.62, 0.8) : rnd(0.9, 1.3);
-      const L = { lid: 'b' + i + '_' + Math.floor(this.time), kind, seller: pick(sellers), note: pick(MARKET_LINES), qty };
+      const L = { lid: 'b' + i + '_' + Math.floor(this.time), kind, qty };
       if (kind === 'gear') { L.eq = this.makeEquip(null, clamp(S.level + Math.round(rnd(-2, 2)), 1, MAX_LEVEL), id); L.price = Math.round(this.mkPrice('gear', null, L.eq) * deal); L.kind = 'gear'; }
       else { L.id = id; L.price = Math.round(this.mkPrice(kind, id, null, qty) * deal); }
       L.deal = deal < 0.82;
@@ -946,7 +901,6 @@ const M = {
     this.sfx.play('coin'); this.ui.refreshWallet();
     const nm = L.kind === 'gear' ? L.eq.name : `${L.kind === 'item' ? ITEMS[L.id].name : matName(L.id)} x${L.qty}`;
     this.ui.toast(`Bought ${nm} for ${fmt(L.price)} Gold`, 'good');
-    this.ui.chat('whisper', `Thanks for buying my ${esc(nm)}~`, L.seller);
     this.ui.refreshPanel(); this.save();
   },
   // src: { bag: index } | { mat: id }
@@ -997,55 +951,13 @@ const M = {
       const net = Math.round(L.price * (1 - MARKET.tax));
       K.mine.splice(K.mine.indexOf(L), 1);
       S.gold += net; K.earned += net; K.sold++;
-      const buyer = pick([...BOT_NAMES, ...EXTRA_NAMES].filter((n) => n !== S.name));
       this.track('trade'); this.track('marketGold', net);
       if (K.earned >= 50000) this.unlockTitle('Market Mogul');
       this.sfx.play('coin'); this.ui.refreshWallet();
       this.ui.toast(`Market: sold ${this.listingName(L)} for ${fmt(net)} Gold`, 'good');
-      this.ui.chat('system', `<b>[Market]</b> ${esc(buyer)} bought your ${esc(this.listingName(L))} for <b>${fmt(L.price)}</b> Gold (after 5% tax: ${fmt(net)}).`);
+      this.ui.chat('system', `<b>[Market]</b> Your ${esc(this.listingName(L))} sold for <b>${fmt(L.price)}</b> Gold (after 5% tax: ${fmt(net)}).`);
       if (this.ui.panelName === 'market') this.ui.softRefresh();
     }
-    // bot trade offers
-    const M2 = this.market;
-    if (M2.offer && (this.time > M2.offer.expires || this.dg || this.war)) { this.ui.tradeOffer(null); M2.offer = null; }
-    M2.offerT -= dt;
-    if (M2.offerT > 0 || M2.offer || this.dg || this.war || S.level < 3) return;
-    M2.offerT = rnd(...MARKET.offerEvery);
-    const sellable = Object.entries(S.mats).filter(([id, n]) => n >= 2 && !MATERIALS[id].notrade);
-    const who = pick([...BOT_NAMES, ...EXTRA_NAMES]);
-    let offer;
-    if (sellable.length && Math.random() < 0.6) {
-      const [id, have] = pick(sellable), qty = Math.max(1, Math.min(have, Math.round(rnd(2, 6))));
-      const price = Math.round(this.mkPrice('mat', id, null, qty) * rnd(1.08, 1.4));
-      offer = { who, kind: 'buy', id, qty, price, text: `wants to buy your <b>${esc(matName(id))} x${qty}</b> for <b>${fmt(price)}</b> Gold` };
-    } else {
-      const goods = MARKET_GOODS.filter((g) => g[0] === 'mat' && g[4] <= S.level);
-      const g = pick(goods), qty = Math.round(rnd(g[2][0], g[2][1]));
-      const price = Math.round(this.mkPrice('mat', g[1], null, qty) * rnd(0.7, 0.92));
-      offer = { who, kind: 'sell', id: g[1], qty, price, text: `offers you <b>${esc(matName(g[1]))} x${qty}</b> for <b>${fmt(price)}</b> Gold` };
-    }
-    offer.expires = this.time + 25;
-    M2.offer = offer;
-    this.ui.chat('whisper', offer.kind === 'buy' ? `hey! I'll pay ${fmt(offer.price)}g for your ${esc(matName(offer.id))} x${offer.qty}, deal?` : `selling ${esc(matName(offer.id))} x${offer.qty} for ${fmt(offer.price)}g, cheaper than market!`, who);
-    this.ui.tradeOffer(offer);
-    this.sfx.play('open');
-  },
-  answerOffer(accept) {
-    const S = this.S, M2 = this.market, o = M2.offer; if (!o) return;
-    M2.offer = null; this.ui.tradeOffer(null);
-    if (!accept) { this.ui.chat('whisper', pick(['aww ok', 'maybe next time~', 'np!']), o.who); return; }
-    if (o.kind === 'buy') {
-      if (!this.takeMat(o.id, o.qty)) { this.ui.toast('You no longer have those', 'warn'); return; }
-      S.gold += o.price; this.track('marketGold', o.price);
-    } else {
-      if (S.gold < o.price) { this.ui.toast('Not enough Gold', 'warn'); return; }
-      S.gold -= o.price; this.addMat(o.id, o.qty, true);
-    }
-    this.track('trade');
-    this.sfx.play('coin'); this.ui.refreshWallet(); this.ui.refreshPanel();
-    this.ui.toast(`Traded with ${o.who}!`, 'good');
-    this.ui.chat('whisper', pick(['ty! pleasure doing business', 'thanks!! <3', 'deal~ good luck out there']), o.who);
-    this.save();
   },
 
   // ============================================================ festival
@@ -1174,10 +1086,10 @@ const M = {
     const cls = Object.keys(CLASSES);
     const rows = names.map((name, i) => ({ name, cls: cls[(rand() * 4) | 0], guild: GUILD_LIST[(rand() * GUILD_LIST.length) | 0].name, r: rand(), i }));
     const L = S.level;
-    let val, me, fmtv = fmt, lowerBetter = false;
+    let me, fmtv = fmt, lowerBetter = false;
     switch (cat) {
       case 'level': rows.forEach((r) => { r.v = clamp(Math.round(200 - r.i * 7 - r.r * 6 - (1 - prog) * 60), 6, 200); }); me = S.level; fmtv = (v) => `Lv ${v}`; break;
-      case 'wboss': { const top = this.wbStats(clamp(L + 3, 8, MAX_LEVEL + 3)).hp * 0.32; rows.forEach((r) => { r.v = Math.round(top * Math.pow(0.86, r.i) * (0.9 + r.r * 0.2)); }); me = S.lb.wbBest || 0; break; }
+      case 'wboss': { const top = this.wbStats(clamp(L + 5, 8, MAX_LEVEL + 3)).hp; rows.forEach((r) => { r.v = Math.round(top * Math.pow(0.86, r.i) * (0.9 + r.r * 0.2)); }); me = S.lb.wbBest || 0; break; }
       case 'dungeon': { lowerBetter = true; const id = this.ui?.sel?.lbDungeon || 'd1', par = { d1: 240, d2: 300, d3: 360 }[id]; rows.forEach((r) => { r.v = Math.round(par * (0.5 + r.i * 0.035 + r.r * 0.03)); }); me = S.lb.dgTime?.[id] || 0; fmtv = (v) => (v ? `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}` : '—'); break; }
       case 'season': rows.forEach((r) => { r.v = Math.round(30000 * Math.pow(0.88, r.i) * (0.85 + r.r * 0.3) * prog); }); me = mine ?? S.season.exp; break;
       case 'war': rows.forEach((r) => { r.v = Math.round(46 * Math.pow(0.84, r.i) * (0.8 + r.r * 0.4) * prog); }); me = S.season.warWins || 0; fmtv = (v) => `${v} wins`; break;

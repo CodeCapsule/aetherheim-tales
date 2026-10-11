@@ -1,6 +1,6 @@
 // Procedural chibi models: players, NPCs, monsters, pets, mounts and sprites. Forward is +Z, feet at y=0.
 import * as THREE from 'three';
-import { toon, glow, mesh, outline, faceTexture, critterFace, facePatch, wingTexture, glowTexture } from './toon.js';
+import { glow, mesh, outline, faceTexture, critterFace, facePatch, wingTexture, glowTexture } from './toon.js';
 
 const gcache = new Map();
 function G(key, fn) { if (!gcache.has(key)) gcache.set(key, fn()); return gcache.get(key); }
@@ -230,7 +230,7 @@ function attachWeapon(P, kind, out) {
   P.weapon = w;
 }
 
-export function buildWings(color = '#9fe8ff', size = 1) {
+function buildWings(color = '#9fe8ff', size = 1) {
   const g = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ map: wingTexture(color), transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.9 });
   const geo = G('wingplane', () => { const p = new THREE.PlaneGeometry(1, 1); p.translate(0.5, 0.5, 0); return p; });
@@ -254,7 +254,7 @@ export function buildWings(color = '#9fe8ff', size = 1) {
   return g;
 }
 
-export function animateWings(w, t, fast = 1) {
+function animateWings(w, t, fast = 1) {
   if (!w || !w.visible) return;
   for (const p of w.userData.pairs) {
     const a = 0.45 + Math.sin(t * 6 * fast) * 0.35;
@@ -369,7 +369,7 @@ export function buildJelly(color = 0x7ad8ff, scale = 1) {
   return root;
 }
 
-export function buildBunny(scale = 1, color = 0xffffff) {
+function buildBunny(scale = 1, color = 0xffffff) {
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
   body.add(part(sph(0.55), color, 0, 0.55, 0, { sx: 1, sy: 0.9, sz: 1.05 }));
@@ -464,7 +464,7 @@ export function buildQuad(o = {}) {
   return root;
 }
 
-export function buildWolf(scale = 1) {
+function buildWolf(scale = 1) {
   const m = buildQuad({ body: 0x7a8aa8, belly: 0xc8d0e0, snout: 0xc8d0e0, spikes: 0x5aa84a, face: { mood: 'angry', eye: '#ff3a3a', mouth: 'fang', blush: false }, size: 1 });
   m.scale.setScalar(scale);
   return m;

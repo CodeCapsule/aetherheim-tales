@@ -17,7 +17,6 @@ const box = (x, y, z) => G(`b${x}|${y}|${z}`, () => new THREE.BoxGeometry(x, y, 
 const tor = (r, t, rs = 8, ts = 24, arc = Math.PI * 2) => G(`t${r}|${t}|${rs}|${ts}|${arc}`, () => new THREE.TorusGeometry(r, t, rs, ts, arc));
 const oct = () => G('oct', () => new THREE.OctahedronGeometry(1, 0));
 const cap = (r, w = 14, h = 8, t = 1.2) => G(`cap${r}|${w}|${h}|${t}`, () => new THREE.SphereGeometry(r, w, h, 0, Math.PI * 2, 0, t));
-const DS = THREE.DoubleSide;
 
 const mats = new Map();
 const MAT = (k, fn) => { if (!mats.has(k)) mats.set(k, fn()); return mats.get(k); };

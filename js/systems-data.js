@@ -15,7 +15,7 @@ export function weekKey(d = new Date()) {
 }
 export function secsToDayEnd(d = new Date()) { return (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - d) / 1000; }
 export function secsToWeekEnd(d = new Date()) { const day = d.getUTCDay() || 7; return secsToDayEnd(d) + (7 - day) * 86400; }
-export function secsToMonthEnd(d = new Date()) { return (Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) - d) / 1000; }
+function secsToMonthEnd(d = new Date()) { return (Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) - d) / 1000; }
 export function monthProgress(d = new Date()) {
   const a = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1), b = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
   return (d - a) / (b - a);
@@ -71,7 +71,7 @@ export const ENH_MAX = 15;
 export const ENH_RATE = [1, 1, 1, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.28, 0.22, 0.17, 0.12]; // chance to reach +1 ... +15
 export const ENH_STONES = ['enh_stone', 'enh_stone2', 'enh_stone3'];
 export const ENH_FAIL_BONUS = 0.05, ENH_FAIL_MAX = 0.25, ENH_LUCK = 0.15;
-export const enhTier = (target) => (target <= 5 ? 0 : target <= 10 ? 1 : 2);
+const enhTier = (target) => (target <= 5 ? 0 : target <= 10 ? 1 : 2);
 export function enhCost(eq) {
   const L = (eq.enh || 0) + 1, t = enhTier(L);
   const n = t === 0 ? 1 + (L >> 1) : t === 1 ? L - 4 : L - 9;
@@ -231,7 +231,6 @@ export const GUILD_LIST = [
   { name: 'Valhalla', lv: 7, color: '#ff7a5a', emblem: 'axe', leader: 'Valkyr', motto: 'Glory in battle. BR 6k+ preferred.', size: 38 },
   { name: 'Dreamers', lv: 3, color: '#c8a0ff', emblem: 'cloud', leader: 'Pudding', motto: 'New players welcome! We help with dungeons.', size: 19 },
 ];
-export const GUILD_EMBLEMS = { moon: '☾', star: '★', flower: '✿', axe: '⚔', cloud: '☁', wing: '❖' };
 export const GUILD_EXP = [0, 400, 1200, 2600, 5000, 8500, 13500, 20000, 29000, 41000]; // exp to reach level i+1 (index = current level - 1)
 export const GUILD_MAX = 10;
 export const GUILD_CREATE = { gold: 20000, lv: 5 };
@@ -254,11 +253,6 @@ export const GUILD_SHOP = [
   { id: 'gs_legend', name: 'Legendary Cache', item: 'legend_cache', qty: 1, cost: 4000, lv: 9, max: 1, per: 'week' },
 ];
 export const EXTRA_NAMES = ['Aria', 'Kaito', 'Nova', 'Ren', 'Hikari', 'Lumi', 'Sora', 'Mikan', 'Astra', 'Kuro', 'Neko', 'Riku', 'Shiro', 'Akane', 'Fuyu', 'Haru', 'Kiwi', 'Momo', 'Nyx', 'Orion', 'Pixie', 'Rin', 'Taiga', 'Umi', 'Vega', 'Wren', 'Yoru', 'Zen', 'Ember', 'Frost', 'Gale', 'Iris', 'Juno', 'Kai', 'Lux', 'Mei', 'Noa', 'Opal', 'Pearl', 'Quill'];
-export const GUILD_CHAT = [
-  'donated today~ guild level up soon!', 'anyone up for Elder Catacombs?', 'war in 10 min, gear up!', 'gz on the level!', 'who needs a healer for dungeons?',
-  'world boss is up at the Storm Altar!!', 'I can craft Rare gear, need wolf fangs', 'thanks for carrying me last war <3', 'good night guildies', 'new emblem looks so cute',
-  'selling spirit shards cheap in market', 'guild shop has tickets again', 'top 3 in world boss damage, finally!', 'remember the weekly missions reset monday', 'my pet is level 10 now :3',
-];
 export const GUILD_ROLES = ['Leader', 'Officer', 'Officer', 'Elite', 'Elite', 'Elite'];
 
 // ---------------------------------------------------------------- guild war (instanced battleground)
@@ -269,16 +263,17 @@ export const WAR_DEF = {
 };
 
 // ---------------------------------------------------------------- world boss
-export const WORLD_BOSS = { every: 15 * 60, lasts: 8 * 60, site: { x: 128, z: -86 }, name: 'Storm Altar', bots: 8 };
-export const WB_RANK_REWARDS = [
-  { upTo: 1, label: '1st', diamonds: 60, mats: { star_essence: 2 }, items: [['gem_pouch', 2]], gear: 5, gearChance: 0.25 },
-  { upTo: 3, label: 'Top 3', diamonds: 40, mats: { star_essence: 1 }, items: [['gem_pouch', 1]], gear: 4, gearChance: 0.5 },
-  { upTo: 10, label: 'Top 10', diamonds: 20, mats: { spirit_shard: 3 }, gear: 3, gearChance: 1 },
-  { upTo: 99, label: 'Participant', diamonds: 5, mats: { spirit_dust: 6 }, gear: 2, gearChance: 0.6 },
+export const WORLD_BOSS = { every: 15 * 60, lasts: 8 * 60, site: { x: 128, z: -86 }, name: 'Storm Altar' };
+// rewards by how fast you bring the boss down, counted from your first hit
+export const WB_REWARDS = [
+  { upTo: 120, label: 'Within 2:00', diamonds: 60, mats: { star_essence: 2 }, items: [['gem_pouch', 2]], gear: 5, gearChance: 0.25 },
+  { upTo: 240, label: 'Within 4:00', diamonds: 40, mats: { star_essence: 1 }, items: [['gem_pouch', 1]], gear: 4, gearChance: 0.5 },
+  { upTo: 360, label: 'Within 6:00', diamonds: 20, mats: { spirit_shard: 3 }, gear: 3, gearChance: 1 },
+  { upTo: Infinity, label: 'Defeated', diamonds: 5, mats: { spirit_dust: 6 }, gear: 2, gearChance: 0.6 },
 ];
 
 // ---------------------------------------------------------------- market
-export const MARKET = { maxListings: 6, tax: 0.05, refresh: 300, offerEvery: [150, 300] };
+export const MARKET = { maxListings: 6, tax: 0.05, refresh: 300 };
 // goods bots list for sale: [kind, id, qty range, weight, min player level]
 export const MARKET_GOODS = [
   ['mat', 'jelly_gel', [3, 10], 3, 1], ['mat', 'soft_fur', [3, 10], 3, 1], ['mat', 'glow_spore', [2, 8], 3, 1], ['mat', 'wolf_fang', [2, 6], 3, 4],
@@ -290,7 +285,6 @@ export const MARKET_GOODS = [
   ['item', 'exp_scroll', [1, 2], 1, 5], ['item', 'gem_pouch', [1, 1], 1, 5],
   ['gear', 2, [1, 1], 3, 1], ['gear', 3, [1, 1], 2, 5], ['gear', 4, [1, 1], 0.4, 10],
 ];
-export const MARKET_LINES = ['cheap!!', 'best price in Carlyle', 'fresh from the dungeon', 'quick sale', 'bulk discount', 'pm for more', ''];
 
 // ---------------------------------------------------------------- festivals & seasons
 // Festivals run between month-day dates (inclusive), wrapping the new year when start > end.
@@ -343,7 +337,7 @@ export const EVENT_SHOP = [
   { id: 'es_essence', kind: 'mat', id2: 'star_essence', qty: 1, cost: 150, max: 3 },
   { id: 'es_cache', kind: 'item', id2: 'unique_cache', qty: 1, cost: 600, max: 1 },
 ];
-export const SEASON_NAMES = ['Frostfall', 'Heartsong', 'Blossom', 'Spring Rain', 'Verdant', 'Midsummer', 'Tides', 'Ember Sky', 'Golden Wind', 'Harvest Moon', 'Starlit Mist', 'Winter Starlight'];
+const SEASON_NAMES = ['Frostfall', 'Heartsong', 'Blossom', 'Spring Rain', 'Verdant', 'Midsummer', 'Tides', 'Ember Sky', 'Golden Wind', 'Harvest Moon', 'Starlit Mist', 'Winter Starlight'];
 export function seasonInfo(d = new Date()) {
   const n = (d.getUTCFullYear() - 2026) * 12 + d.getUTCMonth() + 1; // Season 1 = January 2026
   return { key: monthKey(d), n, name: SEASON_NAMES[d.getUTCMonth()], ends: secsToMonthEnd(d) };

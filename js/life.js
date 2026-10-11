@@ -16,14 +16,12 @@ import { relicIcon, seedIcon, costumeIcon } from './icons/extra2.js';
 import { riverDist, roadDist, mulberry, WATER_Y } from './world.js';
 import { toon } from './toon.js';
 
-const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const TIER_COLOR = [0xffb070, 0xd8e0f0, 0xf4f8ff, 0x9af0ff, 0xffe07a];
-export const COSTUME_SLOTS = ['outfit', 'head', 'back'];
-export const costumeById = (id) => COSTUMES.find((c) => c.id === id);
+const costumeById = (id) => COSTUMES.find((c) => c.id === id);
 export const fmtLeft = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;

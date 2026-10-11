@@ -12,7 +12,6 @@ const LIB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (v, lo, hi, d = 0) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, n);
-const STATES = ['idle', 'run', 'attack', 'cast', 'dead'];
 // Movement is sent with its velocity and drawn by dead reckoning: between updates a remote hero keeps walking the
 // way it was going, and each update only nudges it back on course. Updates go out when the prediction the others make
 // drifts, when the hero starts, stops or turns, and at least every SEND_MAX ms while moving. Nothing is sent while

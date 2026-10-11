@@ -24,7 +24,7 @@ const mk = (name, stat, label, base, perLvl, cap) => ({
   },
 });
 
-export const AFFIXES = {
+const AFFIXES = {
   atk: mk('Might', 'atk', (v) => `+${pct(v)} Attack`, 2, 0.8),
   def: mk('Guarding', 'def', (v) => `+${pct(v)} Defense`, 2, 0.6),
   hp: mk('Vitality', 'hp', (v) => `+${Math.round(v)} Max HP`, 15, 7),
@@ -62,7 +62,7 @@ export const EFFECTS = {
 export const enhMult = (enh = 0) => 1 + 0.07 * enh + (enh >= 5 ? 0.05 : 0) + (enh >= 10 ? 0.15 : 0) + (enh >= 15 ? 0.35 : 0);
 export const enhAffixMult = (enh = 0) => 1 + (enh >= 10 ? 0.1 : 0) + (enh >= 15 ? 0.15 : 0);
 
-export const UNIQUE_ITEMS = [
+const UNIQUE_ITEMS = [
   { id: 'u_thornfang', name: 'Thornfang Blade', slot: 'weapon', cls: 'knight', effect: 'stun_chance', flavor: 'Forged from a Thornwolf\'s fang and Mossveil iron.' },
   { id: 'u_whisperwind', name: 'Whisperwind Edges', slot: 'weapon', cls: 'assassin', effect: 'swift', flavor: 'They make no sound, not even when they strike.' },
   { id: 'u_emberheart', name: 'Emberheart Staff', slot: 'weapon', cls: 'mage', effect: 'chain', flavor: 'An ember of the Fire Spirit still beats inside.' },
@@ -170,7 +170,7 @@ export function genNamed(namedId, { lvl = 1, cls, uid, rng = Math.random } = {})
 
 // Red (tier 6) gear: crafted at the Forge from a full dungeon relic set and a Crimson Core.
 // Four affixes, a random legendary power and three sockets; the dungeon's adjective names it.
-export const RED_EFFECTS = ['meteor_proc', 'phoenix', 'frenzy', 'holy_nova', 'starfall', 'worldtree'];
+const RED_EFFECTS = ['meteor_proc', 'phoenix', 'frenzy', 'holy_nova', 'starfall', 'worldtree'];
 export function genRed({ adj, set, slot, lvl, cls, uid, rng = Math.random }) {
   lvl = Math.max(1, Math.round(lvl || 1));
   if (!SLOTS.includes(slot)) slot = SLOTS[Math.floor(rng() * SLOTS.length)];
@@ -208,7 +208,7 @@ export function normalizeItem(eq, cls) {
 }
 
 const ZERO = () => ({ atk: 0, def: 0, hp: 0, crit: 0, critDmg: 0, speed: 0, lifesteal: 0, cdr: 0, expGain: 0, goldFind: 0, thorns: 0, regen: 0, manaCost: 0 });
-export function itemStats(eq) {
+function itemStats(eq) {
   const out = ZERO();
   if (!eq) return out;
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);

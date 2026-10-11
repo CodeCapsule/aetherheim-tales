@@ -51,16 +51,15 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   missions fill an activity bar with treasure chests (daily 20/40/60/80/100, weekly 150/300/450/600).
 - **Guilds and guild wars**: join one of five guilds or found your own (recruits arrive while you play). Daily gold,
   material and diamond donations level the guild (up to Lv 10) for a permanent Guild Blessing (+Attack, +Max HP) and
-  earn Contribution for the guild shop. Guild chat comes alive with guildmates. **Guild Wars** (Lv 10+, two a day) are
+  earn Contribution for the guild shop. **Guild Wars** (Lv 10+, two a day) are
   4-minute battles in the Spirit Crystal Arena: lead four guildmates against a rival guild, destroy their crystal and
   defend yours.
 - **World bosses**: every 15 minutes a world boss descends on the Storm Altar north-east of Breezy Meadow (the
-  Thunderhoof Behemoth, or a festival boss such as the Pumpkin King). Other adventurers teleport in to help, a live damage
-  meter ranks everyone, and rewards scale with your rank, with a bonus for the last hit.
+  Thunderhoof Behemoth, or a festival boss such as the Pumpkin King). Bring it down before it retreats: rewards depend on
+  how fast you win, counted from your first hit, and the boss keeps its wounds if you fall and come back.
 - **Trading and crafting**: monsters drop materials and gems into a separate pouch. Gorm's Forge crafts potions, tickets,
-  pet eggs, gem pouches and Rare to Unique gear (with a Masterwork chance). The Market lists goods from other players at
-  prices that drift through the day; list your own items and they sell over time (cheaper sells faster, 5% tax). Players
-  also whisper you trade offers.
+  pet eggs, gem pouches and Rare to Unique gear (with a Masterwork chance). The Market lists merchant goods at prices that
+  drift through the day; list your own items and they sell over time (cheaper sells faster, 5% tax).
 - **Enhancement +1 to +15**: the Forge's Enhance tab levels up any piece of gear with Enhancement Stones (normal for
   +1 to +5, Greater to +10, Divine to +15) and gold. Success drops from 100% to 12% at +15; each failure adds +5% to the
   next try (up to +25%), and from +7 a failure drops the item one level unless a Protection Charm is used. Lucky Charms
@@ -100,12 +99,12 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   Cores. Each profession levels to 100.
 - **Shops, auction and trading**: new NPCs in town run shops: Hilda (supplies, bag scrolls), Tilly (seeds), Vera
   (alchemy), Opal (gems), Coco (costumes), Elias (relics and Crimson Cores), plus pet and stable shops and a trader at
-  every outpost. Grimsby runs the **Auction House**: real-time lots with bidding, buyouts and rival bidders, and your
-  own auctions. Click another adventurer and press Trade to open a trade window and haggle item for item.
+  every outpost. Grimsby runs the **Auction House**: real-time lots with bidding, buyouts and rival bids, and your
+  own auctions.
 - **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. **Sell All** sells everything up to
   a chosen rarity in one go; locked gear is always kept.
 - **MMO systems**: Battle Rating, bag, skill upgrades, auto battle, auto potions, titles, daily sign-in, online gifts,
-  a gold/diamond mall, world/guild/whisper chat with other adventurers, minimap and world map.
+  a gold/diamond mall, world and guild chat, minimap and world map.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
 
 ## Controls
@@ -122,7 +121,8 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 | Other | Space jump, Tab next target, F talk, Enter chat, Esc close |
 
 Progress saves to the browser's local storage. Daily and weekly resets, world boss times and seasons follow the real clock (UTC).
-Other players, guildmates, market sellers and rivals are simulated, so everything works offline and single-player.
+The only other players in the world are real ones on your server (see Play together). Guildmates, guild war rivals,
+market buyers and auction bids are simulated, so those systems also work solo.
 
 ## Code layout
 
@@ -131,7 +131,7 @@ Other players, guildmates, market sellers and rivals are simulated, so everythin
 | `js/data.js` | Classes, skills, monsters, pets, mounts, quests and other tables |
 | `js/data-world.js` | Expanded world content: outer zones, Lv 16-200 monsters, dungeons 4-11, relics, professions, crops, recipes, costumes, shops |
 | `js/life.js` | Gathering nodes, farming, alchemy, smithing, elixirs, costumes, relic collection and Red gear |
-| `js/economy.js` | Bag expansion, Sell All, NPC shops, Auction House and direct trades |
+| `js/economy.js` | Bag expansion, Sell All, NPC shops and the Auction House |
 | `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill and Soul Forge |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
@@ -152,5 +152,5 @@ Other players, guildmates, market sellers and rivals are simulated, so everythin
 | `js/icons.js`, `js/icons/*.js` | SVG icon set (skills, UI, items) |
 | `js/ui.js` | HUD, panels, dialogs, chat, minimap and world map |
 | `js/ui-systems.js` | Panels and HUD widgets for the live systems |
-| `js/ui-life.js` | Professions, farm, Crimson Forge, collection, wardrobe, shop, auction and trade panels |
+| `js/ui-life.js` | Professions, farm, Crimson Forge, collection, wardrobe, shop, auction and Online panels |
 | `js/main.js` | Boot, title screen, character creation and main loop |
