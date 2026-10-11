@@ -42,3 +42,20 @@ export const SET_EFFECTS = {
   set_constellation: { id: 'set_constellation', tier: 'set', name: 'Constellation', desc: 'Every 10s, your next skill deals double damage.' },
   set_covenant: { id: 'set_covenant', tier: 'set', name: 'Spirit Covenant', desc: 'Deal 15% more damage and take 15% less damage.' },
 };
+
+// Ancient sets: drop only in the Danger Zone (see data-dz.js). Stronger than dungeon sets, with powers that also
+// work against other players.
+export const ANCIENT_COLOR = '#ff6a3a';
+export const ANCIENT_SETS = {
+  set_anc_blood: { name: 'Bloodmoon', slots: ['helm', 'armor', 'boots', 'ring'], two: { lifesteal: 6, crit: 6 }, power: 'anc_bloodthirst' },
+  set_anc_dread: { name: 'Dreadforge', slots: ['helm', 'armor', 'boots', 'necklace'], two: { thorns: 15, critDmg: 15 }, power: 'anc_dread' },
+  set_anc_void: { name: 'Voidwalker', slots: ['helm', 'armor', 'boots', 'ring'], two: { cdr: 10, speed: 8 }, power: 'anc_void' },
+  set_anc_king: { name: 'Kingslayer', slots: ['helm', 'armor', 'boots', 'necklace'], two: { crit: 8, critDmg: 20 }, power: 'anc_king' },
+};
+for (const [id, s] of Object.entries(ANCIENT_SETS)) { s.id = id; s.ancient = true; SETS[id] = s; }
+Object.assign(SET_EFFECTS, {
+  anc_bloodthirst: { id: 'anc_bloodthirst', tier: 'ancient', name: 'Bloodthirst', desc: 'Every kill (monster or player) heals 8% of Max HP and grants +25% Attack for 6s.' },
+  anc_dread: { id: 'anc_dread', tier: 'ancient', name: 'Dread Bulwark', desc: 'Take 20% less damage; monsters that hit you are stunned for 1s 15% of the time (not bosses).' },
+  anc_void: { id: 'anc_void', tier: 'ancient', name: 'Void Rift', desc: 'Every 8s your next hit tears a void rift: 400% Attack to the target and every enemy within 5m.' },
+  anc_king: { id: 'anc_king', tier: 'ancient', name: 'Kingslayer', desc: 'Deal 30% more damage to players, elites and bosses.' },
+});

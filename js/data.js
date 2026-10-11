@@ -2,6 +2,8 @@
 import {
   NEW_ZONES, NEW_MONSTERS, DUNGEON_MONSTERS, NEW_SPAWNS, NEW_DUNGEONS, NEW_ITEMS, NEW_PETS, NEW_MOUNTS, NEW_NPCS, NEW_TELEPORTS, NEW_TITLES, NEW_DROPS,
 } from './data-world.js';
+import { TOOL_ITEMS } from './data-crafting.js';
+import { DZ_MONSTERS, DZ_SPAWNS } from './data-dz.js';
 import { STORY_QUESTS, STORY_ITEMS, STORY_TITLES } from './data-story.js';
 
 export const CLASSES = {
@@ -374,11 +376,11 @@ export const TIPS = [
 ];
 
 // ---- expanded world content (Lv 16-200), see data-world.js
-Object.assign(MONSTERS, NEW_MONSTERS, DUNGEON_MONSTERS);
-SPAWNS.push(...NEW_SPAWNS);
+Object.assign(MONSTERS, NEW_MONSTERS, DUNGEON_MONSTERS, DZ_MONSTERS);
+SPAWNS.push(...NEW_SPAWNS, ...DZ_SPAWNS);
 ZONES.push(...NEW_ZONES);
 DUNGEONS.push(...NEW_DUNGEONS);
-Object.assign(ITEMS, NEW_ITEMS, STORY_ITEMS);
+Object.assign(ITEMS, NEW_ITEMS, STORY_ITEMS, TOOL_ITEMS);
 PETS.push(...NEW_PETS);
 MOUNTS.push(...NEW_MOUNTS);
 NPCS.push(...NEW_NPCS);

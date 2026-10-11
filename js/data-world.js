@@ -357,6 +357,7 @@ export const COSTUMES = [
 // ---------------------------------------------------------------- NPCs with shops, outposts, teleports
 export const SHOPS = {
   general: { name: "Hilda's Supplies", items: [['hp_potion', 10, { gold: 380 }], ['mp_potion', 10, { gold: 380 }], ['potion_hp2', 10, { gold: 1100 }, 20], ['potion_mp2', 10, { gold: 1100 }, 20], ['potion_hp3', 10, { gold: 3600 }, 60], ['potion_mp3', 10, { gold: 3600 }, 60], ['teleport_scroll', 5, { gold: 900 }], ['bag_scroll', 1, { gold: 20000 }], ['bag_scroll', 1, { diamonds: 120 }], ['exp_scroll', 1, { gold: 600 }],
+    ['tool_axe_0', 1, { gold: 150 }], ['tool_pick_0', 1, { gold: 150 }], ['tool_sickle_0', 1, { gold: 150 }], ['tool_axe_1', 1, { gold: 3000 }, 15], ['tool_pick_1', 1, { gold: 3000 }, 15], ['tool_sickle_1', 1, { gold: 3000 }, 15],
     ['m:enh_stone', 5, { gold: 6000 }], ['m:enh_stone2', 3, { gold: 15000 }, 40], ['m:enh_stone3', 1, { diamonds: 60 }, 90], ['enh_luck', 1, { diamonds: 40 }], ['enh_protect', 1, { diamonds: 120 }]] },
   farm: { name: "Tilly's Seeds", items: [...Object.entries(CROPS).map(([k, c]) => ['seed_' + k, 5, { gold: c.seedPrice * 5 }, 1, c.lv]), ['fertilizer', 3, { gold: 420 }]] },
   alchemy: { name: "Vera's Apothecary", items: [['empty_vial', 10, { gold: 100 }], ['potion_hp2', 5, { gold: 600 }], ['elixir_swift', 1, { gold: 700 }], ['elixir_might', 1, { gold: 1400 }, 20], ['elixir_iron', 1, { gold: 1400 }, 30], ['elixir_wisdom', 1, { diamonds: 60 }], ['elixir_fortune', 1, { diamonds: 60 }]] },
@@ -366,9 +367,9 @@ export const SHOPS = {
     ['socket_drill', 1, { diamonds: 200 }], ['soul_cache', 1, { diamonds: 1500 }]] },
   pets: { name: "Mimi's Pet Corner", items: [['pet_treat', 1, { gold: 500 }], ['pet_egg', 1, { gold: 900 }], ['p:pet_panda', 1, { gold: 8000 }], ['p:pet_cupcake', 1, { gold: 1800 }], ['p:pet_kitsune', 1, { diamonds: 800 }], ['p:pet_star', 1, { diamonds: 300 }]] },
   stable: { name: "Brom's Stable", items: [['r:mount_wolf', 1, { gold: 6000 }], ['r:mount_lion', 1, { gold: 30000 }], ['r:mount_cloud', 1, { diamonds: 900 }], ['r:mount_panther', 1, { diamonds: 1200 }], ['r:mount_griffin', 1, { diamonds: 1600 }], ['r:mount_pegasus', 1, { diamonds: 500 }]] },
-  tailor: { name: "Coco's Boutique", items: COSTUMES.filter((c) => !c.src).map((c) => ['c:' + c.id, 1, c.price]).concat([['costume_box', 1, { diamonds: 150 }]]) },
+  tailor: { name: "Coco's Boutique", items: COSTUMES.filter((c) => !c.src).map((c) => ['c:' + c.id, 1, c.price]).concat([['costume_box', 1, { diamonds: 150 }], ['m:tl_linen', 5, { gold: 300 }], ['m:tl_silk', 5, { gold: 1200 }, 20]]) },
   collector: { name: "Elias' Curios", items: [['crimson_core', 1, { gold: 60000 }, 40], ['crimson_core', 1, { diamonds: 400 }], ['m:star_essence', 1, { gold: 9000 }], ['m:spirit_shard', 5, { gold: 4000 }]] },
-  outpost: { name: 'Frontier Supplies', items: [['potion_hp2', 10, { gold: 1200 }], ['potion_mp2', 10, { gold: 1200 }], ['potion_hp3', 10, { gold: 3800 }, 60], ['potion_mp3', 10, { gold: 3800 }, 60], ['teleport_scroll', 5, { gold: 900 }], ['empty_vial', 10, { gold: 120 }]] },
+  outpost: { name: 'Frontier Supplies', items: [['tool_axe_0', 1, { gold: 200 }], ['tool_pick_0', 1, { gold: 200 }], ['tool_sickle_0', 1, { gold: 200 }], ['potion_hp2', 10, { gold: 1200 }], ['potion_mp2', 10, { gold: 1200 }], ['potion_hp3', 10, { gold: 3800 }, 60], ['potion_mp3', 10, { gold: 3800 }, 60], ['teleport_scroll', 5, { gold: 900 }], ['empty_vial', 10, { gold: 120 }]] },
 };
 export const NEW_NPCS = [
   { id: 'tilly', icon: 'farm', name: 'Tilly', title: 'Farmer', x: -44, z: 36, look: 'tilly', face: -2.3, service: 'farm', greet: 'Good soil, good seeds, good friends! Your own plots are ready right behind me.' },

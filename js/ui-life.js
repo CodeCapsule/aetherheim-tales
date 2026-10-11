@@ -12,6 +12,7 @@ import { fmtLeft } from './life.js';
 import { shopEntry, goodName, goodQuality, goodIcon } from './economy.js';
 import { ico } from './icons.js';
 import { mp, mpEnabled, SERVERS, serverName } from './mp.js';
+import { TOOL_KINDS, TOOL_RECIPES, TOOL_TIERS, TOOL_FOR_NODE, DYES, costumeRecipe } from './data-crafting.js';
 import { CLASSES } from './data.js';
 
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -57,13 +58,20 @@ const P = {
     const grid = h('div', 'prof-grid');
     for (const k of Object.keys(PROF)) grid.appendChild(h('div', '', this.profBar(k)));
     body.appendChild(grid);
+    // the tools in your bag: each one gathers its own kind of node up to its tier
+    const tl = h('div', 'tool-row');
+    for (const [k, K] of Object.entries(TOOL_KINDS)) {
+      const t = g.bestTool(K.node);
+      tl.appendChild(h('span', 'tool-chip' + (t ? '' : ' none'), t ? `${ico(t.id, 'ico inl')}${esc(ITEMS[t.id].name)} <small>tier ${t.tier + 1}</small>` : `${ico('tool_' + k + '_0', 'ico inl')}No ${K.name}`));
+    }
+    body.appendChild(tl);
     const L = h('div', 'list');
     for (const [kind, G] of Object.entries(GATHER)) {
-      const lv = g.profLv(G.prof);
+      const lv = g.profLv(G.prof), tool = g.bestTool(kind);
       G.mats.forEach((m, t) => {
-        const ok = lv >= TIER_REQ[t];
+        const ok = lv >= TIER_REQ[t] && tool && tool.tier >= t;
         const near = g.nodes ? g.nodes.filter((n) => n.nkind === kind && n.tier === t).sort((a, b) => Math.hypot(a.pos.x - g.player.pos.x, a.pos.z - g.player.pos.z) - Math.hypot(b.pos.x - g.player.pos.x, b.pos.z - g.player.pos.z))[0] : null;
-        const r = h('div', 'row slim' + (ok ? '' : ' locked'), `<div class="ic q${qOf(m)}">${ico(m)}</div><div class="tx"><b>${esc(G.names[t])}</b>${PROF[G.prof].name} Lv ${TIER_REQ[t]} · yields ${esc(nameOf(m))} · you have ${fmt(g.matCount(m))}</div>`);
+        const r = h('div', 'row slim' + (ok ? '' : ' locked'), `<div class="ic q${qOf(m)}">${ico(m)}</div><div class="tx"><b>${esc(G.names[t])}</b>${PROF[G.prof].name} Lv ${TIER_REQ[t]} · ${esc(TOOL_TIERS[t])} ${TOOL_KINDS[TOOL_FOR_NODE[kind]].name} · yields ${esc(nameOf(m))} · you have ${fmt(g.matCount(m))}</div>`);
         if (near) {
           const b = h('button', 'btn small blue', 'Go'); b.disabled = !!(g.dg || g.war);
           b.onclick = () => { this.closePanels(); g.lifeClick(near); };
@@ -73,7 +81,7 @@ const P = {
       });
     }
     body.appendChild(L);
-    body.appendChild(h('div', 'note', `Click ore veins, herbs and trees in the wilds to gather. Each node gives three harvests, then regrows. Higher tiers grow in the outer zones and need a higher profession level. Gathering, farming, alchemy and smithing level up to ${PROF_MAX}.`));
+    body.appendChild(h('div', 'note', `Click ore veins, herbs and trees in the wilds to gather: trees need an Axe, ore a Pickaxe and herbs a Sickle of the node's tier or better (Gorm forges them). Each node gives three harvests, then regrows. Higher tiers grow in the outer zones and need a higher profession level. Gathering, farming, alchemy and smithing level up to ${PROF_MAX}.`));
   },
   life_farm(body) {
     const g = this.g, now = Date.now();
@@ -133,6 +141,8 @@ const P = {
   life_smithing(body) {
     const g = this.g, S = g.S;
     body.appendChild(h('div', '', this.profBar('smithing')));
+    const mode = this.tabs(body, 'smithMode', [['gear', 'Gear'], ['tools', 'Gathering Tools']]);
+    if (mode === 'tools') { this.smithTools(body); return; }
     const slot = this.sel.smithSlot || null;
     const sr = h('div', 'tabs small');
     for (const s of [null, ...SLOTS]) { const b = h('button', slot === s ? 'sel' : '', s ? SLOT_INFO[s].label : 'Random slot'); b.onclick = () => { this.sel.smithSlot = s; this.renderPanel(); }; sr.appendChild(b); }
@@ -148,6 +158,24 @@ const P = {
     }
     body.appendChild(L);
     body.appendChild(h('div', 'note', 'Smithing turns ore and logs into gear. Masterworks come out one rarity higher; the chance grows with your Smithing level.'));
+  },
+  // Gorm reforges each tool into the next tier: the old tool, ore for the head and logs for the haft
+  smithTools(body) {
+    const g = this.g, kind = this.sel.toolKind || 'axe';
+    const kr = h('div', 'tabs small');
+    for (const [k, K] of Object.entries(TOOL_KINDS)) { const b = h('button', kind === k ? 'sel' : '', `${K.name}s`); b.onclick = () => { this.sel.toolKind = k; this.renderPanel(); }; kr.appendChild(b); }
+    body.appendChild(kr);
+    const best = g.bestTool(TOOL_KINDS[kind].node);
+    const L = h('div', 'list');
+    for (const r of TOOL_RECIPES.filter((x) => ITEMS[x.tool].tool === kind)) {
+      const it = ITEMS[r.tool], lock = g.profLv('smithing') < r.lv, have = best && best.tier >= it.tier;
+      const needFrom = r.from && !g.countItem(r.from), ok = !lock && !needFrom && g.canAfford({ gold: r.gold, mats: r.mats });
+      const row = h('div', 'row slim' + (lock ? ' locked' : ''), `<div class="ic q${it.quality}">${ico(r.tool)}</div><div class="tx"><b style="color:${RARITY[it.quality].color}">${esc(it.name)}</b>${lock ? `Smithing Lv ${r.lv}` : `Gathers tier ${it.tier + 1} ${GATHER[TOOL_KINDS[kind].node].names[it.tier]}s and below${have ? ' · <span class="good">owned</span>' : ''}`}<div class="needs">${r.from ? `<span class="need ${needFrom ? 'no' : ''}">${ico(r.from, 'ico inl')}${esc(ITEMS[r.from].name)}</span>` : ''}${this.costLine({ gold: r.gold, mats: r.mats })}</div></div>`);
+      const b = h('button', 'btn small green', 'Forge'); b.disabled = !ok; b.onclick = () => g.smithTool(r.id); row.appendChild(b);
+      L.appendChild(row);
+    }
+    body.appendChild(L);
+    body.appendChild(h('div', 'note', 'Trees need an Axe, ore a Pickaxe and herbs a Sickle. A tool gathers nodes up to its own tier, and a better tool works faster and finds more. Each tier is reforged from the one before it.'));
   },
   life_red(body) {
     const g = this.g, S = g.S;
@@ -192,7 +220,8 @@ const P = {
   // ------------------------------------------------------------ wardrobe
   panel_wardrobe(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'wdTab', [['outfit', 'Outfits'], ['head', 'Headwear'], ['back', 'Wings']]);
+    const tab = this.tabs(body, 'wdTab', [['outfit', 'Outfits'], ['head', 'Headwear'], ['back', 'Wings'], ['tailor', 'Tailoring']]);
+    if (tab === 'tailor') { this.tailoring(body); return; }
     const wrap = h('div', 'wd-wrap');
     const pv = h('div', 'wd-prev', `<img src="${g.fullIcon()}" alt=""><small>Costumes are cosmetic only and never change your stats.</small>`);
     wrap.appendChild(pv);
@@ -202,11 +231,35 @@ const P = {
     for (const c of COSTUMES.filter((x) => x.slot === tab)) {
       const own = S.costumes.includes(c.id), on = S.costume[tab] === c.id;
       const el = h('button', 'wd-item' + (on ? ' on' : '') + (own ? '' : ' locked'), `<div class="wi">${ico(c.id)}</div><b>${esc(c.name)}</b><small>${own ? (on ? 'Wearing' : 'Owned') : c.src ? esc(c.src) : `Coco · ${priceTxt(c.price)}`}</small>`);
-      el.onclick = () => { if (own) g.wearCostume(c.id); else this.toast(c.src ? c.src : 'Buy it at Coco\'s Boutique', 'warn'); };
+      el.onclick = () => { if (own) g.wearCostume(c.id); else { this.sel.wdTab = 'tailor'; this.sel.tailor = c.id; this.renderPanel(); } };
       grid.appendChild(el);
     }
     wrap.appendChild(grid); body.appendChild(wrap);
-    body.appendChild(h('div', 'note', `${S.costumes.length}/${COSTUMES.length} costumes owned. Wardrobe Boxes unlock a random costume.`));
+    body.appendChild(h('div', 'note', `${S.costumes.length}/${COSTUMES.length} costumes owned. Sew them yourself in Tailoring, buy them at Coco's Boutique, or try a Wardrobe Box.`));
+  },
+  // sew costumes from ingredients; mix the dyes they need
+  tailoring(body) {
+    const g = this.g, S = g.S;
+    body.appendChild(h('div', 'lbl', 'Dyes'));
+    const D = h('div', 'list');
+    for (const r of DYES) {
+      const m = MATERIALS[r.id];
+      const row = h('div', 'row slim', `<div class="ic q${m.quality}">${ico(r.id)}</div><div class="tx"><b style="color:${RARITY[m.quality].color}">${esc(m.name)}</b>You have ${fmt(g.matCount(r.id))}<div class="needs">${this.costLine({ gold: r.gold, mats: r.mats })}</div></div>`);
+      for (const n of [1, 5]) { const b = h('button', 'btn small' + (n === 1 ? ' green' : ''), n === 1 ? 'Mix' : 'x5'); b.disabled = !g.canAfford({ gold: r.gold * n, mats: Object.fromEntries(Object.entries(r.mats).map(([k, v]) => [k, v * n])) }); b.onclick = () => g.craftDye(r.id, n); row.appendChild(b); }
+      D.appendChild(row);
+    }
+    body.appendChild(D);
+    body.appendChild(h('div', 'lbl', 'Costume patterns'));
+    const L = h('div', 'list');
+    const list = [...COSTUMES].sort((a, b) => (S.costumes.includes(a.id) - S.costumes.includes(b.id)) || (a.id === this.sel.tailor ? -1 : b.id === this.sel.tailor ? 1 : 0));
+    for (const c of list) {
+      const own = S.costumes.includes(c.id), r = costumeRecipe(c), ok = !own && g.canAfford({ gold: r.gold, mats: r.mats });
+      const row = h('div', 'row slim' + (own ? ' locked' : '') + (c.id === this.sel.tailor ? ' picked' : ''), `<div class="ic q4">${ico(c.id)}</div><div class="tx"><b>${esc(c.name)}</b>${{ outfit: 'Outfit', head: 'Headwear', back: 'Wings' }[c.slot]}${own ? ' · <span class="good">owned</span>' : ''}<div class="needs">${this.costLine({ gold: r.gold, mats: r.mats })}</div></div>`);
+      const b = h('button', 'btn small green', own ? 'Owned' : 'Sew'); b.disabled = !ok; b.onclick = () => g.tailorCostume(c.id); row.appendChild(b);
+      L.appendChild(row);
+    }
+    body.appendChild(L);
+    body.appendChild(h('div', 'note', 'Linen, silk thread, feathers and starlit velvet drop from monsters (stronger monsters drop finer cloth; Coco also sells linen and silk). Dyes are mixed here from herbs, crops and ore.'));
   },
 
   // ------------------------------------------------------------ NPC shop

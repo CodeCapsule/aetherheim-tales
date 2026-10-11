@@ -103,16 +103,18 @@ const L = {
     const e = { kind: 'node', nkind: kind, tier, model, pos: model.position, height: model.userData.height || 1.8, radius: 1.3, map: W, dead: false, ready: true, uses: 0, respawnAt: 0, name: G.names[tier], mat: G.mats[tier], prof: G.prof };
     this.nameplate(e, `<div class="t">&lt;${PROF[G.prof].name} ${TIER_REQ[tier]}&gt;</div><div class="n">${esc(G.names[tier])}</div>`, 'npc node');
     e.npY = e.height + 0.5;
-    W.blockCircle && W.blockCircle(x, z, 0.7);
+    if (kind !== 'herb') W.blockCircle && W.blockCircle(x, z, 0.7); // herbs are small enough to walk up to
     this.nodes.push(e); this.lifeEnts.push(e);
   },
   updateLife(dt) {
     const p = this.player;
+    this.gatherTick(dt);
     const P2 = this.pendingLife;
     if (P2 && !p.dead && !this.casting && flat(p.pos, P2.pos) < (P2.kind === 'plot' ? 3.6 : 3)) { this.pendingLife = null; p.path = []; this.lifeAct(P2); }
     this.lifeT -= dt;
     if (this.lifeT > 0) return;
     this.lifeT = 1;
+    if (!this.S.toolsGiven) this.grantStarterTools();
     for (const n of this.nodes) if (!n.ready && this.time >= n.respawnAt) { n.ready = true; n.uses = 0; n.model.userData.parts?.yield && (n.model.userData.parts.yield.visible = true); n.np.classList.remove('dim'); }
     this.refreshPlots();
     this.expireElixirs();
@@ -155,16 +157,20 @@ const L = {
     if (this.casting) return;
     if (!e.ready) { this.ui.toast(`${e.name} is depleted · regrows in ${fmtLeft((e.respawnAt - this.time) * 1000)}`, 'warn'); return; }
     if (lv < req) { this.ui.toast(`Requires ${PROF[G.prof].name} Lv ${req} (you are Lv ${lv})`, 'warn'); this.sfx.play('error'); return; }
+    const why = this.toolProblem(e);
+    if (why) { this.ui.toast(why, 'warn'); this.sfx.play('error'); return; }
     if (this.mounted) this.dismount(true);
-    const p = this.player;
+    const p = this.player, tool = this.bestTool(e.nkind);
     p.yawT = Math.atan2(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
-    p.state = 'attack'; p.actT = p.actDur = 0.6;
-    this.castBar(`${G.verb} ${e.name}`, Math.max(1.1, 2.4 - lv * 0.012), () => this.finishGather(e));
+    // better tools work faster on lower-tier nodes
+    const dur = Math.max(0.9, (2.4 - lv * 0.012) * (1 - 0.12 * (tool.tier - e.tier)));
+    this.startGatherAnim(e, tool);
+    this.castBar(`${G.verb} ${e.name}`, dur, () => this.finishGather(e, tool), () => this.stopGatherAnim());
   },
-  finishGather(e) {
+  finishGather(e, tool = null) {
     if (!e.ready) return;
     const S = this.S, G = GATHER[e.nkind], lv = this.profLv(G.prof);
-    const qty = 1 + (Math.random() < 0.3 + lv / 250 ? 1 : 0) + (lv >= TIER_REQ[e.tier] + 25 && Math.random() < 0.35 ? 1 : 0);
+    const qty = 1 + (Math.random() < 0.3 + lv / 250 ? 1 : 0) + (lv >= TIER_REQ[e.tier] + 25 && Math.random() < 0.35 ? 1 : 0) + (tool && Math.random() < 0.12 * (tool.tier - e.tier) ? 1 : 0);
     this.addMat(e.mat, qty, true);
     this.lootMsg(`${MATERIALS[e.mat].name} x${qty}`, RARITY[MATERIALS[e.mat].quality].color);
     const bonus = Math.random();

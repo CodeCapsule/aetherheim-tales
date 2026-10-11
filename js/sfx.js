@@ -43,6 +43,9 @@ export class Sfx {
       case 'heal': [660, 880, 1100].forEach((f, i) => this.tone(f, 0.3, { type: 'sine', vol: 0.1, delay: i * 0.06 })); break;
       case 'mount': this.tone(400, 0.3, { type: 'triangle', vol: 0.12, slide: 400 }); break;
       case 'error': this.tone(200, 0.15, { type: 'square', vol: 0.06 }); break;
+      case 'chop': this.noise(0.09, { vol: 0.22, hp: 500 }); this.tone(150, 0.1, { type: 'triangle', vol: 0.12, slide: -60 }); break;
+      case 'mine': this.tone(1400, 0.12, { type: 'square', vol: 0.05, slide: -500 }); this.noise(0.07, { vol: 0.16, hp: 2500 }); this.tone(2100, 0.08, { type: 'triangle', vol: 0.05, delay: 0.03 }); break;
+      case 'rustle': this.noise(0.18, { vol: 0.1, hp: 3500 }); break;
       case 'pickup': this.tone(990, 0.06, { type: 'triangle', vol: 0.1 }); this.tone(1320, 0.08, { type: 'triangle', vol: 0.08, delay: 0.05 }); break;
       case 'rare': [880, 1175, 1568].forEach((f, i) => this.tone(f, 0.22, { type: 'triangle', vol: 0.1, delay: i * 0.06 })); break;
       case 'legend': [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => this.tone(f, 0.5, { type: 'triangle', vol: 0.16, delay: i * 0.09 })); this.tone(262, 1.2, { type: 'sine', vol: 0.12, attack: 0.05 }); break;

@@ -287,6 +287,32 @@ export function animateHumanoid(model, state, t, a = 0, speed = 1) {
     P.body.rotation.y = -0.35 * k;
     P.body.rotation.x = 0.15 * k;
     P.legL.rotation.x = -0.3 * k; P.legR.rotation.x = 0.3 * k;
+  } else if (state === 'chop' || state === 'mine' || state === 'harvest') {
+    // gathering swings: wind up, strike at the node in front, recover (a = 0-1 through one swing)
+    const ss = (e0, e1, x) => { const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return u * u * (3 - 2 * u); };
+    if (state === 'mine') { // two-handed overhead pickaxe blow
+      const up = ss(0, 0.45, a) * (1 - ss(0.45, 0.58, a)), down = ss(0.45, 0.58, a) * (1 - ss(0.72, 1, a));
+      const ax = -0.7 - 2.1 * up + 0.35 * down;
+      P.armR.rotation.set(ax, 0, 0.32); P.armL.rotation.set(ax, 0, -0.32);
+      P.body.rotation.x = -0.18 * up + 0.42 * down; P.body.position.y = -0.06 * down;
+      P.legL.rotation.x = -0.35 * down; P.legR.rotation.x = 0.25 * down;
+      P.head.rotation.x = 0.2 * down;
+    } else if (state === 'chop') { // sideways axe swing at the trunk
+      const back = ss(0, 0.42, a) * (1 - ss(0.42, 0.56, a)), hit = ss(0.42, 0.56, a) * (1 - ss(0.7, 1, a));
+      P.body.rotation.y = 0.75 * back - 0.45 * hit;
+      P.armR.rotation.set(-1.25 - 0.35 * back + 0.1 * hit, 0, -0.55 * back + 0.7 * hit);
+      P.armL.rotation.set(-0.9 - 0.2 * back, 0, -0.2 + 0.55 * hit);
+      P.body.rotation.x = 0.1 + 0.12 * hit;
+      P.legL.rotation.x = -0.25 * hit; P.legR.rotation.x = 0.2 * hit;
+    } else { // crouch and sweep the sickle low through the plants
+      const crouch = 0.6 + 0.4 * Math.sin(Math.min(1, a) * Math.PI);
+      const sweep = -0.9 + 1.7 * ss(0.3, 0.6, a) - 0.8 * ss(0.75, 1, a);
+      P.body.position.y = -0.22 * crouch; P.body.rotation.x = 0.4 * crouch;
+      P.legL.rotation.set(-0.8 * crouch, 0, 0.1); P.legR.rotation.set(0.3 * crouch, 0, -0.1);
+      P.armR.rotation.set(-0.85, 0, sweep);
+      P.armL.rotation.set(-0.5, 0, -0.3);
+      P.head.rotation.x = 0.25 * crouch;
+    }
   } else if (state === 'cast') {
     const k = Math.sin(Math.min(1, a) * Math.PI);
     P.armR.rotation.x = -1.6 * k - 0.2; P.armL.rotation.x = -1.2 * k;

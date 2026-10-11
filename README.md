@@ -27,6 +27,15 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   about five new monster types, elites, a field boss and an outpost camp with a merchant and a teleport point. The level
   cap is 200, and monster HP grows faster than their damage, so high-level monsters take far longer to kill.
 - **4 classes, each tied to one of the four elements**: Knight (Earth), Assassin (Wind), Mage (Fire) and Priest (Water). Each class has 6 skills and a dual talent.
+- **Skill trees and passive skills**: every class has its own tree with three branches (Knight: Bulwark, Warlord,
+  Crusader; Assassin: Shadow, Venom, Tempest; Mage: Pyromancy, Arcane, Cataclysm; Priest: Holy, Tide, Blessing) of 24
+  nodes in five tiers. You earn a skill point every level up to Lv 50 and one every 4 levels after that (86 at Lv 200).
+  Nodes raise stats (Max HP, Attack, Defense, Crit, cooldowns, healing, lifesteal, regeneration), empower one active
+  skill, or are **passive skills** that work on their own in combat: last-stand damage reduction, thorns, cleave,
+  heals on kill, stuns, openers and executes, poison and burn procs, dodge, double strikes, chain lightning, mana on
+  kill. Each branch ends in a capstone (for example Unbreakable, Death Mark, Meteor Shower, Avatar of Water). Deeper
+  tiers open after 5/10/20/30 points in the branch. The Skills window has Skills and Skill Tree tabs and lists your
+  active and passive skills; a reset refunds every point for 200 Gold per level.
 - **Main story**: six chapters and 58 quests from Lv 1 to Lv 200. Chapter I (The Restless Spirits) ends with the
   Treant King Yggr; Chapter II (The Withering Bloom, Sunpetal Plains and Whispering Marsh), III (Embers of the Old War,
   Ember Canyon and Frostpeak), IV (The Crystal Choir), V (Shadows Beneath the Roots) and VI (Starfall, ending in the
@@ -44,12 +53,25 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   stars, Kohaku throws fox fire, Frostbite breathes frost) and finders (Mochi more gear drops, Kitsu more EXP, Pumpkin
   Pip more Gold). The Pets panel shows each ability and what it becomes at Lv 60.
 - **Costumes**: 23 cosmetic outfits, hats and wings in Coco the Costume Tailor's Wardrobe. They change only your look,
-  never your stats. Buy them at Coco's Boutique or find them in Wardrobe Boxes.
+  never your stats. Buy them at Coco's Boutique, find them in Wardrobe Boxes, or sew them yourself.
+- **Tailoring (costumes from ingredients)**: Coco's Wardrobe has a Tailoring tab where every costume has a pattern:
+  Linen Bolts, Silk Thread, Fluffy Feathers (for wings), Starlit Velvet for the finest pieces, Star Essence, and dyes
+  matching the costume's colors. Cloth and feathers drop from monsters (finer cloth at higher levels, velvet from Lv 80,
+  elites, bosses and the Danger Zone) and Coco sells linen and silk. The five dyes (Rose, Sky, Gold, Leaf, Shadow) are
+  mixed at Coco from herbs, crops, ore and logs.
 - **Dungeons**: eleven instanced dungeons with their own entrances in the world, from Mossy Hollow (Lv 6) to the
   Throne of Yggdrasil, where Fenrir, the World Devourer waits as the Lv 200 boss. Clear each chamber to break the rune
   seal ahead, then fight a boss with telegraphed attacks (slams, novas, root bursts, dragon breath, summons). Dungeons
   are hard: monsters inside are tougher than in the field, a run fails after 15 minutes or a fourth death, and bosses go
   berserk after 4 minutes. Runs are rated S/A/B; the rating sets the size of the treasure chest.
+- **Danger Zone (Bloodmoon Wastes)**: a blood-red wasteland south-west of town, marked on the minimap and World Map.
+  Inside, players can attack each other (party members excepted; hits between players deal 40% of their monster
+  damage). Whoever falls drops 10% of their gold and up to 3 unlocked bag items in a loot sack on the spot; the first
+  player to reach it takes everything, and the owner can run back within 5 minutes to reclaim it. Monsters inside are
+  highly lethal (always a few levels above you, twice the attack, more HP) and drop **Ancient set** pieces, a new
+  orange-red tier above the dungeon sets: Bloodmoon (kills heal and boost Attack), Dreadforge (less damage taken,
+  stuns attackers), Voidwalker (void rifts every 8s) and Kingslayer (+30% damage to players, elites and bosses). The
+  Bloodmoon Tyrant guards the center. The sky turns red while you are inside and enemy players get red nameplates.
 - **Dungeon sets**: each dungeon's chest can hold a piece of its own four-piece set (always on the first clear, then
   25/40/60% by rating, favouring pieces you lack). Two pieces add stats; all four unlock a set power found nowhere else:
   Moss Mend, Grave Pact, Entangle, Swarm, Riptide, Molten Core, Shatter, Refraction, Soul Harvest, Constellation and
@@ -126,16 +148,23 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   November) brings Jackpuffs, the Pumpkin King, Moon Candy, pumpkin decorations in town and a festival shop with the
   Pumpkin Pip pet, orange fairy wings and a title. Winter Starlight (December) and Sakura Bloom (spring) work the same way.
 - **Professions**: Mining, Herbalism and Logging at ore veins, herbs and trees in every zone (five tiers, each
-  needing a higher skill level); Farming on eight plots at the homestead west of town, where seven crops grow in real
+  needing a higher skill level and the right tool); Farming on eight plots at the homestead west of town, where seven crops grow in real
   time (water and fertilize to speed them up); Alchemy turns herbs and produce into stronger potions and timed elixirs
   (Might, Iron Skin, Swiftness, Wisdom, Fortune, Phoenix Draught); Smithing turns ore and logs into gear and Crimson
   Cores. Each profession levels to 100.
+- **Gathering tools and animations**: chopping a tree needs an **Axe**, mining ore a **Pickaxe** and cutting herbs a
+  **Sickle**. Tools come in five metals (Copper, Iron, Silver, Mithril, Starmetal); each one works on nodes up to its own
+  tier and gathers faster and finds more on lower tiers. Every new hero starts with Copper tools, Hilda and the outposts
+  sell them, and Gorm forges each tier from the one before (Forge > Smithing > Gathering Tools). The best tool in your
+  bag is used automatically: your hero steps up, holds it and swings, the tree shakes and drops chips and leaves, the
+  rock throws sparks and stone chips, and the herbs rustle, with matching sounds.
 - **Shops, auction and trading**: new NPCs in town run shops: Hilda (supplies, bag scrolls), Tilly (seeds), Vera
   (alchemy), Opal (gems), Coco (costumes), Elias (relics and Crimson Cores), plus pet and stable shops and a trader at
   every outpost. Grimsby runs the **Auction House**: real-time lots with bidding, buyouts and rival bids, and your
   own auctions.
-- **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. **Sell All** sells everything up to
-  a chosen rarity in one go; locked gear is always kept.
+- **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. Your equipped gear is shown inside
+  the Bag window, next to the slots (tap a piece to see it or take it off), with the selected item's details below it.
+  **Sell All** sells everything up to a chosen rarity in one go; locked gear is always kept.
 - **MMO systems**: Battle Rating, bag, skill upgrades, auto battle, auto potions, titles, daily sign-in, online gifts,
   a gold/diamond mall, world and guild chat, minimap and world map.
 - **Quick access menus**: activities sit in a slim panel at the top right (Online, Missions, Dungeon, the World Boss
@@ -182,6 +211,10 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
 | `js/data-sets.js` | Dungeon sets: pieces, two-piece stats and four-piece powers |
 | `js/data-pets.js` | Pet abilities and how they grow with pet level |
+| `js/data-skills.js`, `js/skilltree.js` | Class skill trees: nodes, skill points, and the passive effects in combat |
+| `js/data-crafting.js`, `js/gather.js` | Gathering tools (items, forging recipes, the tool in hand and the swing animations) |
+| `js/tailor.js` | Tailoring: costume patterns, dyes and cloth drops |
+| `js/data-dz.js`, `js/dz.js` | Danger Zone: monsters, PvP between players, loot sacks and Ancient set powers |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
 | `js/toon.js` | Cel-shaded materials, ink outlines and canvas textures |
 | `js/models.js` | Procedural chibi characters, monsters, pets, mounts and sprites |

@@ -11,8 +11,10 @@ import { installPartyUI, partyMembers } from './party.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
 import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
+import { TREE_NODES, TIER_PTS, skillPoints, resetCost, nodeText } from './data-skills.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
+import { DZ } from './data-dz.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -259,7 +261,9 @@ export class UI {
     for (const n of DOCK_MENU) D[n].classList.toggle('hot', !!this.menuBtns[n]?.querySelector('.dotn'));
   }
   markMenu(n) { const b = this.menuBtns[n]; if (b && this.panelName !== n && !b.querySelector('.dotn')) b.appendChild(h('span', 'dotn', ico('new'))); }
-  setZone(z) { $('zone-name').innerHTML = `${esc(z.name)}${z.lv ? `<small>${esc(z.lv)}</small>` : ''}`; }
+  setZone(z) { $('zone-name').innerHTML = `${esc(z.name)}${z.lv ? `<small>${esc(z.lv)}</small>` : ''}`; $('zone-name').classList.toggle('dz', !!z.dz); }
+  // inside the Danger Zone: red vignette and a PvP badge
+  setDZ(on) { $('hud').classList.toggle('in-dz', on); }
   setAutoPath(on) { $('hud-autopath').hidden = !on; }
   setAutoBattle(on) { $('hud-autobattle').hidden = !on; $('btn-auto').classList.toggle('on', on); }
   focusChat() { const c = $('hud-chat'); c.classList.add('open'); $('chat-in').focus(); }
@@ -331,6 +335,9 @@ export class UI {
         if (n.markChar && n.markChar !== '…') { c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx + 3, sy - 6); c.fillText(n.markChar, sx + 3, sy - 6); }
       }
       dot(WORLD_BOSS.site.x, WORLD_BOSS.site.z, g.wb && !g.wb.e.dead ? '#ff3aa8' : '#7ad8ff', 3.5);
+      // the Danger Zone border and any loot sacks in it
+      { const sx = (DZ.x - p.x + R) * k, sy = (DZ.z - p.z + R) * k; c.strokeStyle = 'rgba(255,60,40,.85)'; c.lineWidth = 2; c.setLineDash([5, 3]); c.beginPath(); c.arc(sx, sy, DZ.r * k, 0, Math.PI * 2); c.stroke(); c.setLineDash([]); }
+      for (const b of g.dzBags || []) dot(b.pos.x, b.pos.z, '#ffb03a', 3.6);
     } else if (g.dg) {
       if (g.dg.chestEnt && !g.dg.opened) dot(g.dg.chestEnt.pos.x, g.dg.chestEnt.pos.z, '#ffd84a', 4);
       if (g.dg.exitEnt) dot(g.dg.exitEnt.pos.x, g.dg.exitEnt.pos.z, '#7ad8ff', 4);
@@ -556,7 +563,7 @@ export class UI {
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
       missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss' };
-    const widths = { char: 600, bag: 460, skills: 520, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640 };
+    const widths = { char: 600, bag: 760, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(100vw - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -647,37 +654,57 @@ export class UI {
 
   panel_bag(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'bagTab', [['all', 'All'], ['eq', 'Equipment'], ['it', 'Items'], ['mats', 'Materials']]);
-    if (tab === 'mats') { this.matsGrid(body); return; }
-    const grid = h('div', 'grid-bag');
-    const idx = S.bag.map((b, i) => [b, i]).filter(([b]) => tab === 'all' || (tab === 'eq' ? !!b.eq : !b.eq));
-    for (let k = 0; k < g.bagMax(); k++) {
-      const e = idx[k];
-      if (!e) { grid.appendChild(h('div', 'cell empty')); continue; }
-      const [b, i] = e;
-      const q = b.eq ? b.eq.quality : ITEMS[b.id].quality;
-      const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}` : `${ico(b.id)}<span class="cnt">${b.qty}</span>`);
-      if (this.sel.bagIdx === i) c.style.outline = '2px solid var(--gold)';
-      c.onclick = () => { this.sel.bagIdx = i; this.renderPanel(); };
-      c.ondblclick = () => g.useBagItem(i);
-      this.tip(c, () => b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[q].color}">${esc(ITEMS[b.id].name)}</b>${esc(ITEMS[b.id].desc)}`);
-      grid.appendChild(c);
+    // the bag on the left; what you wear and the selected item (with its buttons) beside it, always in view
+    const wrap = h('div', 'bag-wrap'), main = h('div', 'bag-main'), side = h('div', 'bag-side');
+    const tab = this.tabs(main, 'bagTab', [['all', 'All'], ['eq', 'Equipment'], ['it', 'Items'], ['mats', 'Materials']]);
+    if (tab === 'mats') this.matsGrid(main);
+    else {
+      const grid = h('div', 'grid-bag');
+      const idx = S.bag.map((b, i) => [b, i]).filter(([b]) => tab === 'all' || (tab === 'eq' ? !!b.eq : !b.eq));
+      for (let k = 0; k < g.bagMax(); k++) {
+        const e = idx[k];
+        if (!e) { grid.appendChild(h('div', 'cell empty')); continue; }
+        const [b, i] = e;
+        const q = b.eq ? b.eq.quality : ITEMS[b.id].quality;
+        const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}` : `${ico(b.id)}<span class="cnt">${b.qty}</span>`);
+        if (this.sel.bagIdx === i) c.classList.add('picked');
+        c.onclick = () => { this.sel.bagIdx = i; this.sel.bagEq = null; this.renderPanel(); };
+        c.ondblclick = () => g.useBagItem(i);
+        this.tip(c, () => b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[q].color}">${esc(ITEMS[b.id].name)}</b>${esc(ITEMS[b.id].desc)}`);
+        grid.appendChild(c);
+      }
+      main.appendChild(grid);
+      main.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">Slots ${S.bag.length}/${g.bagMax()} · Double-click to use or equip</div>`));
+      this.bagTools(main);
     }
-    body.appendChild(grid);
-    body.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">Slots ${S.bag.length}/${g.bagMax()} · Double-click to use or equip</div>`));
-    this.bagTools(body);
-    const b = S.bag[this.sel.bagIdx];
+    side.appendChild(h('div', 'lbl', 'Equipped'));
+    const eqg = h('div', 'bag-eq');
+    for (const s of Object.keys(SLOT_INFO)) {
+      const eq = S.equip[s];
+      const c = h('button', 'cell ' + (eq ? 'q' + eq.quality : 'empty'), eq ? `${ico(eq.icon)}${eq.enh ? `<span class="enh">+${eq.enh}</span>` : ''}` : `<span class="ghost">${ico(slotIcon(s, S.cls))}</span>`);
+      c.setAttribute('aria-label', SLOT_INFO[s].label);
+      if (this.sel.bagEq === s) c.classList.add('picked');
+      c.onclick = () => { this.sel.bagEq = s; this.sel.bagIdx = null; this.renderPanel(); };
+      this.tip(c, () => eq ? this.equipTip(eq) : `<b>${SLOT_INFO[s].label}</b>Empty slot`);
+      eqg.appendChild(c);
+    }
+    side.appendChild(eqg);
+    const det = h('div', 'bag-det'), acts = h('div', 'acts');
+    const b = tab === 'mats' ? null : S.bag[this.sel.bagIdx], worn = !b && this.sel.bagEq && S.equip[this.sel.bagEq];
     if (b) {
-      const det = h('div', 'detail');
-      det.innerHTML = `<div class="dtx">${b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[ITEMS[b.id].quality].color}">${esc(ITEMS[b.id].name)}</b><br>${esc(ITEMS[b.id].desc)}`}</div>`;
-      const acts = h('div', 'acts');
       const it = b.eq ? null : ITEMS[b.id];
-      if (b.eq || (it && it.type !== 'quest')) { const bu = h('button', 'btn green', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
-      if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
-      if (b.eq) { const bl = h('button', 'btn gray', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
-      det.appendChild(acts);
-      body.appendChild(det);
-    }
+      det.innerHTML = b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[it.quality].color}">${esc(it.name)}</b><div>${esc(it.desc)}</div>`;
+      if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
+      if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
+      if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
+    } else if (worn) {
+      det.innerHTML = this.equipTip(worn) + '<div style="color:var(--gold-l)">Equipped</div>';
+      const bu = h('button', 'btn gray small', 'Unequip'); bu.onclick = () => { const s = this.sel.bagEq; this.sel.bagEq = null; g.unequip(s); }; acts.appendChild(bu);
+    } else det.innerHTML = '<div class="muted">Select an item to see it here and equip, use or sell it.</div>';
+    if (acts.childElementCount) det.appendChild(acts);
+    side.appendChild(det);
+    wrap.appendChild(main); wrap.appendChild(side);
+    body.appendChild(wrap);
   }
   compare(eq) {
     const cur = this.g.S.equip[eq.slot];
@@ -688,6 +715,9 @@ export class UI {
 
   panel_skills(body) {
     const g = this.g, S = g.S, C = CLASSES[S.cls];
+    const left = g.treePointsLeft();
+    const tab = this.tabs(body, 'skTab', [['skills', 'Skills'], ['tree', `Skill Tree${left > 0 ? ` · ${left} point${left > 1 ? 's' : ''}` : ''}`]]);
+    if (tab === 'tree') { this.skillTree(body); return; }
     body.appendChild(h('div', 'lbl', 'Dual Talent'));
     const tl = h('div', 'talents');
     C.talents.forEach((t, i) => {
@@ -697,11 +727,13 @@ export class UI {
       tl.appendChild(d);
     });
     body.appendChild(tl);
+    body.appendChild(h('div', 'lbl', 'Active skills'));
     const list = h('div', 'list');
     for (const sk of g.skillList()) {
       const lv = g.skillLevel(sk.id), locked = S.level < sk.lvl;
+      const td = g.tAgg?.skill[sk.id] || 0, tc = g.tAgg?.cd[sk.id] || 0;
       const r = h('div', 'row');
-      r.innerHTML = `<div class="ic">${ico(sk.id)}</div><div class="tx"><b>${esc(sk.name)} <span class="lv">Lv ${lv}</span>${sk.basic ? ' <span style="color:var(--muted);font-size:11px">(auto attack)</span>' : ''}</b>${esc(sk.desc)}<br>MP ${g.mpCost(sk)} · CD ${sk.cd}s${locked ? ` · <span style="color:#ff8a7a">Unlocks at Lv ${sk.lvl}</span>` : ''}</div>`;
+      r.innerHTML = `<div class="ic">${ico(sk.id)}</div><div class="tx"><b>${esc(sk.name)} <span class="lv">Lv ${lv}</span>${sk.basic ? ' <span style="color:var(--muted);font-size:11px">(auto attack)</span>' : ''}</b>${esc(sk.desc)}<br>MP ${g.mpCost(sk)} · CD ${sk.cd}s${locked ? ` · <span style="color:#ff8a7a">Unlocks at Lv ${sk.lvl}</span>` : ''}${td ? ` · <span class="good">+${td}% damage (tree)</span>` : ''}${tc ? ` · <span class="good">${tc}% faster cooldown (tree)</span>` : ''}</div>`;
       if (!locked && !sk.basic) {
         const b = h('button', 'btn small', `Upgrade<br><span class="price" style="justify-content:center"><span class="coin"></span>${fmt(120 * lv * lv)}</span>`);
         b.onclick = () => g.upgradeSkill(sk.id); r.appendChild(b);
@@ -709,6 +741,55 @@ export class UI {
       list.appendChild(r);
     }
     body.appendChild(list);
+    // passive skills: every passive and capstone learned in the tree
+    body.appendChild(h('div', 'lbl', 'Passive skills'));
+    const pas = Object.entries(S.tree).map(([id, r]) => [TREE_NODES[id], r]).filter(([n, r]) => n && n.cls === S.cls && r && !['stat', 'skill', 'skillCd'].includes(n.k));
+    if (!pas.length) {
+      const note = h('div', 'note', 'Passive skills work on their own, all the time. Learn them in the Skill Tree with the points you earn from leveling up.');
+      const go = h('button', 'btn small', 'Open Skill Tree'); go.onclick = () => { this.sel.skTab = 'tree'; this.renderPanel(); };
+      body.appendChild(note); body.appendChild(go);
+      return;
+    }
+    const pl = h('div', 'list');
+    for (const [n, r] of pas) pl.appendChild(h('div', 'row slim', `<div class="ic">${ico(n.icon)}</div><div class="tx"><b>${esc(n.n)} <span class="lv">${n.t === 5 ? 'Capstone' : `Rank ${r}/${n.max}`}</span></b>${esc(nodeText(n, r).replace(/^Capstone: /, ''))}</div>`));
+    body.appendChild(pl);
+  }
+  // three branches side by side; tiers open as you spend points in a branch
+  skillTree(body) {
+    const g = this.g, S = g.S, tree = g.tree(), earned = skillPoints(S.level), spent = g.treeSpent(), left = earned - spent;
+    const head = h('div', 'st-head', `<span class="st-pts"><b>${left}</b>skill point${left === 1 ? '' : 's'} to spend</span><span class="muted">${spent} of ${earned} spent · 1 point per level up to Lv 50, then 1 every 4 levels</span>`);
+    const rb = h('button', 'btn small gray', `Reset · <span class="coin" style="display:inline-block;vertical-align:-3px"></span> ${fmt(resetCost(S.level))}`);
+    rb.disabled = !spent;
+    rb.onclick = () => this.modal('Reset the skill tree?', `All ${spent} points come back to spend again. It costs ${fmt(resetCost(S.level))} Gold.`, [{ label: 'Reset', fn: () => g.resetTree() }, { label: 'Cancel', cls: 'gray' }]);
+    head.appendChild(rb); body.appendChild(head);
+    const cols = h('div', 'st-cols');
+    tree.forEach((br, b) => {
+      const col = h('div', 'st-col'), bs = g.treeSpent(b); col.style.setProperty('--bc', br.color);
+      col.appendChild(h('div', 'st-bname', `${esc(br.name)}<small>${bs} point${bs === 1 ? '' : 's'}</small>`));
+      for (let t = 1; t <= 5; t++) {
+        const row = h('div', 'st-tier' + (bs >= TIER_PTS[t] ? '' : ' locked'));
+        if (bs < TIER_PTS[t]) row.dataset.need = `${TIER_PTS[t]} pts`;
+        for (const n of br.nodes.filter((x) => x.t === t)) {
+          const r = g.treeRank(n.id);
+          const btn = h('button', 'st-node' + (r ? ' on' : '') + (r >= n.max ? ' max' : '') + (n.t === 5 ? ' cap' : '') + (this.sel.stNode === n.id ? ' sel' : '') + (!g.treeBlock(n.id) ? ' can' : ''), `${ico(n.icon)}<span class="st-r">${r}/${n.max}</span>`);
+          btn.setAttribute('aria-label', `${n.n} ${r} of ${n.max}`);
+          btn.onclick = () => { this.sel.stNode = n.id; this.renderPanel(); };
+          btn.ondblclick = () => g.learnNode(n.id);
+          this.tip(btn, () => `<b>${esc(n.n)}</b>${esc(nodeText(n, r || 1))}`);
+          row.appendChild(btn);
+        }
+        col.appendChild(row);
+      }
+      cols.appendChild(col);
+    });
+    body.appendChild(cols);
+    const n = TREE_NODES[this.sel.stNode]?.cls === S.cls ? TREE_NODES[this.sel.stNode] : tree[0].nodes[0];
+    const r = g.treeRank(n.id), why = g.treeBlock(n.id);
+    const det = h('div', 'st-det');
+    det.innerHTML = `<div class="st-di">${ico(n.icon)}</div><div class="st-dt"><b>${esc(n.n)}</b> <span class="muted">${esc(tree[n.branch].name)} · ${n.t === 5 ? 'Capstone' : `Tier ${n.t}`} · Rank ${r}/${n.max}</span>
+      <div>${esc(nodeText(n, r || 1))}</div>${r && r < n.max ? `<div class="good">Next rank: ${esc(nodeText(n, r + 1))}</div>` : ''}${why && r < n.max ? `<div style="color:#ffb08a">${esc(why)}</div>` : ''}</div>`;
+    const lb = h('button', 'btn green small', r >= n.max ? 'Mastered' : r ? 'Learn +1' : 'Learn'); lb.disabled = !!why; lb.onclick = () => g.learnNode(n.id);
+    det.appendChild(lb); body.appendChild(det);
   }
 
   panel_pets(body) {
@@ -871,7 +952,9 @@ export class UI {
     c.drawImage(mm.canvas, (V.x0 - mm.minX) * ppu, (V.z0 - mm.minZ) * ppu, V.size * ppu, V.size * ppu, 0, 0, cv.width, cv.height);
     const P = (x, z) => [(x - V.x0) * k, (z - V.z0) * k];
     if (!g.map.isDungeon && !this.wmTown) {
-      for (const sp of SPAWNS) { const [x, y] = P(sp.x, sp.z); c.fillStyle = MONSTERS[sp.type].boss ? 'rgba(255,60,160,.35)' : 'rgba(255,90,60,.22)'; c.beginPath(); c.arc(x, y, sp.r * k + (MONSTERS[sp.type].boss ? 10 : 0), 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#000'; c.lineWidth = 3; const lbl = `${MONSTERS[sp.type].name} Lv${MONSTERS[sp.type].lvl[0]}`; c.strokeText(lbl, x - 30, y + 4); c.fillText(lbl, x - 30, y + 4); }
+      { const [x, y] = P(DZ.x, DZ.z); c.fillStyle = 'rgba(200,20,20,.28)'; c.strokeStyle = 'rgba(255,60,40,.9)'; c.lineWidth = 2; c.setLineDash([6, 4]); c.beginPath(); c.arc(x, y, DZ.r * k, 0, Math.PI * 2); c.fill(); c.stroke(); c.setLineDash([]);
+        c.font = 'bold 12px Nunito, sans-serif'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = '#2a0000'; c.fillStyle = '#ff8a7a'; c.strokeText('DANGER ZONE · PvP', x, y - 4); c.fillText('DANGER ZONE · PvP', x, y - 4); c.fillStyle = '#ffd0c8'; c.font = 'bold 10px Nunito, sans-serif'; c.strokeText(DZ.name, x, y + 9); c.fillText(DZ.name, x, y + 9); c.textAlign = 'left'; }
+      for (const sp of SPAWNS) { if (MONSTERS[sp.type].dz) continue; const [x, y] = P(sp.x, sp.z); c.fillStyle = MONSTERS[sp.type].boss ? 'rgba(255,60,160,.35)' : 'rgba(255,90,60,.22)'; c.beginPath(); c.arc(x, y, sp.r * k + (MONSTERS[sp.type].boss ? 10 : 0), 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#000'; c.lineWidth = 3; const lbl = `${MONSTERS[sp.type].name} Lv${MONSTERS[sp.type].lvl[0]}`; c.strokeText(lbl, x - 30, y + 4); c.fillText(lbl, x - 30, y + 4); }
       for (const n of g.npcs) {
         const [x, y] = P(n.pos.x, n.pos.z), pin = !this.inTown(n.pos) && this.npcPin(n.data.icon);
         if (pin) c.drawImage(pin, x - 9, y - 9, 18, 18);

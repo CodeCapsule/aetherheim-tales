@@ -1,6 +1,6 @@
 // Item rarity tiers, random affixes, named Unique/Legendary items and loot generation. Pure JS (no three.js).
 import { SLOTS, WEAPON_NAMES, SLOT_BASE, SLOT_INFO, DUNGEONS } from './data.js';
-import { SETS, SET_EFFECTS, SET_COLOR } from './data-sets.js';
+import { SETS, SET_EFFECTS, SET_COLOR, ANCIENT_COLOR } from './data-sets.js';
 import { SOCKETS, GEMS, GEM_LV, parseGem, parseSoul, SOULS, SOCKET_MAX } from './systems-data.js';
 
 export const RARITY = [
@@ -189,11 +189,11 @@ export function genSet(setId, { slot, lvl, cls, uid, rng = Math.random } = {}) {
   const set = SETS[setId]; if (!set) return null;
   if (!set.slots.includes(slot)) slot = set.slots[Math.floor(rng() * set.slots.length)];
   lvl = Math.max(1, Math.round(lvl || 1));
-  const dg = DUNGEONS.find((d) => d.id === set.dungeon);
+  const dg = DUNGEONS.find((d) => d.id === set.dungeon), q = set.ancient ? 5 : 4;
   return {
-    uid, slot, name: `${set.name} ${SLOT_BASE[slot]}`, quality: 4, lvl, stats: baseStats(slot, lvl, 4),
-    affixes: rollAffixes(RARITY[4].affixes, lvl, 4, rng), effect: null, named: null, set: setId, enh: 0,
-    icon: iconKey(slot, cls, 4), flavor: `One of four ${set.name} pieces, found in ${dg?.name || 'a dungeon'}.`, gems: new Array(SOCKETS[4]).fill(null),
+    uid, slot, name: `${set.ancient ? 'Ancient ' : ''}${set.name} ${SLOT_BASE[slot]}`, quality: q, lvl, stats: baseStats(slot, lvl, q),
+    affixes: rollAffixes(RARITY[q].affixes, lvl, q, rng), effect: null, named: null, set: setId, enh: 0,
+    icon: iconKey(slot, cls, q), flavor: set.ancient ? `One of four Ancient ${set.name} pieces, torn from the Bloodmoon Wastes.` : `One of four ${set.name} pieces, found in ${dg?.name || 'a dungeon'}.`, gems: new Array(SOCKETS[q]).fill(null),
   };
 }
 // how many pieces of each set are equipped
@@ -277,7 +277,7 @@ const STAT_LABEL = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: 'Critica
 const SET_STAT = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: '% Critical', critDmg: '% Crit Damage', speed: '% Move Speed', lifesteal: '% Lifesteal', cdr: '% Cooldown Reduction', expGain: '% EXP Gain', goldFind: '% Gold Find', thorns: '% Thorns', regen: ' HP per second', manaCost: '% Skill MP Cost Reduction' };
 export function itemLines(eq, equipMap = null) {
   const R = RARITY[eq.quality] || RARITY[0];
-  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: eq.set ? SET_COLOR : R.color }];
+  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: eq.set ? (SETS[eq.set]?.ancient ? ANCIENT_COLOR : SET_COLOR) : R.color }];
   lines.push({ text: `${eq.set ? 'Set' : R.name} ${SLOT_INFO[eq.slot]?.label || eq.slot} · Lv ${eq.lvl}`, color: '#b6c2dc' });
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);
   for (const s of ['atk', 'def', 'hp']) if (eq.stats?.[s]) lines.push({ text: `${STAT_LABEL[s]} +${Math.round(eq.stats[s] * k)}`, color: '#ffffff' });
@@ -296,10 +296,11 @@ export function itemLines(eq, equipMap = null) {
   const set = eq.set && SETS[eq.set];
   if (set) {
     const n = setCounts(equipMap)[eq.set] || 0, worn = new Set(SLOTS.filter((s) => equipMap?.[s]?.set === eq.set));
-    lines.push({ text: `${set.name} Set (${n}/4): ${set.slots.map((s) => (worn.has(s) ? '●' : '○') + ' ' + SLOT_INFO[s].label).join('  ')}`, color: SET_COLOR });
-    lines.push({ text: `(2) ${Object.entries(set.two).map(([k, v]) => `+${v}${SET_STAT[k]}`).join(', ')}`, color: n >= 2 ? SET_COLOR : '#8a94b0' });
+    const SC = set.ancient ? ANCIENT_COLOR : SET_COLOR;
+    lines.push({ text: `${set.ancient ? 'Ancient ' : ''}${set.name} Set (${n}/4): ${set.slots.map((s) => (worn.has(s) ? '●' : '○') + ' ' + SLOT_INFO[s].label).join('  ')}`, color: SC });
+    lines.push({ text: `(2) ${Object.entries(set.two).map(([k, v]) => `+${v}${SET_STAT[k]}`).join(', ')}`, color: n >= 2 ? SC : '#8a94b0' });
     const P = EFFECTS[set.power];
-    lines.push({ text: `(4) ${P.name}: ${P.desc}`, color: n >= 4 ? SET_COLOR : '#8a94b0' });
+    lines.push({ text: `(4) ${P.name}: ${P.desc}`, color: n >= 4 ? SC : '#8a94b0' });
   }
   if (eq.flavor) lines.push({ text: `"${eq.flavor}"`, color: '#b6c2dc' });
   return lines;

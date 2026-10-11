@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { NavGrid } from './nav.js';
 import { DUNGEONS } from './data.js';
 import { NEW_ZONES, FARM, OUTPOSTS } from './data-world.js';
+import { DZ, inDZ } from './data-dz.js';
 import { buildDungeonEntrance } from './dungeon.js';
 import { toon, glow, outlineMaterial, grassTexture, stoneTexture, cloudTexture, glowTexture, magicCircleTexture, getGradient } from './toon.js';
 
@@ -254,7 +255,7 @@ export class World {
       ruins: new THREE.Color('#a4b860'), dirt: new THREE.Color('#dcbc80'), sand: new THREE.Color('#ead9a0'),
       bed: new THREE.Color('#9ab0a0'), rock: new THREE.Color('#a39b90'), snow: new THREE.Color('#f4f8ff'), town: new THREE.Color('#86cc5a'),
       plains: new THREE.Color('#b8dc5a'), marsh: new THREE.Color('#6a8a4c'), ember: new THREE.Color('#c0663a'), emberTop: new THREE.Color('#8a4a34'),
-      frost: new THREE.Color('#eaf4fc'), crystal: new THREE.Color('#9a90e0'), shadow: new THREE.Color('#5a4a72'), astral: new THREE.Color('#e4dcf6'), sacred: new THREE.Color('#9ae07a'), farm: new THREE.Color('#b0884a'),
+      frost: new THREE.Color('#eaf4fc'), crystal: new THREE.Color('#9a90e0'), shadow: new THREE.Color('#5a4a72'), astral: new THREE.Color('#e4dcf6'), sacred: new THREE.Color('#9ae07a'), farm: new THREE.Color('#b0884a'), dz: new THREE.Color('#6a2a24'), dzRim: new THREE.Color('#ff3a2a'),
     };
     const bc = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
@@ -277,6 +278,8 @@ export class World {
         c.lerp(bc, w);
       }
       if (Math.hypot(x - FARM.x, z - FARM.z) < FARM.r) c.lerp(C.farm, 0.55);
+      const dzd = Math.hypot(x - DZ.x, z - DZ.z); // the Danger Zone: scorched blood-red earth with a bright rim
+      if (dzd < DZ.r + 8) { c.lerp(C.dz, 1 - smooth(DZ.r - 6, DZ.r + 5, dzd)); if (Math.abs(dzd - DZ.r) < 1.6) c.lerp(C.dzRim, 0.7 * (1 - Math.abs(dzd - DZ.r) / 1.6)); }
       const n = fbm(x / 9, z / 9);
       c.multiplyScalar(0.86 + n * 0.28);
       const rd = roadDist(x, z);
@@ -705,6 +708,63 @@ export class World {
     }
   }
 
+  // The Danger Zone: a glowing red border wall (walk-through), warning signs, burnt ground with bones, cracks and spikes,
+  // and the Bloodmoon altar at its heart where the Tyrant waits.
+  buildDangerZone() {
+    const { x: cx, z: cz, r: R } = DZ, rng = mulberry(666);
+    // border wall: an open cylinder with a rising red glow, plus crystal pylons around it
+    const wallGeo = new THREE.CylinderGeometry(R, R, 7, 96, 1, true);
+    const wall = new THREE.Mesh(wallGeo, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: { uT: { value: 0 } },
+      vertexShader: 'varying vec2 vU; void main() { vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform float uT; varying vec2 vU; void main() { float stripe = 0.55 + 0.45 * sin(vU.x * 380.0 + uT * 2.0); float a = (1.0 - vU.y) * (1.0 - vU.y) * 0.42 * stripe + 0.06 * (1.0 - vU.y); gl_FragColor = vec4(1.0, 0.16, 0.1, a); }',
+    }));
+    wall.position.set(cx, this.heightAt(cx, cz) + 2.6, cz); wall.renderOrder = 3; this.root.add(wall);
+    this.anim.push((t) => { wall.material.uniforms.uT.value = t; });
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 28) * Math.PI * 2, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R, y = this.heightAt(x, z);
+      this.put(GEO.cyl6, 0x2a1a1e, x, y + 0.5, z, 0.9, 1, 0.9);
+      this.putGlow(GEO.oct, i % 2 ? 0xff3a2a : 0xff6a3a, x, y + 2.4, z, 0.55, 1.8, 0.55, 0, a, 0);
+      this.blockCircle(x, z, 0.7);
+    }
+    // warning signs facing out on the main approaches (from town, Elder Ruins and Mossveil)
+    for (const a of [-0.55, 0.3, 1.2, 2.4, 3.6, 4.8]) {
+      const x = cx + Math.cos(a) * (R + 4), z = cz + Math.sin(a) * (R + 4), y = this.heightAt(x, z), yaw = Math.atan2(Math.cos(a), Math.sin(a));
+      this.put(GEO.cyl6, 0x5a3a24, x, y + 1.2, z, 0.14, 2.4, 0.14);
+      this.put(GEO.box, 0x7a2a22, x, y + 2.3, z, 1.8, 1.1, 0.14, 0, yaw, 0);
+      this.putGlow(GEO.sph, 0xffe0c8, x + Math.sin(yaw) * 0.09, y + 2.35, z + Math.cos(yaw) * 0.09, 0.28, 0.3, 0.12, 0, yaw, 0);
+      for (const s of [-1, 1]) this.put(GEO.box, 0xffe0c8, x + Math.sin(yaw) * 0.1 + Math.cos(yaw) * s * 0.14, y + 2.12, z + Math.cos(yaw) * 0.1 - Math.sin(yaw) * s * 0.14, 0.42, 0.08, 0.06, 0, yaw, s * 0.6);
+      this.blockCircle(x, z, 0.4);
+    }
+    const free = (x, z, m = 5) => !this.isBlocked(x, z) && Math.hypot(x - cx, z - cz) < R - 3 && Math.hypot(x - cx, z - cz) > 9 && (this.spawnAreas || []).every((sp) => Math.hypot(x - sp.x, z - sp.z) > Math.min(m, sp.r));
+    const scatter = (n, fn, m) => { for (let i = 0, k = 0; i < n * 14 && k < n; i++) { const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * R, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (!free(x, z, m)) continue; fn(x, this.heightAt(x, z), z); k++; } };
+    // bone piles and skulls
+    scatter(22, (x, y, z) => { for (let i = 0; i < 3; i++) this.put(GEO.cyl6, 0xe8e0d0, x + (rng() - 0.5) * 1.6, y + 0.12, z + (rng() - 0.5) * 1.6, 0.09, 0.9 + rng() * 0.6, 0.09, Math.PI / 2, rng() * 3, 0); this.put(GEO.sph, 0xf0e8d8, x, y + 0.3, z, 0.32, 0.28, 0.3); }, 2);
+    // glowing lava cracks
+    scatter(26, (x, y, z) => { const L = 2 + rng() * 4, yaw = rng() * 3; this.putGlow(GEO.box, 0xff4a1a, x, y + 0.04, z, 0.28, 0.06, L, 0, yaw, 0); this.putGlow(GEO.box, 0xffb03a, x, y + 0.06, z, 0.1, 0.06, L * 0.8, 0, yaw, 0); }, 2);
+    // jagged blood-rock spikes
+    scatter(16, (x, y, z) => { const h2 = 2 + rng() * 4; this.put(GEO.cone4, rng() < 0.5 ? 0x4a2226 : 0x5a2a2a, x, y + h2 / 2 - 0.3, z, 0.9 + rng() * 0.6, h2, 0.9 + rng() * 0.6, (rng() - 0.5) * 0.3, rng() * 3, (rng() - 0.5) * 0.3); this.blockCircle(x, z, 0.8); }, 6);
+    // the Bloodmoon altar: stepped platform, obelisk and a hovering blood moon
+    const ay = this.heightAt(cx, cz);
+    this.put(GEO.cyl, 0x3a2226, cx, ay + 0.2, cz, 7.5, 0.5, 7.5); this.put(GEO.cyl, 0x4a2a2e, cx, ay + 0.55, cz, 6, 0.3, 6);
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3, x = cx + Math.cos(a) * 6.6, z = cz + Math.sin(a) * 6.6; this.put(GEO.box, 0x2a1a1e, x, this.heightAt(x, z) + 1.6, z, 0.7, 3.2, 0.7, 0, a, 0); this.putGlow(GEO.sph, 0xff3a2a, x, this.heightAt(x, z) + 3.4, z, 0.25, 0.25, 0.25); this.blockCircle(x, z, 0.5); }
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(1.6, 24, 16), glow(0xff3a2a)); moon.position.set(cx, ay + 14, cz); this.root.add(moon);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xff2a1a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }));
+    halo.scale.setScalar(12); halo.position.copy(moon.position); this.root.add(halo);
+    this.anim.push((t) => { moon.position.y = ay + 14 + Math.sin(t * 0.8) * 0.4; halo.position.y = moon.position.y; halo.material.opacity = 0.7 + Math.sin(t * 2) * 0.15; });
+    // drifting embers
+    const N = 260, pos = new Float32Array(N * 3), seeds = [];
+    for (let i = 0; i < N; i++) { const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * R; seeds.push([cx + Math.cos(a) * d, cz + Math.sin(a) * d, rng() * 20]); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ map: glowTexture(), color: 0xff4a2a, size: 0.7, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    pts.frustumCulled = false; this.root.add(pts);
+    const base = seeds.map(([x, z]) => this.heightAt(x, z));
+    this.anim.push((t) => {
+      for (let i = 0; i < N; i++) { const [x, z, p] = seeds[i], cyc = (t * 0.7 + p) % 12; pos[i * 3] = x + Math.sin(t * 0.5 + p) * 1.5; pos[i * 3 + 1] = base[i] + cyc; pos[i * 3 + 2] = z + Math.cos(t * 0.4 + p) * 1.5; }
+      g.attributes.position.needsUpdate = true;
+    });
+  }
+
   // Homestead: fenced farmland west of town with a barn; plots themselves are placed by the game.
   buildFarm() {
     const { x, z } = FARM, y = this.heightAt(x, z);
@@ -868,6 +928,7 @@ export class World {
       else if (ruins) kind = rng() < 0.6 ? 'olive' : 'round';
       else if (z < -60) kind = rng() < 0.6 ? 'pine' : 'round';
       else if (rng() < 0.15) kind = 'blossom';
+      if (inDZ(x, z)) kind = rng() < 0.6 ? 'charred' : 'dead'; // nothing green survives in the Danger Zone
       tree(x, z, kind, 0.85 + rng() * 0.45);
       placed++;
     }
@@ -904,7 +965,7 @@ export class World {
     let k = 0;
     for (const [x, z] of pts) {
       const bio = biomeAt(x, z);
-      const y = this.heightAt(x, z), base = bio ? TUFT[bio] : z > 60 && x < 85 ? 0x4a9a3a : x > 75 ? 0x8ad050 : 0x6ac048;
+      const y = this.heightAt(x, z), base = inDZ(x, z) ? 0x7a3a2a : bio ? TUFT[bio] : z > 60 && x < 85 ? 0x4a9a3a : x > 75 ? 0x8ad050 : 0x6ac048;
       for (let j = 0; j < 3; j++) {
         m.compose(new THREE.Vector3(x + (rng() - 0.5) * 0.5, y - 0.05, z + (rng() - 0.5) * 0.5), new THREE.Quaternion().setFromEuler(new THREE.Euler((rng() - 0.5) * 0.6, rng() * 3, (rng() - 0.5) * 0.6)), new THREE.Vector3(1, 0.7 + rng() * 0.8, 1));
         im.setMatrixAt(k, m); c.setHex(base).multiplyScalar(0.85 + rng() * 0.35); im.setColorAt(k, c); k++;

@@ -85,6 +85,7 @@ const M = {
       .on('broadcast', { event: 'm' }, ({ payload }) => this.mpMove(payload))
       .on('broadcast', { event: 'c' }, ({ payload }) => this.mpChat(payload))
       .on('broadcast', { event: 'p' }, ({ payload }) => this.partyMsg(payload))
+      .on('broadcast', { event: 'z' }, ({ payload }) => this.dzMsg(payload))
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           const first = mp.status !== 'online';
@@ -141,7 +142,8 @@ const M = {
     if (!mp.peers.size) { this.mpLastSent = null; return; } // alone on the server: nobody to tell
     const w = this.dg || this.war ? 0 : 1, L = this.mpLastSent, gap = L ? now - L.t : Infinity;
     const hp = Math.round((100 * p.hp) / p.maxHp); // shown on party frames
-    let send = !L || gap > SEND_IDLE || w !== L.w || (st !== L.s && gap > 60) || (!!mp.party.id && Math.abs(hp - L.h) >= 8 && gap > 500);
+    // hp goes out for party frames, and quickly inside the Danger Zone where others are fighting you
+    let send = !L || gap > SEND_IDLE || w !== L.w || (st !== L.s && gap > 60) || (!!mp.party.id && Math.abs(hp - L.h) >= 8 && gap > 500) || (this.dzIn && Math.abs(hp - L.h) >= 3 && gap > 150);
     if (!send && gap > SEND_MIN) {
       // where the others currently draw us
       const a = Math.min(gap / 1000, EXTRAP), ex = L.x + L.vx * a, ez = L.z + L.vz * a;
@@ -175,7 +177,7 @@ const M = {
     }
     for (const key of [...mp.peers.keys()]) if (!seen.has(key)) {
       const pr = mp.peers.get(key); mp.peers.delete(key);
-      this.mpRemove(key);
+      this.mpRemove(key); this.dzPeerGone(key);
       this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
     }
     this.partySync();
@@ -188,6 +190,8 @@ const M = {
       x: num(m.x, -5200, 5200, pr.net?.x || 0), z: num(m.z, -400, 5200, pr.net?.z || 0), vx: num(m.vx, -40, 40, 0), vz: num(m.vz, -40, 40, 0),
       y: num(m.y, -10, 10, 0), s: num(m.s, 0, 4, 0) | 0, w: m.w ? 1 : 0, h: num(m.h, 0, 100, pr.net?.h ?? 100), t: performance.now(),
     };
+    const e = this.rplayers.find((x) => x.peerId === pr.info.id);
+    if (e) { e.maxHp = 100; e.hp = pr.net.h; } // HP in percent (target frame)
   },
   mpChat(m) {
     if (!m || typeof m !== 'object') return;
@@ -210,7 +214,7 @@ const M = {
     const hum = buildHumanoid(look);
     e = this.makeEnt('rp', hum, { name: info.name, radius: 0.6 });
     e.peerId = key; e.sig = sig; e.humanoid = hum; e.cls = info.cls; e.look = look; e.level = info.level; e.guild = info.guild;
-    e.maxHp = e.hp = 1; e.speed = CLASSES[info.cls].speed;
+    e.maxHp = 100; e.hp = pr.net.h ?? 100; e.speed = CLASSES[info.cls].speed;
     const x = keepPos ? keepPos.x : pr.net.x, z = keepPos ? keepPos.z : pr.net.z;
     e.pos.set(x, this.world.heightAt(x, z), z); e.yaw = e.yawT = keepPos ? keepPos.yaw : pr.net.y;
     if (info.mount) {
@@ -251,6 +255,8 @@ const M = {
     e.yawT = going ? Math.atan2(vx, vz) : n.y;
     e.moving = going || e.drawSpd > 1;
     e.state = n.s === 4 ? 'dead' : n.s === 2 ? 'attack' : n.s === 3 ? 'cast' : e.moving ? 'run' : 'idle';
+    const foe = this.pvpFoe(e); // red nameplate: you can fight this player
+    if (foe !== e.foe) { e.foe = foe; e.np?.classList.toggle('foe', foe); }
     if ((n.s === 2 || n.s === 3) && e.actT <= 0) { e.actT = e.actDur = 0.45; }
     e.actT = Math.max(0, e.actT - dt);
     if (e.petModel) {
