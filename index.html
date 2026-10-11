@@ -235,7 +235,7 @@ button { font-family: inherit; }
 .qt-item .qo u { color: #7aff7a; text-decoration-color: rgba(122, 255, 122, .5); }
 .qt-item .qo.done { color: #7aff7a; }
 
-#hud-chat { position: absolute; left: 10px; bottom: 34px; width: 360px; }
+#hud-chat { position: absolute; left: 10px; bottom: 34px; width: clamp(250px, calc(50vw - 322px), 360px); }
 .chat-tabs { display: flex; gap: 2px; }
 .chat-tabs button { border: 0; padding: 3px 9px; font-size: 11px; font-weight: 900; border-radius: 4px 4px 0 0; cursor: pointer; background: rgba(0, 0, 0, .5); color: var(--muted); }
 .chat-tabs button.sel { background: rgba(0, 0, 0, .7); color: var(--gold-l); }
@@ -920,6 +920,83 @@ button { font-family: inherit; }
   #hud-wb { top: calc(172px + var(--party-h, 0px) * .78); }
   #party-invite { width: calc(100% - 20px); top: 96px; }
 }
+
+/* ---- phones and small screens: everything docks to the bottom bar; activities and the rest of the menu open as sheets ---- */
+#hud-dock { display: none; }
+.mbtn .ml { display: none; }
+@keyframes sheetUp { from { transform: translateY(14px); opacity: 0; } }
+@media (max-width: 900px), (max-height: 500px) {
+  #hud-dock { display: flex; position: absolute; left: 0; right: 0; bottom: 16px; height: 56px; padding: 3px max(4px, calc(50% - 300px)); gap: 2px; background: linear-gradient(180deg, rgba(34, 26, 54, .95), rgba(10, 10, 24, .97)); border-top: 1px solid var(--gold-d); box-shadow: 0 -4px 14px rgba(0, 0, 0, .35); z-index: 4; }
+  .dbtn { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 2px 0; border: 0; border-radius: 10px; background: none; color: var(--muted); font: inherit; font-size: 10px; font-weight: 900; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+  .dbtn .ico { width: 30px; height: 30px; }
+  .dbtn:active { transform: scale(.94); }
+  .dbtn.on { background: rgba(243, 199, 91, .16); color: var(--gold-l); }
+  .dbtn.hot::after { content: ''; position: absolute; top: 3px; left: calc(50% + 9px); width: 9px; height: 9px; border-radius: 50%; background: #ff4a5a; box-shadow: 0 0 0 2px #1a1028, 0 0 8px #ff4a5a; }
+  #chat-toggle { display: none !important; }
+  #hud-acts, #hud-menu { display: none; position: absolute; top: auto; left: max(8px, calc(50% - 292px)); right: max(8px, calc(50% - 292px)); bottom: 80px; transform: none; max-width: none; max-height: calc(100% - 190px); overflow-y: auto; padding: 14px 8px 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(34, 26, 56, .97), rgba(12, 12, 28, .97)); border: 1px solid var(--gold-d); box-shadow: 0 -8px 28px rgba(0, 0, 0, .55); z-index: 6; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 12px 2px; justify-items: center; align-content: start; animation: sheetUp .16s ease-out; }
+  #hud[data-sheet="acts"] #hud-acts, #hud[data-sheet="menu"] #hud-menu { display: grid; }
+  #hud-acts .ai { width: 46px; height: 46px; }
+  #hud-acts .al { font-size: 10px; }
+  #hud-menu { row-gap: 26px; padding-bottom: 26px; }
+  #hud-menu .mbtn { width: 46px; height: 46px; }
+  #hud-menu .mbtn.indock, #hud-menu .mbtn .k { display: none; }
+  #hud-menu .mbtn .ml { display: block; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; font-size: 10px; white-space: nowrap; color: var(--ink); text-shadow: 0 1px 0 #000; }
+  #hud-bar { bottom: 78px; left: 50%; transform: translateX(-50%); flex-direction: row; align-items: flex-end; gap: 0; }
+  .slot { width: 44px; height: 44px; font-size: 20px; }
+  .slot.potion { width: 40px; height: 40px; }
+  .skillbar { gap: 4px; padding: 5px 6px; }
+  #hud-bar .side-btns { position: absolute; right: 0; bottom: calc(100% + 8px); flex-direction: row; gap: 8px; }
+  .big-rbtn { width: 48px; height: 48px; font-size: 18px; }
+  .big-rbtn .ico.mnt { width: 34px; height: 34px; }
+  #hud-target { top: auto; bottom: 148px; left: 8px; transform: scale(.82); transform-origin: bottom left; }
+  #hud-target .bar { width: 150px; }
+  #hud-cast { bottom: 196px; }
+  #hud-chat.open { display: block; left: 8px; bottom: 196px; width: min(360px, calc(100% - 16px)); z-index: 5; }
+  #hud-quest { max-height: 34vh; overflow-y: auto; }
+  #dialog { bottom: 80px; }
+}
+@media (max-width: 640px) {
+  .slot { width: 38px; height: 38px; font-size: 18px; }
+  .slot.potion { width: 36px; height: 36px; }
+  .skillbar { gap: 3px; padding: 4px 5px; }
+  #hud-quest { width: 168px; }
+}
+@media (max-width: 640px) {
+  #hud-quest { padding: 3px 4px 6px 14px; max-height: 30vh; }
+  #hud-quest .qt-head button { padding: 2px 8px; font-size: 11px; }
+  #hud-quest .qt-item { padding: 3px 2px; font-size: 11.5px; line-height: 1.3; }
+  #hud-quest .qt-item .qo { font-size: 10.5px; }
+}
+@media (max-width: 400px) {
+  #hud-player { transform: scale(.7); }
+  #hud-pet { top: 74px; }
+  #hud-wallet { top: 114px; }
+}
+@media (max-width: 380px) {
+  .slot, .slot.potion { width: 34px; height: 34px; }
+  .skillbar { gap: 2px; padding: 4px; }
+  .dbtn span { font-size: 9px; }
+}
+@media (max-height: 500px) {
+  #hud-player { transform: scale(.72); transform-origin: top left; }
+  #hud-pet { top: 76px; }
+  #hud-wallet { top: 112px; }
+  #hud-map { transform: scale(.62); transform-origin: top right; }
+  #hud-quest { top: 128px; width: 190px; font-size: 12px; max-height: calc(100% - 300px); }
+  #hud-dock { height: 48px; }
+  .dbtn .ico { width: 24px; height: 24px; }
+  #hud-bar { bottom: 70px; }
+  .slot, .slot.potion { width: 38px; height: 38px; }
+  #hud-bar .side-btns { position: static; margin-left: 8px; }
+  .skillbar { padding: 4px 5px; }
+  #hud-target { bottom: 128px; }
+  #hud-acts, #hud-menu { bottom: 70px; max-height: calc(100% - 90px); }
+  #hud-chat.open { top: 8px; bottom: auto; left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 470px)); min-width: 240px; }
+  #hud-chat.open .chat-log { height: auto; max-height: calc(100vh - 210px); min-height: 60px; }
+}
+@media (max-width: 1150px) and (min-width: 901px) and (min-height: 501px) {
+  #hud-chat { bottom: 104px; }
+}
 </style>
 </head>
 <body>
@@ -1014,6 +1091,7 @@ button { font-family: inherit; }
       </div>
     </div>
     <div id="hud-menu"></div>
+    <div id="hud-dock"></div>
     <div id="hud-exp"><i id="exp-f"></i><div class="ticks"></div><span id="exp-t"></span></div>
     <div id="toasts"></div>
   </section>

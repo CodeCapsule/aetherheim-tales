@@ -110,6 +110,10 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   a chosen rarity in one go; locked gear is always kept.
 - **MMO systems**: Battle Rating, bag, skill upgrades, auto battle, auto potions, titles, daily sign-in, online gifts,
   a gold/diamond mall, world and guild chat, minimap and world map.
+- **Phones and tablets**: on small screens the HUD docks to a bar along the bottom (Events, Hero, Bag, Skills, Quests,
+  Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
+  dot marks a sheet with something waiting. The skill bar sits above the dock with Auto and Mount beside it, and the
+  layout also works in landscape.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
 
 ## Controls

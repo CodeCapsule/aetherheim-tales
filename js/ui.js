@@ -18,11 +18,12 @@ const RARC = PET_TIER.map((t) => RARITY[t].color);
 const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+const DOCK_MENU = ['char', 'bag', 'skills', 'quests']; // menu buttons that also sit on the phone dock
 const CHN = { world: 'World', system: 'System', guild: 'Guild', announce: 'Announce', player: 'Player', party: 'Party' };
 
 export class UI {
   constructor() {
-    this.panel = null; this.panelName = null; this.sel = {}; this.chatFilter = 'all';
+    this.panel = null; this.panelName = null; this.sel = {}; this.chatFilter = 'all'; this.dockFrame = 0;
     this.toasts = $('toasts'); this.bannerEl = $('banner');
     this.cacheTxt = new Map();
   }
@@ -56,8 +57,8 @@ export class UI {
     const items = [['char', 'Character', 'C'], ['bag', 'Bag', 'B'], ['skills', 'Skills', 'K'], ['pets', 'Pets', 'P'], ['mounts', 'Mounts', 'U'], ['life', 'Professions', 'Z', 'professions'], ['wardrobe', 'Wardrobe', 'V', 'wardrobe'], ['collect', 'Relic Collection', '', 'collection'], ['guild', 'Guild', 'G'], ['forge', 'Forge', 'Y'], ['market', 'Market', 'N'], ['codex', 'Codex', 'X'], ['quests', 'Quests', 'L'], ['map', 'World Map', 'M'], ['settings', 'Settings', 'O']];
     this.menuBtns = {};
     for (const [n, label, k, icn] of items) {
-      const b = h('button', 'mbtn', `${ico(icn || n)}${k ? `<span class="k">${k}</span>` : ''}`); b.title = k ? `${label} (${k})` : label; b.setAttribute('aria-label', label);
-      b.onclick = () => { this.togglePanel(n); g.sfx.play('click'); };
+      const b = h('button', 'mbtn' + (DOCK_MENU.includes(n) ? ' indock' : ''), `${ico(icn || n)}${k ? `<span class="k">${k}</span>` : ''}<span class="ml">${label}</span>`); b.title = k ? `${label} (${k})` : label; b.setAttribute('aria-label', label);
+      b.onclick = () => { this.setSheet(''); this.togglePanel(n); g.sfx.play('click'); };
       menu.appendChild(b); this.menuBtns[n] = b;
     }
     // activities
@@ -67,7 +68,7 @@ export class UI {
     for (const [n, label] of A) {
       const b = h('button', 'act', `<span class="ai">${ico(n)}</span><span class="al stroke">${label}</span>`); b.setAttribute('aria-label', label);
       b.onclick = () => {
-        g.sfx.play('click');
+        g.sfx.play('click'); this.setSheet('');
         if (n === 'dungeon') { this.togglePanel('dungeons'); return; }
         if (n === 'war') { this.sel.guildTab = 'war'; this.togglePanel('guild'); return; }
         if (g.dg && (n === 'bounty' || n === 'teleport')) { this.toast('Not available inside a dungeon', 'warn'); return; }
@@ -78,6 +79,23 @@ export class UI {
       };
       acts.appendChild(b); this.acts[n] = b;
     }
+    // phone dock (shown on small screens): quick buttons, and sheets for the activities and the rest of the menu
+    const dock = $('hud-dock'); dock.innerHTML = '';
+    this.dockBtns = {};
+    for (const [n, label, icn] of [['acts', 'Events', 'events'], ['char', 'Hero', 'char'], ['bag', 'Bag', 'bag'], ['skills', 'Skills', 'skills'], ['quests', 'Quests', 'quests'], ['chat', 'Chat', 'chat'], ['menu', 'More', 'more']]) {
+      const b = h('button', 'dbtn', `${ico(icn)}<span>${label}</span>`); b.setAttribute('aria-label', label);
+      b.onclick = () => {
+        g.sfx.play('click');
+        if (n === 'acts' || n === 'menu') { this.setSheet(this.sheet === n ? '' : n); return; }
+        this.setSheet('');
+        if (n === 'chat') { $('hud-chat').classList.toggle('open'); b.classList.toggle('on', $('hud-chat').classList.contains('open')); return; }
+        this.togglePanel(n);
+      };
+      dock.appendChild(b); this.dockBtns[n] = b;
+    }
+    this.sheet = '';
+    // a tap anywhere else closes an open sheet
+    document.addEventListener('pointerdown', (e) => { if (this.sheet && !e.target.closest('#hud-acts, #hud-menu, #hud-dock')) this.setSheet(''); }, true);
     // map & misc
     $('minimap').onclick = () => this.togglePanel('map');
     $('btn-wmap').onclick = () => this.togglePanel('map');
@@ -179,6 +197,17 @@ export class UI {
   }
   // Notification marker: a small gold sparkle (not a red "!" that reads as an error).
   setBadge(el, on) { let b = el.querySelector('.badge'); if (!on) { b && b.remove(); return; } if (!b) { b = h('span', 'badge', ico('new')); el.appendChild(b); } }
+  setSheet(name) {
+    this.sheet = name; $('hud').dataset.sheet = name;
+    for (const k of ['acts', 'menu']) this.dockBtns?.[k]?.classList.toggle('on', name === k);
+  }
+  // dock buttons light up when something inside them wants attention
+  refreshDock() {
+    const D = this.dockBtns; if (!D || !this.acts) return;
+    D.acts.classList.toggle('hot', Object.values(this.acts).some((b) => !b.hidden && (b.classList.contains('glow') || !!b.querySelector('.badge'))));
+    D.menu.classList.toggle('hot', Object.values(this.menuBtns).some((b) => !b.classList.contains('indock') && !!b.querySelector('.dotn')));
+    for (const n of DOCK_MENU) D[n].classList.toggle('hot', !!this.menuBtns[n]?.querySelector('.dotn'));
+  }
   markMenu(n) { const b = this.menuBtns[n]; if (b && this.panelName !== n && !b.querySelector('.dotn')) b.appendChild(h('span', 'dotn', ico('new'))); }
   setZone(z) { $('zone-name').innerHTML = `${esc(z.name)}${z.lv ? `<small>${esc(z.lv)}</small>` : ''}`; }
   setAutoPath(on) { $('hud-autopath').hidden = !on; }
@@ -187,6 +216,7 @@ export class UI {
 
   frame() {
     const g = this.g; if (!g) return;
+    if (++this.dockFrame % 30 === 0) this.refreshDock();
     const p = g.player, S = g.S;
     $('pf-hp').style.width = (p.hp / p.maxHp) * 100 + '%';
     this.txt($('pf-hp-t'), `${fmt(Math.max(0, p.hp))} / ${fmt(p.maxHp)}`);

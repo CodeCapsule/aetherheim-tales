@@ -103,6 +103,15 @@ add('online', svg(lg('z-online-a', ['#bfe8ff', '#4aa8ff', '#1a5ac8']) + lg('z-on
 <circle cx="42" cy="26" r="8" fill="url(#z-online-b)" ${INK}/><path d="M28 54C28 43 34 38 42 38C50 38 56 43 56 54Z" fill="url(#z-online-b)" ${INK}/>
 <circle cx="52" cy="12" r="6" fill="#4ae86a" ${INK2}/>${glint(19, 18, 2)}`));
 
+// mobile dock: activities (a little compass star) and more (a 2x2 grid of tiles)
+add('events', svg(rg('z-events-a', ['#fff6c0', '#ffd04a', '#e08a1a', '#8a4a08']) + lg('z-events-b', ['#bfe8ff', '#4aa8ff', '#1a4ab8']),
+  `<circle cx="32" cy="32" r="24" fill="url(#z-events-b)" ${INK}/><path d="M32 11L37 27L53 32L37 37L32 53L27 37L11 32L27 27Z" fill="url(#z-events-a)" ${INK2}/>
+<circle cx="32" cy="32" r="4.5" fill="#fff6c0" ${INK2}/>${glint(22, 20, 2.6)}${spark(52, 12, 4)}`));
+add('more', svg(lg('z-more-a', ['#ffe8b0', '#ffb84a', '#c86a10']) + lg('z-more-b', ['#d0f0ff', '#5ab8ff', '#1a5ac8']),
+  `<rect x="9" y="9" width="20" height="20" rx="5" fill="url(#z-more-a)" ${INK}/><rect x="35" y="9" width="20" height="20" rx="5" fill="url(#z-more-b)" ${INK}/>
+<rect x="9" y="35" width="20" height="20" rx="5" fill="url(#z-more-b)" ${INK}/><rect x="35" y="35" width="20" height="20" rx="5" fill="url(#z-more-a)" ${INK}/>
+${glint(15, 14, 2.2)}${glint(41, 14, 2.2)}${glint(15, 40, 2.2)}${glint(41, 40, 2.2)}`));
+
 // soulstones: one per named power
 const SOUL_LOOK = {
   crit_heal: [['#ff9ab8', '#ff3a6a', '#7a0a2a'], 'leaf'], chain: [['#c8f0ff', '#3ab8ff', '#0a3a8a'], 'bolt'], stun_chance: [['#ffe0a0', '#c8862a', '#5a3008'], 'star'],
