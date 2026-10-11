@@ -96,6 +96,20 @@ export class UI {
     this.sheet = '';
     // a tap anywhere else closes an open sheet
     document.addEventListener('pointerdown', (e) => { if (this.sheet && !e.target.closest('#hud-acts, #hud-menu, #hud-dock')) this.setSheet(''); }, true);
+    // on-screen joystick (shown with the phone dock): hold and drag to walk, relative to the camera
+    const stick = $('hud-stick'), knob = stick.querySelector('.knob');
+    let sid = null;
+    const steer = (e) => {
+      const r = stick.getBoundingClientRect(), R = r.width / 2;
+      let dx = (e.clientX - r.left - R) / R, dy = (e.clientY - r.top - R) / R;
+      const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+      knob.style.transform = `translate(${dx * R * 0.6}px, ${dy * R * 0.6}px)`;
+      if (m < 0.2) g.setStick(0, 0); else g.setStick(dx, dy);
+    };
+    const release = (e) => { if (e.pointerId !== sid) return; sid = null; stick.classList.remove('on'); knob.style.transform = ''; g.setStick(0, 0); };
+    stick.addEventListener('pointerdown', (e) => { if (sid !== null) return; e.preventDefault(); sid = e.pointerId; stick.setPointerCapture(sid); stick.classList.add('on'); g.sfx.ensure(); this.setSheet(''); steer(e); });
+    stick.addEventListener('pointermove', (e) => { if (e.pointerId === sid) steer(e); });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) stick.addEventListener(ev, release);
     // map & misc
     $('minimap').onclick = () => this.togglePanel('map');
     $('btn-wmap').onclick = () => this.togglePanel('map');

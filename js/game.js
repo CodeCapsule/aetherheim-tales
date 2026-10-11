@@ -81,7 +81,7 @@ export class Game {
     Object.assign(this, o); // renderer, scene, camera, world, fx, portraits, ui, sfx, S, sun, lights
     this.time = 0; this.timers = [];
     this.monsters = []; this.npcs = []; this.ents = []; this.loots = []; this.portals = [];
-    this.keys = {}; this.cd = {}; this.potionCD = 0;
+    this.keys = {}; this.stick = { x: 0, y: 0 }; this.cd = {}; this.potionCD = 0;
     this.cam = { yaw: 0.35, pitch: 0.6, dist: 15, target: new THREE.Vector3() };
     this.auto = false; this.autoPathing = false; this.engage = false; this.pendingSkill = null; this.pendingTalk = null;
     this.mounted = false; this.lastCombat = -99; this.zone = null; this.saveT = 0;
@@ -361,9 +361,15 @@ export class Game {
     cv.addEventListener('wheel', (e) => { e.preventDefault(); this.cam.dist = THREE.MathUtils.clamp(this.cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 6, 30); }, { passive: false });
     window.addEventListener('keydown', (e) => this.onKey(e, true));
     window.addEventListener('keyup', (e) => this.onKey(e, false));
-    window.addEventListener('blur', () => { this.keys = {}; });
+    window.addEventListener('blur', () => { this.keys = {}; this.setStick(0, 0); });
   }
 
+  // on-screen joystick: x right, y down (towards the camera), each -1..1; 0, 0 when released
+  setStick(x, y) {
+    const was = !!(this.stick.x || this.stick.y);
+    this.stick.x = x; this.stick.y = y;
+    if ((x || y) && !was) { this.player.path = []; this.autoPathing = false; this.pendingTalk = null; this.pendingPortal = null; this.pendingLife = null; this.ui.setAutoPath(false); }
+  }
   onKey(e, down) {
     const adm = document.getElementById('scr-admin'); if (adm && !adm.hidden) return;
     const tag = (e.target && e.target.tagName) || '';
@@ -1494,7 +1500,7 @@ export class Game {
     // casting bar
     if (this.casting) {
       const c = this.casting; c.t += dt;
-      if (flat(p.pos, c) > 0.5 || this.keys.w || this.keys.a || this.keys.s || this.keys.d) { this.casting = null; this.ui.cancelCast(); this.ui.toast('Interrupted', 'warn'); }
+      if (flat(p.pos, c) > 0.5 || this.keys.w || this.keys.a || this.keys.s || this.keys.d || this.stick.x || this.stick.y) { this.casting = null; this.ui.cancelCast(); this.ui.toast('Interrupted', 'warn'); }
       else if (c.t >= c.dur) { this.casting = null; this.ui.cancelCast(); c.done(); }
     }
     let moving = false;
@@ -1502,6 +1508,7 @@ export class Game {
     let kx = 0, kz = 0;
     if (this.keys.w || this.keys.arrowup) kz -= 1; if (this.keys.s || this.keys.arrowdown) kz += 1;
     if (this.keys.a || this.keys.arrowleft) kx -= 1; if (this.keys.d || this.keys.arrowright) kx += 1;
+    if (this.stick.x || this.stick.y) { kx = this.stick.x; kz = this.stick.y; } // on-screen joystick (phones)
     const speed = this.speedOf(p);
     if ((kx || kz) && p.actT <= 0.1) {
       const y = this.cam.yaw;
