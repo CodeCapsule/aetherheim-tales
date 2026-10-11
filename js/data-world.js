@@ -371,13 +371,13 @@ export const SHOPS = {
   outpost: { name: 'Frontier Supplies', items: [['potion_hp2', 10, { gold: 1200 }], ['potion_mp2', 10, { gold: 1200 }], ['potion_hp3', 10, { gold: 3800 }, 60], ['potion_mp3', 10, { gold: 3800 }, 60], ['teleport_scroll', 5, { gold: 900 }], ['empty_vial', 10, { gold: 120 }]] },
 };
 export const NEW_NPCS = [
-  { id: 'tilly', name: 'Tilly', title: 'Farmer', x: -44, z: 36, look: 'tilly', face: -2.3, service: 'farm', greet: 'Good soil, good seeds, good friends! Your own plots are ready right behind me.' },
-  { id: 'vera', name: 'Vera', title: 'Alchemist', x: 22, z: -28, look: 'vera', face: -0.6, service: 'alchemy', greet: 'Herbs from the wilds, fruit from the farm, a little patience over the flame... that is alchemy.' },
-  { id: 'coco', name: 'Coco', title: 'Costume Tailor', x: -38, z: -22, look: 'coco', face: 1.0, service: 'tailor', greet: 'Darling! Stats are for armor. Style is forever. Come try something on!' },
-  { id: 'opal', name: 'Opal', title: 'Gemcutter', x: -36, z: 2, look: 'opal', face: 1.6, service: 'shop:gems', greet: 'Rubies for fury, sapphires for steel, emeralds for life, topaz for luck. Which calls to you?' },
-  { id: 'hilda', name: 'Hilda', title: 'Quartermaster', x: 40, z: 18, look: 'hilda', face: -1.9, service: 'shop:general', greet: 'Potions, scrolls and bigger bags. An adventurer is only as good as their supplies!' },
-  { id: 'grimsby', name: 'Grimsby', title: 'Auctioneer', x: -14, z: -30, look: 'grimsby', face: 0.4, service: 'auction', greet: 'Going once, going twice! The Auction House never sleeps, and neither do the bargains.' },
-  { id: 'elias', name: 'Elias', title: 'Relic Collector', x: 38, z: -6, look: 'elias', face: -1.3, service: 'collector', greet: 'Every dungeon guards four relics. Bring me a full set and the Forge can make it sing in red.' },
+  { id: 'tilly', icon: 'farm', name: 'Tilly', title: 'Farmer', x: -44, z: 36, look: 'tilly', face: -2.3, service: 'farm', greet: 'Good soil, good seeds, good friends! Your own plots are ready right behind me.' },
+  { id: 'vera', icon: 'alchemy', name: 'Vera', title: 'Alchemist', x: 22, z: -28, look: 'vera', face: -0.6, service: 'alchemy', greet: 'Herbs from the wilds, fruit from the farm, a little patience over the flame... that is alchemy.' },
+  { id: 'coco', icon: 'wardrobe', name: 'Coco', title: 'Costume Tailor', x: -38, z: -22, look: 'coco', face: 1.0, service: 'tailor', greet: 'Darling! Stats are for armor. Style is forever. Come try something on!' },
+  { id: 'opal', icon: 'gem', name: 'Opal', title: 'Gemcutter', x: -36, z: 2, look: 'opal', face: 1.6, service: 'shop:gems', greet: 'Rubies for fury, sapphires for steel, emeralds for life, topaz for luck. Which calls to you?' },
+  { id: 'hilda', icon: 'bag_plus', name: 'Hilda', title: 'Quartermaster', x: 40, z: 18, look: 'hilda', face: -1.9, service: 'shop:general', greet: 'Potions, scrolls and bigger bags. An adventurer is only as good as their supplies!' },
+  { id: 'grimsby', icon: 'auction', name: 'Grimsby', title: 'Auctioneer', x: -14, z: -30, look: 'grimsby', face: 0.4, service: 'auction', greet: 'Going once, going twice! The Auction House never sleeps, and neither do the bargains.' },
+  { id: 'elias', icon: 'collection', name: 'Elias', title: 'Relic Collector', x: 38, z: -6, look: 'elias', face: -1.3, service: 'collector', greet: 'Every dungeon guards four relics. Bring me a full set and the Forge can make it sing in red.' },
 ];
 // One outpost camp per new zone: a merchant NPC, a campfire and a teleport point.
 export const OUTPOSTS = [
@@ -386,7 +386,7 @@ export const OUTPOSTS = [
   { zone: 'Starfall Plateau', x: 215, z: 200, face: -2.4 }, { zone: 'Yggdrasil Gate', x: 0, z: -250, face: 0 },
 ];
 OUTPOSTS.forEach((o, i) => {
-  NEW_NPCS.push({ id: 'outpost' + i, name: ['Bram', 'Lotte', 'Kael', 'Freya', 'Iris', 'Moro', 'Stella', 'Eldrin'][i], title: 'Outpost Trader', x: o.x, z: o.z, look: 'trader', face: o.face, service: 'shop:outpost', greet: `Welcome to the ${o.zone} outpost. Stock up before you head out!` });
+  NEW_NPCS.push({ id: 'outpost' + i, icon: 'npc_shop', name: ['Bram', 'Lotte', 'Kael', 'Freya', 'Iris', 'Moro', 'Stella', 'Eldrin'][i], title: 'Outpost Trader', x: o.x, z: o.z, look: 'trader', face: o.face, service: 'shop:outpost', greet: `Welcome to the ${o.zone} outpost. Stock up before you head out!` });
 });
 export const NEW_TELEPORTS = OUTPOSTS.map((o) => ({ name: o.zone, x: o.x + Math.sin(o.face) * 5, z: o.z + Math.cos(o.face) * 5, lv: NEW_ZONES.find((z) => z.name === o.zone).lv }));
 export const NEW_TITLES = ['Peerless Smith', 'Master Gatherer', 'Green Thumb', 'Grand Alchemist', 'Crimson Smith', 'Relic Hunter', 'Fashionista', 'World Devourer Slayer', 'Legend of Aetherheim'];

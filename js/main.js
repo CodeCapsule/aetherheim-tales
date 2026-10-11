@@ -13,7 +13,7 @@ import { buildHumanoid, classLook, HAIR_COLORS, EYE_COLORS, animateHumanoid } fr
 import { magicCircleTexture } from './toon.js';
 import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
-import { getServer, setServer, mpEnabled } from './mp.js';
+import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from './mp.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -92,30 +92,71 @@ function onResize() {
 }
 
 // ---------------------------------------------------------------- title
+// the winged star crest behind the logo lettering (and a small copy for the corner)
+function crestArt(small = false) {
+  const feather = (bx, by, deg, len, w) => {
+    const r = (deg * Math.PI) / 180, dx = Math.cos(r), dy = Math.sin(r), px = -dy, py = dx, f = (n) => n.toFixed(1);
+    return `<path d="M${bx} ${by}Q${f(bx + dx * len * 0.45 + px * w)} ${f(by + dy * len * 0.45 + py * w)} ${f(bx + dx * len)} ${f(by + dy * len)}Q${f(bx + dx * len * 0.5 - px * w * 0.55)} ${f(by + dy * len * 0.5 - py * w * 0.55)} ${bx} ${by}Z"/>`;
+  };
+  const star = `<g transform="translate(300 55) scale(.85)"><circle r="34" fill="url(#cr-navy)" stroke="url(#cr-gold)" stroke-width="5"/>
+    <path d="M0 -64L13 -13L54 0L13 13L0 66L-13 13L-54 0L-13 -13Z" fill="url(#cr-gold)" stroke="#4a2604" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M0 -27L17 0L0 27L-17 0Z" fill="url(#cr-gem)" stroke="#0c2460" stroke-width="2"/><path d="M0 -27L17 0H0Z" fill="#fff" opacity=".4"/></g>`;
+  const defs = `<defs><linearGradient id="cr-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6c0"/><stop offset=".45" stop-color="#ffd24a"/><stop offset="1" stop-color="#b86a0a"/></linearGradient>
+    <linearGradient id="cr-gem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8f4ff"/><stop offset=".5" stop-color="#4aa8ff"/><stop offset="1" stop-color="#1a3aa8"/></linearGradient>
+    <radialGradient id="cr-navy" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#2a56b8"/><stop offset="1" stop-color="#0c1c4a"/></radialGradient>
+    <linearGradient id="cr-wing" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#2e66c8"/><stop offset=".4" stop-color="#8cc8ff"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+    <linearGradient id="cr-covert" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#4a8ae8"/><stop offset="1" stop-color="#e8f6ff"/></linearGradient></defs>`;
+  if (small) return `<svg viewBox="248 0 104 112" aria-hidden="true">${defs}${star}</svg>`;
+  // long flight feathers fanned out, then a row of short covert feathers over their roots
+  const F = [[244, 128, 21], [231, 160, 23], [218, 186, 25], [205, 196, 25], [192, 186, 24], [180, 160, 22], [169, 124, 19]];
+  const C = [[236, 92, 20], [219, 104, 21], [202, 104, 21], [186, 92, 19], [172, 74, 16]];
+  const wing = F.map(([deg, len, w], i) => feather(238 - i * 2, 158 + i * 2, deg, len, w)).join('')
+    + `<g fill="url(#cr-covert)">${C.map(([deg, len, w], i) => feather(244 - i * 2, 160 + i * 2, deg, len, w)).join('')}</g>`;
+  return `<svg viewBox="0 0 600 300" aria-hidden="true">${defs}<g fill="url(#cr-wing)" stroke="#102a62" stroke-width="2.5" stroke-linejoin="round">${wing}<g transform="translate(600 0) scale(-1 1)">${wing}</g></g>${star}</svg>`;
+}
+const PEOPLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6z"/><circle cx="16.8" cy="9" r="2.8"/><path d="M15 14.2c3.8-.7 7 1.5 7 5.8h-5.2z"/></svg>';
+const SWORDS = '<svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#5a2c02"><path d="M5 3l12 12-2 2L3 5V3z"/><path d="M27 3L15 15l2 2L29 5V3z"/><path d="M8 18l6 6-2 2-6-6zM24 18l-6 6 2 2 6-6z"/><path d="M5 23l4 4-3 3-4-4zM27 23l-4 4 3 3 4-4z"/></g></svg>';
+const popLabel = (n) => (n >= 30 ? 'High' : n >= 10 ? 'Medium' : 'Low');
+
 function showTitle(save) {
   mode = 'title';
   $('scr-title').hidden = false;
-  const servers = [['S1 Carlyle', 'New', '#3ac84a'], ['S2 Sylvan Haven', 'Hot', '#ff8a2a'], ['S3 Breezy Meadow', 'Smooth', '#3ac84a'], ['S4 Mossveil', 'Full', '#ff3a3a'], ['S5 Elder Ruins', 'Hot', '#ff8a2a'], ['S6 Yggdrasil', 'Smooth', '#3ac84a']];
+  const logo = $('t-logo'); if (!logo.querySelector('svg')) logo.insertAdjacentHTML('afterbegin', crestArt());
+  $('title-top').innerHTML = `${crestArt(true)}<span>Aetherheim Tales Online</span>`;
+  $('title-feats').innerHTML = [['smithing', 'Craft'], ['trade', 'Trade'], ['map', 'Explore'], ['farm', 'Grow'], ['online', 'Together']].map(([k, t]) => `<span>${ico(k)}${t}</span>`).join('<i></i>');
   const list = $('server-list'); list.innerHTML = '';
-  const cur = getServer();
-  servers.forEach(([n, tag, col], i) => {
-    const b = document.createElement('button'), sid = 'S' + (i + 1);
-    b.className = 'server' + (sid === cur ? ' sel' : '');
-    b.innerHTML = `<span class="dot" style="background:${col};box-shadow:0 0 6px ${col}"></span>${n}<span class="tag" style="background:${col}">${tag}</span>`;
-    b.onclick = () => { list.querySelectorAll('.server').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); setServer(sid); sfx.ensure(); sfx.play('click'); };
-    list.appendChild(b);
+  const cur = getServer(), multi = mpEnabled(), rows = {};
+  for (const sv of SERVERS) {
+    const b = document.createElement('button');
+    b.className = 'server' + (sv.id === cur ? ' sel' : '');
+    b.innerHTML = `<span class="sv-ic">${ico(sv.icon)}</span><span class="sv-name">${sv.name}</span><span class="sv-st${multi ? ' wait' : ''}"><i></i><span>${multi ? 'Checking' : 'Solo'}</span></span><span class="sv-pop">${multi ? `${PEOPLE}<span class="pl">—</span>` : ''}</span><span class="sv-go">›</span>`;
+    b.setAttribute('aria-pressed', String(sv.id === cur));
+    b.onclick = () => { list.querySelectorAll('.server').forEach((x) => { x.classList.remove('sel'); x.setAttribute('aria-pressed', 'false'); }); b.classList.add('sel'); b.setAttribute('aria-pressed', 'true'); setServer(sv.id); sfx.ensure(); sfx.play('click'); };
+    list.appendChild(b); rows[sv.id] = b;
+  }
+  // live player counts per server (public website only)
+  peekServers((id, n) => {
+    const r = rows[id]; if (!r) return;
+    const st = r.querySelector('.sv-st'), pop = r.querySelector('.sv-pop');
+    st.className = 'sv-st ' + (n == null ? 'off' : 'on'); st.querySelector('span').textContent = n == null ? 'Offline' : 'Online';
+    pop.innerHTML = n == null ? '' : `${PEOPLE}<span class="pl">${popLabel(n)}</span><b>${n}</b>`;
+    r.title = n == null ? 'Cannot reach this server right now' : `${n} hero${n === 1 ? '' : 'es'} online`;
   });
   refreshTitleLive();
-  const h3 = document.querySelector('#scr-title .server-box h3'); if (h3) h3.textContent = mpEnabled() ? 'SELECT SERVER · PLAY WITH FRIENDS ON THE SAME ONE' : 'SELECT SERVER';
-  const cont = $('btn-continue');
-  if (save) { cont.hidden = false; cont.textContent = `Continue · ${save.name} Lv${save.level}`; $('btn-enter').textContent = 'New Hero'; }
+  const h3 = document.querySelector('#scr-title .srv-panel h3'); if (h3) { h3.textContent = 'Select Server'; h3.title = multi ? 'Pick the same server as your friends to play together' : ''; }
+  const cont = $('btn-continue'), enter = $('btn-enter');
+  if (save) {
+    cont.hidden = false; cont.className = 'btn-gold';
+    cont.innerHTML = `${SWORDS}<span>Enter Game<small>Continue as ${escapeHtml(save.name)} · Lv ${save.level}</small></span>`;
+    enter.className = 'btn-gold alt'; enter.textContent = 'Create a New Hero';
+  } else { enter.className = 'btn-gold'; enter.innerHTML = `${SWORDS}<span>Enter Game</span>`; }
   cont.onclick = () => { sfx.ensure(); sfx.play('open'); startGame(save); };
-  $('btn-enter').onclick = () => { sfx.ensure(); sfx.play('open'); showCreate(); };
+  enter.onclick = () => { sfx.ensure(); sfx.play('open'); showCreate(); };
 }
 
 // live link on the title screen: GM console entry (owner/editors, or any local copy), announcement and notices
 function refreshTitleLive() {
-  const box = document.querySelector('#scr-title .server-box'); if (!box) return;
+  const box = document.querySelector('#scr-title .srv-panel'); if (!box) return;
   let link = $('btn-admin');
   if (!link) {
     link = document.createElement('button'); link.id = 'btn-admin'; link.className = 'adm-link';
@@ -141,7 +182,7 @@ const SYL_B = ['ra', 'na', 'lia', 'ris', 'wen', 'vyn', 'dor', 'mir', 'iel', 'ka'
 const randName = () => SYL_A[(Math.random() * SYL_A.length) | 0] + SYL_B[(Math.random() * SYL_B.length) | 0] + (Math.random() < 0.3 ? SYL_B[(Math.random() * SYL_B.length) | 0] : '');
 
 function showCreate() {
-  mode = 'create';
+  mode = 'create'; stopPeek();
   $('scr-title').hidden = true; $('scr-create').hidden = false;
   const st = { cls: 'knight', gender: 'f', hair: HAIR_COLORS[0], eye: EYE_COLORS[0] };
   const stage = new THREE.Group(); stage.position.set(0, world.heightAt(0, -136) + 0.3, -136); scene.add(stage);
@@ -197,7 +238,7 @@ function showCreate() {
 
 // ---------------------------------------------------------------- game
 async function startGame(S) {
-  mode = 'loading';
+  mode = 'loading'; stopPeek();
   $('scr-title').hidden = true; $('scr-create').hidden = true;
   const loading = $('scr-loading'); loading.hidden = false; $('load-fill').style.width = '30%';
   $('load-tip').textContent = 'Tip: ' + TIPS[(Math.random() * TIPS.length) | 0];

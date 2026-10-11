@@ -103,14 +103,37 @@ add('online', svg(lg('z-online-a', ['#bfe8ff', '#4aa8ff', '#1a5ac8']) + lg('z-on
 <circle cx="42" cy="26" r="8" fill="url(#z-online-b)" ${INK}/><path d="M28 54C28 43 34 38 42 38C50 38 56 43 56 54Z" fill="url(#z-online-b)" ${INK}/>
 <circle cx="52" cy="12" r="6" fill="#4ae86a" ${INK2}/>${glint(19, 18, 2)}`));
 
-// mobile dock: activities (a little compass star) and more (a 2x2 grid of tiles)
+// mobile dock: activities (a little compass star)
 add('events', svg(rg('z-events-a', ['#fff6c0', '#ffd04a', '#e08a1a', '#8a4a08']) + lg('z-events-b', ['#bfe8ff', '#4aa8ff', '#1a4ab8']),
   `<circle cx="32" cy="32" r="24" fill="url(#z-events-b)" ${INK}/><path d="M32 11L37 27L53 32L37 37L32 53L27 37L11 32L27 27Z" fill="url(#z-events-a)" ${INK2}/>
 <circle cx="32" cy="32" r="4.5" fill="#fff6c0" ${INK2}/>${glint(22, 20, 2.6)}${spark(52, 12, 4)}`));
-add('more', svg(lg('z-more-a', ['#ffe8b0', '#ffb84a', '#c86a10']) + lg('z-more-b', ['#d0f0ff', '#5ab8ff', '#1a5ac8']),
-  `<rect x="9" y="9" width="20" height="20" rx="5" fill="url(#z-more-a)" ${INK}/><rect x="35" y="9" width="20" height="20" rx="5" fill="url(#z-more-b)" ${INK}/>
-<rect x="9" y="35" width="20" height="20" rx="5" fill="url(#z-more-b)" ${INK}/><rect x="35" y="35" width="20" height="20" rx="5" fill="url(#z-more-a)" ${INK}/>
-${glint(15, 14, 2.2)}${glint(41, 14, 2.2)}${glint(15, 40, 2.2)}${glint(41, 40, 2.2)}`));
+// quick access menus and the dock: "More" (four soft white tiles) and the collapse chevrons
+add('more', svg(lg('z-more-a', ['#ffffff', '#dfe8f6', '#b4c2da']),
+  `<rect x="12" y="12" width="17" height="17" rx="5" fill="url(#z-more-a)"/><rect x="35" y="12" width="17" height="17" rx="5" fill="url(#z-more-a)"/>
+<rect x="12" y="35" width="17" height="17" rx="5" fill="url(#z-more-a)"/><rect x="35" y="35" width="17" height="17" rx="5" fill="url(#z-more-a)"/>`));
+// server emblems on the title screen
+const leaf = (x, y, a, len, w) => `<path d="M0 0C${w} ${-len * 0.3} ${w} ${-len * 0.7} 0 ${-len}C${-w} ${-len * 0.7} ${-w} ${-len * 0.3} 0 0Z" transform="translate(${x} ${y}) rotate(${a})"/>`;
+const starPts = (n, R, r, cx = 32, cy = 32, rot = -90) => Array.from({ length: n * 2 }, (_, i) => { const a = ((rot + i * 180 / n) * Math.PI) / 180, k = i % 2 ? r : (typeof R === 'function' ? R(i / 2) : R); return `${(cx + Math.cos(a) * k).toFixed(1)} ${(cy + Math.sin(a) * k).toFixed(1)}`; }).join('L');
+add('srv_elysium', svg(lg('z-sel-a', ['#e8ffc8', '#6ae04a', '#1a8a2a']),
+  `<g fill="url(#z-sel-a)" ${INK}>${leaf(32, 56, -38, 30, 10)}${leaf(32, 56, 38, 30, 10)}${leaf(32, 57, 0, 44, 12)}</g>
+<path d="M32 55V20M32 55L19 33M32 55L45 33" stroke="#1a5a1a" stroke-width="1.6" opacity=".55"/>${glint(28, 26, 2.4)}${spark(51, 13, 4)}`));
+add('srv_valhalla', svg(lg('z-sva-a', ['#ffffff', '#9ad8ff', '#2a74e0']),
+  `<path d="M${starPts(8, (i) => (i % 2 ? 21 : 29), 11)}Z" fill="url(#z-sva-a)" ${INK2}/><path d="M${starPts(4, 17, 6)}Z" fill="#ffffff" opacity=".75"/><circle cx="32" cy="32" r="5" fill="#ffffff" ${INK2}/>
+${glint(26, 20, 2.4)}${spark(52, 50, 3.6)}`));
+add('srv_zephyr', svg(rg('z-sze-a', ['#f4e0ff', '#b07aff', '#6a2ad8', '#3a0a8a']),
+  `<circle cx="32" cy="32" r="24" fill="url(#z-sze-a)" ${INK}/><path d="M46 24A15 15 0 1 0 47 39A10 10 0 1 1 33 31A5 5 0 0 1 40 33" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+${glint(22, 19, 2.6)}${spark(52, 12, 4)}`));
+add('srv_solaria', svg(rg('z-sso-a', ['#fffbe0', '#ffd84a', '#f0a020', '#b86a08']),
+  `<path d="M${starPts(12, 28, 17)}Z" fill="#ffb02a" ${INK}/><circle cx="32" cy="32" r="14" fill="url(#z-sso-a)" ${INK}/>${glint(27, 26, 2.8)}`));
+add('srv_nordheim', svg(lg('z-sno-a', ['#d8f0ff', '#5aa0f0', '#1a4aa8']) + lg('z-sno-b', ['#a8d0ff', '#3a70d0', '#12307a']),
+  `<path d="M6 52L24 22L34 36L42 26L58 52Z" fill="url(#z-sno-b)" ${INK}/><path d="M12 52L30 14L48 52Z" fill="url(#z-sno-a)" ${INK}/>
+<path d="M30 14L37 28L33 26L29 31L25 27L23 28Z" fill="#fff" ${INK2}/>${spark(50, 14, 4)}`));
+add('srv_yggdrasil', svg(rg('z-syg-a', ['#e0ffc0', '#7ad84a', '#2a8a2a', '#145a1a']) + lg('z-syg-b', ['#c8905a', '#8a5a2a', '#5a3410']),
+  `<path d="M28 56L29 38L24 32L30 34L32 26L34 34L40 32L35 38L36 56Z" fill="url(#z-syg-b)" ${INK2}/>
+<path d="M32 6C42 6 48 12 48 18C56 20 58 30 52 35C52 41 44 44 38 41C34 44 28 44 25 41C18 44 10 40 11 34C6 29 9 20 16 18C16 11 23 6 32 6Z" fill="url(#z-syg-a)" ${INK}/>
+${glint(25, 15, 2.8)}${spark(53, 52, 3.4)}`));
+add('qa_less', svg('', '<path d="M17 39L32 24L47 39" fill="none" stroke="#eef3fb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'));
+add('qa_down', svg('', '<path d="M17 26L32 41L47 26" fill="none" stroke="#eef3fb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'));
 
 // soulstones: one per named power
 const SOUL_LOOK = {

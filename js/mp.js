@@ -1,4 +1,4 @@
-// Real-time multiplayer for the public website. Players on the same server (S1-S6 on the title screen) join one
+// Real-time multiplayer for the public website. Players on the same server (picked on the title screen) join one
 // Supabase Realtime channel: presence carries who is online (name, class, level, look, zone, party) and broadcasts
 // carry movement, chat and party messages (party.js). Monsters, loot and progress stay per player. No database tables are used.
 // Inside the claude.ai page (window.claude present) or without a configured key, multiplayer stays off.
@@ -26,6 +26,12 @@ export const mp = { status: 'off', server: 'S1', id: null, client: null, channel
 export function mpEnabled() { return !!(MP_CONFIG.url && MP_CONFIG.key) && !(window.claude && typeof window.claude.use === 'function'); }
 export function getServer() { try { return localStorage.getItem(SERVER_KEY) || 'S1'; } catch { return 'S1'; } }
 export function setServer(s) { try { localStorage.setItem(SERVER_KEY, s); } catch { /* storage unavailable */ } }
+// Server names and emblems. The ids (S1-S6) name the Realtime channels, so they never change.
+export const SERVERS = [
+  { id: 'S1', name: 'Elysium', icon: 'srv_elysium' }, { id: 'S2', name: 'Valhalla', icon: 'srv_valhalla' }, { id: 'S3', name: 'Zephyr', icon: 'srv_zephyr' },
+  { id: 'S4', name: 'Solaria', icon: 'srv_solaria' }, { id: 'S5', name: 'Nordheim', icon: 'srv_nordheim' }, { id: 'S6', name: 'Yggdrasil', icon: 'srv_yggdrasil' },
+];
+export const serverName = (id) => SERVERS.find((s) => s.id === id)?.name || id;
 
 let libPromise = null;
 function loadLib() {
@@ -85,7 +91,7 @@ const M = {
           mp.status = 'online'; mp.error = '';
           await ch.track(this.mpInfo()).catch(() => {});
           this.mpLastInfo = JSON.stringify(this.mpInfo(true));
-          if (first) this.ui.chat('system', `Connected to server <b>${esc(mp.server)}</b>. Friends on the same server appear in your world.`);
+          if (first) this.ui.chat('system', `Connected to server <b>${esc(serverName(mp.server))}</b>. Friends on the same server appear in your world.`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           mp.status = 'error'; mp.error = status === 'TIMED_OUT' ? 'the server did not answer' : 'the connection was refused';
         } else if (status === 'CLOSED') mp.status = 'off';
@@ -285,11 +291,40 @@ const M = {
     if (mp.channel && mp.client) { mp.client.removeChannel(mp.channel); mp.channel = null; }
     for (const key of [...mp.peers.keys()]) { mp.peers.delete(key); this.mpRemove(key); }
     mp.server = s; mp.status = 'connecting';
-    this.ui.chat('system', `Switching to server <b>${esc(s)}</b>...`);
+    this.ui.chat('system', `Switching to server <b>${esc(serverName(s))}</b>...`);
     if (mp.client) this.mpJoin();
     this.ui.refreshOnline && this.ui.refreshOnline();
   },
 };
 
 export function installMp(Game) { Object.assign(Game.prototype, M); }
-export const MP_SERVERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'];
+
+// Title screen: how many heroes are on each server right now. A separate connection listens to every server's
+// presence without joining it (it never shows up as a player) and closes when you leave the title screen.
+// onCount(serverId, n) gets n = player count, or null when the server cannot be reached.
+let peek = null;
+export async function peekServers(onCount) {
+  if (!mpEnabled() || peek) return;
+  const me = peek = { client: null, stopped: false };
+  try {
+    const lib = await loadLib();
+    if (me.stopped) return;
+    me.client = lib.createClient(MP_CONFIG.url, MP_CONFIG.key, { auth: { persistSession: false, autoRefreshToken: false } });
+    for (const sv of SERVERS) {
+      const ch = me.client.channel('aetherheim-' + sv.id.toLowerCase());
+      let ok = false;
+      const count = () => { if (ok && !me.stopped) onCount(sv.id, Object.keys(ch.presenceState()).length); };
+      ch.on('presence', { event: 'sync' }, count).subscribe((st) => {
+        if (st === 'SUBSCRIBED') { ok = true; count(); }
+        else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { ok = false; if (!me.stopped) onCount(sv.id, null); }
+      });
+    }
+  } catch { if (!me.stopped) for (const sv of SERVERS) onCount(sv.id, null); }
+}
+export function stopPeek() {
+  if (!peek) return;
+  peek.stopped = true;
+  // a failing teardown must never stop you entering the game
+  if (peek.client) try { peek.client.removeAllChannels(); peek.client.realtime?.disconnect(); } catch { /* already closed */ }
+  peek = null;
+}

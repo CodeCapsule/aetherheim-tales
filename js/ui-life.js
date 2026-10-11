@@ -11,7 +11,7 @@ import { RARITY } from './loot.js';
 import { fmtLeft } from './life.js';
 import { shopEntry, goodName, goodQuality, goodIcon } from './economy.js';
 import { ico } from './icons.js';
-import { mp, mpEnabled, MP_SERVERS } from './mp.js';
+import { mp, mpEnabled, SERVERS, serverName } from './mp.js';
 import { CLASSES } from './data.js';
 
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -334,13 +334,13 @@ const P = {
     const g = this.g, S = g.S;
     if (!mpEnabled()) {
       const framed = !!(window.claude && typeof window.claude.use === 'function');
-      body.appendChild(h('div', 'note', framed ? 'Playing with friends works on the public website: <b>codecapsule.github.io/aetherheim-tales</b>. Here you play with simulated adventurers only.'
-        : 'Multiplayer is not switched on for this copy yet (no key in <b>js/mp-config.js</b>). For now you play with simulated adventurers only.'));
+      body.appendChild(h('div', 'note', framed ? 'Playing with friends works on the public website: <b>codecapsule.github.io/aetherheim-tales</b>. Here you play solo.'
+        : 'Multiplayer is not switched on for this copy yet (no key in <b>js/mp-config.js</b>). For now you play solo.'));
       return;
     }
     const st = { online: ['good', 'Connected'], connecting: ['', 'Connecting…'], error: ['bad', `Not connected — ${esc(mp.error || 'error')}`], off: ['', 'Offline'] }[mp.status] || ['', mp.status];
     const head = h('div', 'mp-head', `<span class="mp-st ${st[0]}"><i></i>${st[1]}</span><span class="muted">Server</span>`);
-    for (const sv of MP_SERVERS) { const b = h('button', 'chip' + (sv === mp.server ? ' sel' : ''), sv); b.onclick = () => g.mpSwitchServer(sv); head.appendChild(b); }
+    for (const sv of SERVERS) { const b = h('button', 'chip' + (sv.id === mp.server ? ' sel' : ''), `${ico(sv.icon, 'ico inl')}${sv.name}`); b.onclick = () => g.mpSwitchServer(sv.id); head.appendChild(b); }
     if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
     body.appendChild(head);
     this.partyBlock(body);
@@ -355,7 +355,7 @@ const P = {
     row({ name: S.name, level: S.level, cls: S.cls, guild: S.guild?.name, zone: g.zone?.name }, true);
     for (const [key, pr] of mp.peers) row(pr.info, false, key);
     body.appendChild(L);
-    body.appendChild(h('div', 'note', mp.peers.size ? 'You see each other in the world and your chat messages reach everyone on this server. Monsters, loot and progress stay separate for each player.' : `Nobody else is on server ${esc(mp.server)} right now. Ask your friends to pick the same server on the title screen.`));
+    body.appendChild(h('div', 'note', mp.peers.size ? 'You see each other in the world and your chat messages reach everyone on this server. Monsters, loot and progress stay separate for each player.' : `Nobody else is on ${esc(serverName(mp.server))} right now. Ask your friends to pick the same server on the title screen.`));
   },
   refreshOnline() {
     const A = this.acts?.online; if (!A) return;

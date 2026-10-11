@@ -22,12 +22,13 @@ import { buildExtraPet, buildExtraMount, EXTRA_PET_MODELS, EXTRA_MOUNT_MODELS } 
 import { MAX_LEVEL, curveStats, DUNGEON_RULES, RELIC_SETS } from './data-world.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
+import { PET_ABILITIES, PET_MAX_LV, petAbilityValue } from './data-pets.js';
 import { activeEvent } from './systems-data.js';
 import { Dungeon } from './dungeon.js';
 import {
   RARITY, EFFECTS, rollRarity, genEquip, genNamed, genSet, namedBySource, normalizeItem, aggregateEquip, sellPrice,
 } from './loot.js';
-import { iconCanvas } from './icons.js';
+import { ico, iconCanvas } from './icons.js';
 import { shadowTexture, textTexture, targetRingTexture, beamTexture, ringTexture, glowTexture } from './toon.js';
 
 export const SAVE_KEY = 'alfheim_tales_save_v1';
@@ -202,7 +203,8 @@ export class Game {
     e.pos.set(n.x, y + (n.look === 'sylphie' ? 0.6 : 0), n.z);
     e.baseY = e.pos.y; e.yaw = e.homeYaw = n.face; e.data = n; e.id = n.id; e.humanoid = inner;
     e.float = n.look === 'sylphie';
-    this.nameplate(e, `<div class="t">&lt;${esc(n.title)}&gt;</div><div class="n">${esc(n.name)}</div>`, 'npc');
+    // role icon before the name so each keeper is easy to spot (the same icon marks them on the maps)
+    this.nameplate(e, `<div class="t">&lt;${esc(n.title)}&gt;</div><div class="n">${n.icon ? ico(n.icon, 'ico npi') : ''}${esc(n.name)}</div>`, 'npc');
     const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTexture('!'), depthWrite: false }));
     mk.scale.setScalar(1.3); mk.visible = false; e.marker = mk; this.scene.add(mk);
     this.npcs.push(e);
@@ -297,6 +299,17 @@ export class Game {
     const EL = this.elixirMods ? this.elixirMods() : {};
     atk *= EL.atk || 1; def *= EL.def || 1; speed *= EL.speed || 1;
     if (fxs.has('worldtree')) hp *= 1.2;
+    // the summoned pet's passive ability
+    const PA = this.petFx = this.petAbility();
+    if (PA) {
+      const v = PA.v / 100;
+      if (PA.kind === 'speed') speed *= 1 + v;
+      else if (PA.kind === 'might') { atk *= 1 + v; def *= 1 + v; }
+      else if (PA.kind === 'crit') crit += PA.v;
+      else if (PA.kind === 'vigor' || PA.kind === 'guardian') hp *= 1 + v;
+      else if (PA.kind === 'cdr') cdr += v;
+      else if (PA.kind === 'dragon') { atk *= 1 + v; critDmg += v * 2; }
+    }
     speed *= 1 + (gs.speed || 0) / 100;
     if (fxs.has('swift')) speed *= 1.12;
     cdr = Math.min(0.5, cdr + (gs.cdr || 0) / 100);
@@ -312,6 +325,12 @@ export class Game {
     this.ui.refreshPlayer && this.ui.refreshPlayer();
   }
   hasFx(id) { return this.mods.effects.has(id); }
+  // the summoned pet's ability with its number at the pet's level, or null
+  petAbility() {
+    const id = this.S.activePet, ab = id && PET_ABILITIES[id];
+    return ab ? { ...ab, v: petAbilityValue(ab, this.S.pets[id]?.lv || 1) } : null;
+  }
+  petIs(kind) { return this.petFx?.kind === kind; }
   stat(k) { return this.mods.stats[k] || 0; }
   mpCost(sk) { let c = sk.mp * (1 - Math.min(60, this.stat('manaCost')) / 100); if (this.hasFx('mana_font')) c *= 0.7; return Math.round(c); }
   buffMod(e, key) { let m = 1; for (const b of e.buffs) if (b.mods && b.mods[key] && key !== 'crit') m *= b.mods[key]; return m; }
@@ -542,6 +561,7 @@ export class Game {
     p.mp -= this.mpCost(sk);
     if (!sk.basic) this.track('skill');
     if (!sk.basic && this.hasFx('set_riptide')) p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.03);
+    if (!sk.basic && this.petIs('bloom')) this.heal(p, p.maxHp * this.petFx.v / 100);
     this.cd[sk.id] = this.time + sk.cd * (sk.basic ? (this.hasFx('swift') ? 0.88 : 1) : 1 - this.cdr);
     const ranged = CLASSES[this.S.cls].ranged || ['buff', 'heal', 'zone'].includes(sk.kind);
     p.state = ranged ? 'cast' : 'attack'; p.actDur = p.actT = sk.basic ? 0.42 : 0.5;
@@ -685,6 +705,10 @@ export class Game {
       if (dst === this.player) this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height), 'Miss', 'miss');
       return 0;
     }
+    if (dst === this.player && src.kind === 'monster' && o.fixed == null && this.petIs('dodge') && Math.random() * 100 < this.petFx.v) {
+      this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height), 'Dodge', 'miss');
+      return 0;
+    }
     if (src === this.player && o.fixed == null) {
       if (this.hasFx('giant_slayer') && (dst.def0?.elite || dst.def0?.boss || dst.wb)) base *= 1.2;
       if (this.hasFx('executioner') && dst.maxHp && dst.hp < dst.maxHp * 0.3) base *= 1.4;
@@ -692,6 +716,7 @@ export class Game {
       if (this.hasFx('set_shatter') && dst.frozenT > this.time) base *= 1.3;
     }
     if (this.hasFx('set_covenant') && o.fixed == null) { if (src === this.player || src.kind === 'pet') base *= 1.15; else if (dst === this.player) base *= 0.85; }
+    if (dst === this.player && o.fixed == null && (this.petIs('guard') || this.petIs('guardian'))) base *= 1 - this.petFx.v / 100;
     const K = 50 + 8 * (src.level || 1); // armor matters relative to the attacker's level, so it scales to Lv 200
     let dmg = o.fixed != null ? Math.max(1, Math.round(o.fixed)) : Math.max(1, Math.round(base * K / (K + this.defOf(dst))));
     if (dst.shield > 0) {
@@ -724,6 +749,7 @@ export class Game {
     if (dst === this.player && src.kind === 'monster' && dmg > 0 && !src.dead) {
       let back = dmg * Math.min(60, this.stat('thorns')) / 100;
       if (this.hasFx('thorn_aura')) back += this.defOf(this.player) * 0.4;
+      if (this.petIs('reflect')) back += dmg * this.petFx.v / 100;
       if (back >= 1) this.after(0.05, () => { if (!src.dead) this.damage(this.player, src, 0, { fixed: back, proc: true, cls: 'pet' }); });
     }
     if (dst.hp <= 0) {
@@ -732,6 +758,12 @@ export class Game {
         this.fx.pillar(dst.pos, 0xff8a2a, 2.2, 12, 1.2); this.fx.circle(dst.pos, '#ffb35a', 3, 1.5, dst.model);
         this.fx.emit(dst.pos.clone().setY(dst.pos.y + 1), { count: 70, colors: [0xff6a2a, 0xffd04a, 0xffffff], speed: 6, life: 1.2, size: 0.8, up: 4 });
         this.ui.toast('Phoenix rebirth! You rise again.', 'good'); this.sfx.play('level');
+        return dmg;
+      }
+      if (dst === this.player && this.petIs('rebirth') && this.time >= (this.procCD.petRebirth || 0)) {
+        dst.hp = Math.round(dst.maxHp * this.petFx.v / 100); this.procCD.petRebirth = this.time + 300;
+        this.fx.pillar(dst.pos, 0xffa03a, 2, 10, 1); this.fx.emit(dst.pos.clone().setY(dst.pos.y + 1), { count: 50, colors: [0xff7a2a, 0xffe07a], speed: 5, life: 1, size: 0.7, up: 4 });
+        this.ui.toast(`${this.pet?.data.name || 'Your pet'}'s Rebirth! You rise again.`, 'good'); this.sfx.play('level');
         return dmg;
       }
       if (dst.kind === 'monster') this.killMonster(dst);
@@ -745,10 +777,11 @@ export class Game {
   onPlayerHit(dst, dmg, crit) {
     const p = this.player;
     if (this.hasFx('double_strike') && Math.random() < 0.15) this.after(0.12, () => { if (!dst.dead) this.damage(p, dst, 0, { fixed: dmg * 0.7, proc: true, cls: 'crit' }); });
-    const ls = Math.min(25, this.stat('lifesteal'));
+    const ls = Math.min(25, this.stat('lifesteal') + (this.petIs('vampire') ? this.petFx.v : 0));
     if (ls > 0) p.hp = Math.min(p.maxHp, p.hp + dmg * ls / 100);
     if (crit && this.hasFx('crit_heal') && (this.procCD.critHeal || 0) <= this.time) { this.procCD.critHeal = this.time + 0.4; this.heal(p, p.maxHp * 0.04); }
     if (this.hasFx('chain') && Math.random() < 0.18) this.chainLightning(dst);
+    if (this.petIs('foxfire') && !dst.dead && Math.random() < 0.2) this.petFoxFire(dst);
     if (this.hasFx('stun_chance') && !dst.dead && !dst.def0?.boss && Math.random() < 0.1) { dst.stun = 1.5; this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height + 0.4), 'Stunned', 'miss'); }
     if (this.hasFx('meteor_proc') && ++this.hitCount % 6 === 0) {
       const c = dst.pos.clone();
@@ -823,7 +856,7 @@ export class Game {
     const exp = this.personalExp(this.partyShareExp(m, cs ? cs.exp : d.exp * K.exp), m.level);
     this.after(0.3, () => { this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.3), `+${exp} EXP`, 'exp'); this.gainExp(exp); });
     // gold
-    const gold = Math.round((cs ? rnd(cs.gold[0], cs.gold[1]) : rnd(d.gold[0], d.gold[1]) * K.gold) * (1 + this.stat('goldFind') / 100 + (EL.gold || 0)) * (LB ? LB.gold : 1));
+    const gold = Math.round((cs ? rnd(cs.gold[0], cs.gold[1]) : rnd(d.gold[0], d.gold[1]) * K.gold) * (1 + this.stat('goldFind') / 100 + (EL.gold || 0) + (this.petIs('gold') ? this.petFx.v / 100 : 0)) * (LB ? LB.gold : 1));
     this.fx.coins(m.pos, p, Math.min(8, 2 + (gold / 15) | 0), () => { this.S.gold += gold; this.sfx.play('coin'); this.ui.refreshWallet(); this.fx.text(p.pos.clone().setY(p.pos.y + p.height), `+${gold} Gold`, 'gold', 0.5); this.track('gold', gold); });
     this.S.kills[m.type] = (this.S.kills[m.type] || 0) + 1;
     if (this.hasFx('frenzy')) this.addFrenzy();
@@ -841,9 +874,10 @@ export class Game {
 
   rollDrops(m) {
     const d = m.def0, S = this.S;
-    const ctx = { elite: !!d.elite, boss: !!d.boss, dungeon: !!m.dungeon, luck: Math.min(0.6, this.stat('goldFind') / 200 + ((this.elixirMods && this.elixirMods().luck) || 0)) };
+    const luck = this.petIs('luck') ? this.petFx.v : 0; // Lucky Paw: more gear drops and better rarity
+    const ctx = { elite: !!d.elite, boss: !!d.boss, dungeon: !!m.dungeon, luck: Math.min(0.6, this.stat('goldFind') / 200 + ((this.elixirMods && this.elixirMods().luck) || 0) + luck / 200) };
     const rolls = d.boss ? (m.dungeon ? 1 : 2) : 1;
-    const chance = d.boss ? 1 : d.elite ? 0.55 : m.dungeon ? 0.24 : 0.12;
+    const chance = (d.boss ? 1 : d.elite ? 0.55 : m.dungeon ? 0.24 : 0.12) * (1 + luck / 100);
     for (let i = 0; i < rolls; i++) {
       if (Math.random() > chance) continue;
       this.dropLoot({ eq: this.makeEquip(null, Math.max(1, m.level), rollRarity(ctx)) }, m.pos);
@@ -947,7 +981,7 @@ export class Game {
   personalExp(base, lvl) {
     const EL = this.elixirMods ? this.elixirMods() : {}, LB = liveBoost();
     if (this.S.level - lvl > 4) base *= 0.4;
-    return Math.round(base * (1 + this.stat('expGain') / 100 + (EL.exp || 0)) * (LB ? LB.exp : 1));
+    return Math.round(base * (1 + this.stat('expGain') / 100 + (EL.exp || 0) + (this.petIs('exp') ? this.petFx.v / 100 : 0)) * (LB ? LB.exp : 1));
   }
   gainExp(n) {
     const S = this.S;
@@ -1123,7 +1157,7 @@ export class Game {
   }
   feedPet(id) {
     const S = this.S, st = S.pets[id]; if (!st) return;
-    if (st.lv >= 60) { this.ui.toast('Max pet level', 'warn'); return; }
+    if (st.lv >= PET_MAX_LV) { this.ui.toast('Max pet level', 'warn'); return; }
     const cost = 150 * st.lv * st.lv;
     if (S.gold < cost) { this.ui.toast('Not enough Gold', 'warn'); this.sfx.play('error'); return; }
     S.gold -= cost; st.lv++;
@@ -1747,8 +1781,8 @@ export class Game {
       else {
         e.yawT = Math.atan2(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
         if (e.attackCD <= 0) {
-          e.attackCD = 1.5; e.state = 'attack'; e.actT = e.actDur = 0.4;
-          this.after(0.18, () => { if (!t.dead) { this.damage(e, t, 1); this.fx.emit(t.pos.clone().setY(t.pos.y + 1), { count: 10, color: 0xff9ad8, speed: 3, life: 0.4, size: 0.5 }); } });
+          e.attackCD = 1.5 / (this.petIs('frenzy') ? 1 + this.petFx.v / 100 : 1); e.state = 'attack'; e.actT = e.actDur = 0.4;
+          this.after(0.18, () => { if (!t.dead) { this.damage(e, t, 1); this.fx.emit(t.pos.clone().setY(t.pos.y + 1), { count: 10, color: 0xff9ad8, speed: 3, life: 0.4, size: 0.5 }); this.petStrike(t); } });
         }
       }
     } else {
@@ -1761,6 +1795,54 @@ export class Game {
     if (e.actT <= 0) e.state = 'idle';
     e.moving = moving;
     e.pos.y = this.map.heightAt(e.pos.x, e.pos.z);
+    this.petTick(dt, t && flat(t.pos, p.pos) < 25 ? t : null);
+  }
+
+  // pet abilities that ride on the pet's own bites
+  petStrike(t) {
+    const P = this.petFx, p = this.player; if (!P || t.dead) return;
+    const head = t.pos.clone().setY(t.pos.y + t.height + 0.4);
+    if (P.kind === 'poison' && (t.petPoisonT || 0) <= this.time) {
+      t.petPoisonT = this.time + 4;
+      for (let i = 1; i <= 4; i++) this.after(i, () => { if (!t.dead) { this.fx.emit(t.pos.clone().setY(t.pos.y + t.height * 0.6), { count: 8, color: 0x9aff4a, speed: 1.5, life: 0.5, size: 0.5, up: 1 }); this.damage(p, t, P.v / 100, { canCrit: false, proc: true, cls: 'pet' }); } });
+    } else if (P.kind === 'freeze' && !t.def0?.boss && !t.wb && Math.random() * 100 < P.v) {
+      t.stun = Math.max(t.stun || 0, 2); this.fx.text(head, 'Frozen', 'miss');
+      this.fx.emit(t.pos.clone().setY(t.pos.y + 1), { count: 18, colors: [0xc8f0ff, 0xffffff], speed: 3, life: 0.6, size: 0.5 });
+    } else if (P.kind === 'hellfire') {
+      this.fx.ring(t.pos, 0xff6a2a, 4, 0.4);
+      for (const m of [...this.monsters]) if (m !== t && !m.dead && (m.map || this.world) === this.map && flat(m.pos, t.pos) < 4 + m.radius * 0.5) this.damage(p, m, P.v / 100, { canCrit: false, proc: true, cls: 'pet' });
+    }
+  }
+  // timed pet abilities: heals, mana and shields any time; stomp, star and frost breath while you fight
+  petTick(dt, t) {
+    const P = this.petFx, p = this.player; if (!P || p.dead) return;
+    const every = { heal: 5, mana: 4, shield: 20, stomp: 8, starfall: 10, frostbreath: 12 }[P.kind]; if (!every) return;
+    this.petT = (this.petT || 0) + dt;
+    if (this.petT < every) return;
+    const v = P.v / 100;
+    if (P.kind === 'heal') { if (p.hp >= p.maxHp) return; this.heal(p, p.maxHp * v); this.fx.emit(p.pos.clone().setY(p.pos.y + 1), { count: 10, color: 0xffb8e8, speed: 1.5, life: 0.7, size: 0.4, up: 2 }); }
+    else if (P.kind === 'mana') { if (p.mp >= p.maxMp) return; p.mp = Math.min(p.maxMp, p.mp + p.maxMp * v); this.fx.emit(p.pos.clone().setY(p.pos.y + 1), { count: 10, color: 0xffd84a, speed: 1.5, life: 0.7, size: 0.4, up: 2 }); }
+    else if (P.kind === 'shield') {
+      const amt = p.maxHp * v; if ((p.shield || 0) >= amt) return;
+      p.shield = amt; p.buffs = p.buffs.filter((b) => b.id !== 'petshield');
+      p.buffs.push({ id: 'petshield', icon: 'paw', until: this.time + every, shield: true });
+      this.fx.circle(p.pos, '#bfefff', 2, 1, p.model);
+    } else {
+      if (!t || t.dead || !this.pet) return; // ready the moment a fight starts
+      if (P.kind === 'stomp') { const c = this.pet.pos.clone(); this.fx.quake(c, 4); this.sfx.play('boom'); this.aoe(c, 5, v, 1, true); }
+      else if (P.kind === 'starfall') { const from = t.pos.clone().add(new THREE.Vector3(rnd(-3, 3), 16, rnd(-3, 3))); this.fx.projectile(from, t, { color: 0xfff08a, size: 0.65, speed: 34, onHit: () => this.damage(p, t, v, { proc: true }) }); }
+      else if (P.kind === 'frostbreath') {
+        const c = t.pos.clone(); this.fx.ring(c, 0x9ad8ff, 4, 0.5); this.fx.emit(c.clone().setY(c.y + 1), { count: 40, colors: [0xc8f0ff, 0xffffff, 0x7ac8ff], speed: 5, life: 0.7, size: 0.6 });
+        for (const m of [...this.monsters]) if (!m.dead && (m.map || this.world) === this.map && flat(m.pos, c) < 4 + m.radius * 0.5) { this.damage(p, m, v, { proc: true, canCrit: false, cls: 'pet' }); if (!m.dead && !m.def0?.boss && !m.wb) m.stun = Math.max(m.stun || 0, 2); }
+      }
+    }
+    this.petT = 0;
+  }
+  // Nine Tails: fox fire at the target and up to two enemies near it
+  petFoxFire(dst) {
+    const p = this.player, v = this.petFx.v / 100, from = (this.pet || p).pos.clone().setY((this.pet || p).pos.y + 1.2);
+    const near = this.monsters.filter((m) => m !== dst && !m.dead && (m.map || this.world) === this.map && flat(m.pos, dst.pos) < 8).sort((a, b) => flat(a.pos, dst.pos) - flat(b.pos, dst.pos)).slice(0, 2);
+    for (const m of [dst, ...near]) this.fx.projectile(from, m, { color: 0xff7ab8, size: 0.32, speed: 24, onHit: () => { if (!m.dead) this.damage(p, m, v, { proc: true, canCrit: false, cls: 'pet' }); } });
   }
 
   updateSprite(dt) {

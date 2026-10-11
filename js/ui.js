@@ -1,15 +1,16 @@
 // HUD, panels, dialogs, chat, minimap and world map.
 import {
-  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, NPCS, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
+  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
 } from './data.js';
 import { needExp, fmt, esc, PET_TIER } from './game.js';
 import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, namedBySource } from './loot.js';
-import { ico } from './icons.js';
+import { ico, iconCanvas } from './icons.js';
 import { installSystemsUI } from './ui-systems.js';
 import { installLifeUI } from './ui-life.js';
 import { installPartyUI, partyMembers } from './party.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
+import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 
@@ -20,6 +21,7 @@ const RARC = PET_TIER.map((t) => RARITY[t].color);
 const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+const TOWN_R = 56; // half-size of the World Map's town view (Sylvan Haven)
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const DOCK_MENU = ['char', 'bag', 'skills', 'quests'];
 const STATION_TABS = ['alchemy', 'smithing', 'red']; // Professions tabs that only open at their NPC
@@ -59,23 +61,35 @@ export class UI {
     $('btn-mount').onclick = () => g.toggleMount();
     $('btn-auto').onclick = () => g.toggleAuto();
     $('btn-auto').innerHTML = `${ico('auto')}<small>Auto</small>`;
-    // menu
-    const menu = $('hud-menu'); menu.innerHTML = '';
-    const items = [['char', 'Character', 'C'], ['bag', 'Bag', 'B'], ['skills', 'Skills', 'K'], ['pets', 'Pets', 'P'], ['mounts', 'Mounts', 'U'], ['life', 'Professions', 'Z', 'professions'], ['collect', 'Relic Collection', '', 'collection'], ['codex', 'Codex', 'X'], ['quests', 'Quests', 'L'], ['map', 'World Map', 'M'], ['settings', 'Settings', 'O']];
+    // quick access menus: a few pinned buttons and a More button that expands the rest; on phones each opens whole as a sheet
+    this.qa = { acts: false, menu: false };
+    const qaTog = (box, key) => {
+      const t = h('button', 'qa-tog', `<span class="ai">${ico('more')}</span><span class="al">More</span>`);
+      t.setAttribute('aria-label', 'More'); t.setAttribute('aria-expanded', 'false');
+      t.onclick = () => { g.sfx.play('click'); this.setQa(key, !this.qa[key]); };
+      box.appendChild(t); return t;
+    };
+    // character menu (bottom right): pinned on wide screens / pinned everywhere; the rest sit behind More
+    const menu = $('hud-menu'); menu.innerHTML = ''; menu.className = 'qa';
+    const items = [['char', 'Hero', 'C', 'Character'], ['bag', 'Bag', 'B'], ['skills', 'Skills', 'K'], ['pets', 'Pets', 'P'], ['mounts', 'Mounts', 'U'], ['life', 'Gathering', 'Z', 'Professions', 'professions'], ['collect', 'Relics', '', 'Relic Collection', 'collection'], ['codex', 'Codex', 'X'], ['quests', 'Quests', 'L'], ['map', 'Map', 'M', 'World Map'], ['settings', 'Settings', 'O']];
+    const MENU_PIN = ['char', 'bag', 'skills', 'pets', 'quests'], MENU_PIN_WIDE = ['map', 'life'];
     this.menuBtns = {};
-    for (const [n, label, k, icn] of items) {
-      const b = h('button', 'mbtn' + (DOCK_MENU.includes(n) ? ' indock' : ''), `${ico(icn || n)}${k ? `<span class="k">${k}</span>` : ''}<span class="ml">${label}</span>`); b.title = k ? `${label} (${k})` : label; b.setAttribute('aria-label', label);
-      b.onclick = () => { this.setSheet(''); if (n === 'life' && STATION_TABS.includes(this.sel.lifeTab)) this.sel.lifeTab = 'gather'; this.togglePanel(n); g.sfx.play('click'); };
+    for (const [n, label, k, full = label, icn = n] of items) {
+      const cls = 'mbtn' + (DOCK_MENU.includes(n) ? ' indock' : '') + (MENU_PIN.includes(n) ? '' : MENU_PIN_WIDE.includes(n) ? ' x2' : ' x');
+      const b = h('button', cls, `<span class="ai">${ico(icn)}${k ? `<span class="k">${k}</span>` : ''}</span><span class="al">${label}</span>`); b.title = k ? `${full} (${k})` : full; b.setAttribute('aria-label', full);
+      b.onclick = () => { this.setSheet(''); this.setQa('menu', false); if (n === 'life' && STATION_TABS.includes(this.sel.lifeTab)) this.sel.lifeTab = 'gather'; this.togglePanel(n); g.sfx.play('click'); };
       menu.appendChild(b); this.menuBtns[n] = b;
     }
-    // activities
-    const acts = $('hud-acts'); acts.innerHTML = '';
+    this.qaTogs = { menu: qaTog(menu, 'menu') };
+    // activities (top right): Online, Missions, Dungeon and the World Boss timer stay out; the rest sit behind More
+    const acts = $('hud-acts'); acts.innerHTML = ''; acts.className = 'qa';
     const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
+    const ACT_PIN = ['online', 'missions', 'dungeon', 'worldboss'];
     this.acts = {};
     for (const [n, label] of A) {
-      const b = h('button', 'act', `<span class="ai">${ico(n)}</span><span class="al stroke">${label}</span>`); b.setAttribute('aria-label', label);
+      const b = h('button', 'act' + (ACT_PIN.includes(n) ? '' : ' x'), `<span class="ai">${ico(n)}</span><span class="al">${label}</span>`); b.setAttribute('aria-label', label);
       b.onclick = () => {
-        g.sfx.play('click'); this.setSheet('');
+        g.sfx.play('click'); this.setSheet(''); this.setQa('acts', false);
         if (n === 'dungeon') { this.togglePanel('dungeons'); return; }
         if (n === 'war') { this.sel.guildTab = 'war'; this.togglePanel('guild'); return; }
         if (g.dg && (n === 'bounty' || n === 'teleport')) { this.toast('Not available inside a dungeon', 'warn'); return; }
@@ -86,6 +100,7 @@ export class UI {
       };
       acts.appendChild(b); this.acts[n] = b;
     }
+    this.qaTogs.acts = qaTog(acts, 'acts');
     // phone dock (shown on small screens): quick buttons, and sheets for the activities and the rest of the menu
     const dock = $('hud-dock'); dock.innerHTML = '';
     this.dockBtns = {};
@@ -102,7 +117,10 @@ export class UI {
     }
     this.sheet = '';
     // a tap anywhere else closes an open sheet
-    document.addEventListener('pointerdown', (e) => { if (this.sheet && !e.target.closest('#hud-acts, #hud-menu, #hud-dock')) this.setSheet(''); }, true);
+    document.addEventListener('pointerdown', (e) => {
+      if (this.sheet && !e.target.closest('#hud-acts, #hud-menu, #hud-dock')) this.setSheet('');
+      for (const k of ['acts', 'menu']) if (this.qa[k] && !e.target.closest('#hud-' + k)) this.setQa(k, false);
+    }, true);
     // on-screen joystick (shown with the phone dock): hold and drag to walk, relative to the camera
     const stick = $('hud-stick'), knob = stick.querySelector('.knob');
     let sid = null;
@@ -151,7 +169,7 @@ export class UI {
     this.txt($('pf-br'), fmt(g.br));
     const pet = S.activePet && PETS.find((x) => x.id === S.activePet);
     $('hud-pet').hidden = !pet;
-    if (pet) { $('pet-img').src = g.petIcon(pet.id); this.txt($('pet-name'), pet.name); this.txt($('pet-lv'), `Lv ${S.pets[pet.id].lv} · ${pet.species}`); }
+    if (pet) { $('pet-img').src = g.petIcon(pet.id); this.txt($('pet-name'), pet.name); this.txt($('pet-lv'), `Lv ${S.pets[pet.id].lv} · ${pet.species}`); $('hud-pet').title = `${PET_ABILITIES[pet.id].name}: ${petAbilityText(PET_ABILITIES[pet.id], S.pets[pet.id].lv)}`; }
     this.refreshWallet();
   }
   refreshWallet() { const S = this.g.S; this.txt($('w-gold'), fmt(S.gold)); this.txt($('w-dia'), fmt(S.diamonds)); }
@@ -220,9 +238,22 @@ export class UI {
     this.sheet = name; $('hud').dataset.sheet = name;
     for (const k of ['acts', 'menu']) this.dockBtns?.[k]?.classList.toggle('on', name === k);
   }
-  // dock buttons light up when something inside them wants attention
+  // expand or collapse a quick access menu (the More button)
+  setQa(key, on) {
+    if (!this.qa || this.qa[key] === on) return;
+    this.qa[key] = on;
+    const box = $('hud-' + key), t = this.qaTogs[key];
+    box.classList.toggle('open', on);
+    t.querySelector('.ai').innerHTML = ico(on ? (key === 'menu' ? 'qa_down' : 'qa_less') : 'more');
+    t.setAttribute('aria-expanded', String(on));
+    this.refreshDock();
+  }
+  // dock buttons (and the More buttons) light up when something inside them wants attention
   refreshDock() {
     const D = this.dockBtns; if (!D || !this.acts) return;
+    const wants = (b) => !b.hidden && (b.classList.contains('glow') || !!b.querySelector('.badge, .dotn'));
+    const folded = (b) => getComputedStyle(b).display === 'none';
+    for (const [k, list] of [['acts', this.acts], ['menu', this.menuBtns]]) this.qaTogs[k].classList.toggle('hot', !this.qa[k] && Object.values(list).some((b) => wants(b) && folded(b)));
     D.acts.classList.toggle('hot', Object.values(this.acts).some((b) => !b.hidden && (b.classList.contains('glow') || !!b.querySelector('.badge'))));
     D.menu.classList.toggle('hot', Object.values(this.menuBtns).some((b) => !b.classList.contains('indock') && !!b.querySelector('.dotn')));
     for (const n of DOCK_MENU) D[n].classList.toggle('hot', !!this.menuBtns[n]?.querySelector('.dotn'));
@@ -295,8 +326,9 @@ export class UI {
     if (!g.map.isDungeon) {
       if (g.S.settings.others) for (const e of g.rplayers || []) if (!e.netHidden) dot(e.pos.x, e.pos.z, g.partyHas(e.peerId) ? '#7aff9a' : '#ffe04a', 3.2);
       for (const n of g.npcs) {
-        dot(n.pos.x, n.pos.z, '#ffe066', 3);
-        if (n.markChar && n.markChar !== '…') { const sx = (n.pos.x - p.x + R) * k, sy = (n.pos.z - p.z + R) * k; c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx - 3, sy - 4); c.fillText(n.markChar, sx - 3, sy - 4); }
+        const sx = (n.pos.x - p.x + R) * k, sy = (n.pos.z - p.z + R) * k, pin = this.npcPin(n.data.icon);
+        if (pin) { if (sx > -8 && sy > -8 && sx < S + 8 && sy < S + 8) c.drawImage(pin, sx - 8, sy - 8, 16, 16); } else dot(n.pos.x, n.pos.z, '#ffe066', 3);
+        if (n.markChar && n.markChar !== '…') { c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx + 3, sy - 6); c.fillText(n.markChar, sx + 3, sy - 6); }
       }
       dot(WORLD_BOSS.site.x, WORLD_BOSS.site.z, g.wb && !g.wb.e.dead ? '#ff3aa8' : '#7ad8ff', 3.5);
     } else if (g.dg) {
@@ -687,7 +719,7 @@ export class UI {
       for (const pd of PETS) {
         const own = S.pets[pd.id];
         const c = h('button', 'card' + (own ? '' : ' locked') + (this.sel.pet === pd.id ? ' sel' : ''));
-        c.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}"><div>${own ? esc(pd.name) : '???'}</div><div class="rar" style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]}</div>${S.activePet === pd.id ? '<span class="on">OUT</span>' : ''}`;
+        c.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}"><div>${own ? esc(pd.name) : '???'}</div><div class="rar" style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]}</div><div class="pab">${esc(PET_ABILITIES[pd.id].name)}</div>${S.activePet === pd.id ? '<span class="on">OUT</span>' : ''}`;
         c.onclick = () => { this.sel.pet = pd.id; this.renderPanel(); };
         cards.appendChild(c);
       }
@@ -695,7 +727,9 @@ export class UI {
       const pd = PETS.find((x) => x.id === (this.sel.pet || S.activePet || PETS[0].id)), own = S.pets[pd.id];
       const det = h('div', 'detail');
       const lv = own ? own.lv : 1, k = 1 + 0.15 * (lv - 1);
-      det.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${own ? esc(pd.name) : '???'}</b> <span style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]} ${esc(pd.species)}</span><br>${own ? `Level ${lv} · Attack ${fmt(pd.atk * k)} · HP +${fmt(pd.hp * k)}` : `How to obtain: ${esc(pd.src)}`}<br>Pets fight beside you and add to your Battle Rating.</div>`;
+      det.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${own ? esc(pd.name) : '???'}</b> <span style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]} ${esc(pd.species)}</span><br>${own ? `Level ${lv} · Attack ${fmt(pd.atk * k)} · HP +${fmt(pd.hp * k)}` : `How to obtain: ${esc(pd.src)}`}
+        <div class="pet-ab"><b>${ico('paw', 'ico inl')}${esc(PET_ABILITIES[pd.id].name)}</b> ${esc(petAbilityText(PET_ABILITIES[pd.id], lv))}<small>${lv < PET_MAX_LV ? `Grows each time you feed ${own ? esc(pd.name) : 'this pet'} · at Lv ${PET_MAX_LV}: ${esc(petAbilityText(PET_ABILITIES[pd.id], PET_MAX_LV))}` : 'Fully grown'}</small></div>
+        Pets fight beside you, add to your Battle Rating and lend you their ability while summoned.</div>`;
       if (own) {
         const acts = h('div', 'acts');
         if (S.activePet === pd.id) { const b = h('button', 'btn gray', 'Recall'); b.onclick = () => g.setPet(null); acts.appendChild(b); }
@@ -769,17 +803,29 @@ export class UI {
 
   panel_map(body) {
     const g = this.g, mm = g.map.minimap || g.world.minimap;
+    // World: the whole map; Town: Sylvan Haven up close with every keeper's role icon and name
+    const view = g.map.isDungeon ? 'world' : this.tabs(body, 'mapView', [['world', 'World'], ['town', 'Sylvan Haven']]);
+    const town = view === 'town';
     const wrap = h('div', 'worldmap');
     const cv = document.createElement('canvas'); cv.width = 560; cv.height = 560; wrap.appendChild(cv);
-    this.wmCanvas = cv;
-    if (!g.map.isDungeon) for (const z of ZONES) {
+    this.wmCanvas = cv; this.wmTown = town;
+    if (!g.map.isDungeon && !town) for (const z of ZONES) {
       const l = h('div', 'wm-label stroke', `${esc(z.name)}<small>${esc(z.lv)}</small>`);
       l.style.left = ((z.x - mm.minX) / mm.size * 100) + '%'; l.style.top = ((z.z - mm.minZ) / mm.size * 100) + '%';
       wrap.appendChild(l);
     }
+    const V = this.mapView(mm);
+    if (town) for (const n of g.npcs) {
+      if (!this.inTown(n.pos)) continue;
+      const b = h('button', 'wm-npc', `${n.data.icon ? ico(n.data.icon) : ''}<span class="stroke">${esc(n.data.name)}</span>`);
+      b.style.left = ((n.pos.x - V.x0) / V.size * 100) + '%'; b.style.top = ((n.pos.z - V.z0) / V.size * 100) + '%';
+      b.title = `${n.data.name} · ${n.data.title}`; b.setAttribute('aria-label', b.title);
+      b.onclick = (e) => { e.stopPropagation(); this.closePanels(); g.engage = false; g.talkTo(n); };
+      wrap.appendChild(b);
+    }
     cv.onclick = (e) => {
-      const r = cv.getBoundingClientRect();
-      const x = mm.minX + (e.clientX - r.left) / r.width * mm.size, z = mm.minZ + (e.clientY - r.top) / r.height * mm.size;
+      const r = cv.getBoundingClientRect(), V2 = this.mapView(mm);
+      const x = V2.x0 + (e.clientX - r.left) / r.width * V2.size, z = V2.z0 + (e.clientY - r.top) / r.height * V2.size;
       const [fx, fz] = g.map.nearestFree(x, z);
       if (Math.hypot(fx - x, fz - z) > 12) { this.toast('Cannot travel there', 'warn'); return; }
       this.closePanels(); g.engage = false; g.pathTo(fx, fz, true);
@@ -790,26 +836,49 @@ export class UI {
       const L = h('div', 'list services');
       for (const [id, what, name, sel] of SERVICES) {
         const n = g.npcById(id); if (!n) continue;
-        const r = h('div', 'row slim', `<div class="tx"><b>${esc(n.data.name)} <span class="muted">· ${esc(n.data.title)}</span></b>${esc(what)}</div>`);
+        const r = h('div', 'row slim', `<div class="ic">${ico(n.data.icon)}</div><div class="tx"><b>${esc(n.data.name)} <span class="muted">· ${esc(n.data.title)}</span></b>${esc(what)}</div>`);
         const b = h('button', 'btn small blue', 'Go'); b.onclick = () => { Object.assign(this.sel, sel || {}); g.goToStation(name); };
         r.appendChild(b); L.appendChild(r);
       }
       body.appendChild(L);
     }
-    body.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">${g.map.isDungeon ? 'Click a spot to walk there. Sealed chambers open once the room before them is cleared.' : 'Click anywhere on the map to auto-path there. Purple markers are dungeon entrances. Talk to Nix at the north teleport circle for instant travel.'}</div>`));
+    body.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">${g.map.isDungeon ? 'Click a spot to walk there. Sealed chambers open once the room before them is cleared.' : town ? 'Tap a keeper to walk over and talk. Click anywhere else to walk there.' : 'Click anywhere on the map to auto-path there. Purple markers are dungeon entrances; gold pins are outpost traders. Talk to Nix at the north teleport circle for instant travel.'}</div>`));
     this.drawWorldMap();
+  }
+  // the part of the world the map canvas shows: everything, or the town square
+  mapView(mm) { return this.wmTown && !this.g.map.isDungeon ? { x0: -TOWN_R, z0: -TOWN_R, size: TOWN_R * 2 } : { x0: mm.minX, z0: mm.minZ, size: mm.size }; }
+  inTown(p) { return Math.abs(p.x) < TOWN_R - 4 && Math.abs(p.z) < TOWN_R - 4; }
+  // a round role pin for an NPC icon (rasterized once), drawn on the minimap and the world map
+  npcPin(key) {
+    const P = this.pins || (this.pins = new Map());
+    if (!key) return null;
+    if (!P.has(key)) {
+      P.set(key, null);
+      iconCanvas(key, 64).then((ic) => {
+        const c = document.createElement('canvas'); c.width = c.height = 40; const x = c.getContext('2d');
+        const gr = x.createRadialGradient(20, 13, 2, 20, 20, 19); gr.addColorStop(0, '#3a4a66'); gr.addColorStop(1, '#151c2b');
+        x.beginPath(); x.arc(20, 20, 18.5, 0, Math.PI * 2); x.fillStyle = gr; x.fill(); x.lineWidth = 2.5; x.strokeStyle = '#f3c75b'; x.stroke();
+        x.drawImage(ic, 7, 7, 26, 26); P.set(key, c);
+      });
+    }
+    return P.get(key);
   }
   drawWorldMap() {
     const cv = this.wmCanvas; if (!cv || !cv.isConnected) return;
-    const g = this.g, c = cv.getContext('2d'), mm = g.map.minimap || g.world.minimap, k = cv.width / mm.size;
+    const g = this.g, c = cv.getContext('2d'), mm = g.map.minimap || g.world.minimap, V = this.mapView(mm), k = cv.width / V.size, ppu = mm.canvas.width / mm.size;
     c.fillStyle = '#0c0f1c'; c.fillRect(0, 0, cv.width, cv.height);
-    c.drawImage(mm.canvas, 0, 0, cv.width, cv.height);
-    const P = (x, z) => [(x - mm.minX) * k, (z - mm.minZ) * k];
-    if (!g.map.isDungeon) {
+    c.imageSmoothingEnabled = true;
+    c.drawImage(mm.canvas, (V.x0 - mm.minX) * ppu, (V.z0 - mm.minZ) * ppu, V.size * ppu, V.size * ppu, 0, 0, cv.width, cv.height);
+    const P = (x, z) => [(x - V.x0) * k, (z - V.z0) * k];
+    if (!g.map.isDungeon && !this.wmTown) {
       for (const sp of SPAWNS) { const [x, y] = P(sp.x, sp.z); c.fillStyle = MONSTERS[sp.type].boss ? 'rgba(255,60,160,.35)' : 'rgba(255,90,60,.22)'; c.beginPath(); c.arc(x, y, sp.r * k + (MONSTERS[sp.type].boss ? 10 : 0), 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#000'; c.lineWidth = 3; const lbl = `${MONSTERS[sp.type].name} Lv${MONSTERS[sp.type].lvl[0]}`; c.strokeText(lbl, x - 30, y + 4); c.fillText(lbl, x - 30, y + 4); }
-      for (const n of NPCS) { const [x, y] = P(n.x, n.z); c.fillStyle = '#ffe066'; c.beginPath(); c.arc(x, y, 3.5, 0, Math.PI * 2); c.fill(); }
+      for (const n of g.npcs) {
+        const [x, y] = P(n.pos.x, n.pos.z), pin = !this.inTown(n.pos) && this.npcPin(n.data.icon);
+        if (pin) c.drawImage(pin, x - 9, y - 9, 18, 18);
+        else { c.fillStyle = '#ffe066'; c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill(); }
+      }
       for (const pt of g.portals) { const [x, y] = P(pt.center.x, pt.center.z); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#2a1050'; c.lineWidth = 3; c.strokeText(pt.def.name, x - 30, y - 9); c.fillStyle = '#e8c8ff'; c.fillText(pt.def.name, x - 30, y - 9); }
-    } else {
+    } else if (g.map.isDungeon) {
       for (const m of g.monsters) if (!m.dead && m.map === g.map) { const [x, y] = P(m.pos.x, m.pos.z); c.fillStyle = m.def0.boss ? '#ff3aa8' : '#ff4a3a'; c.beginPath(); c.arc(x, y, m.def0.boss ? 6 : 3, 0, Math.PI * 2); c.fill(); }
     }
     const p = g.player; const [px, py] = P(p.pos.x, p.pos.z);

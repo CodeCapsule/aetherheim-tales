@@ -35,6 +35,14 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   mounts and Unique or Legendary gear. The quest tracker auto-paths to the next step, including dungeon entrances.
 - **Pets, sprites, mounts and wings**: 27 collectible pets that fight beside you (up to Lv 60), 4 elemental sprites,
   13 mounts and fairy wings. New pets and mounts drop from the new monsters and bosses or are sold by Mimi and Brom.
+- **Pet abilities**: every pet lends you its own ability while summoned, and it grows each time you feed the pet.
+  Healers (Scoopy heals you every 5s, Petalle heals on every skill cast, Flurry wraps you in a shield every 20s, Buzzy
+  restores mana), defenders (Wobbles and Skye cut damage taken, Boo dodges attacks, Prism reflects damage, Blaze
+  saves you from a killing blow once every 5 minutes), boosters (Hootie +Crit, Fluffkin +move speed, Cupcake Puff
+  +Attack and Defense, Sparky +Attack and Crit Damage, Bao +Max HP, Pip shorter cooldowns, Nyx lifesteal), attackers
+  (Mushy poisons, Pengu freezes, Cinder splashes fire, Ribbit attacks faster, Fluffle stomps, Twinkle calls falling
+  stars, Kohaku throws fox fire, Frostbite breathes frost) and finders (Mochi more gear drops, Kitsu more EXP, Pumpkin
+  Pip more Gold). The Pets panel shows each ability and what it becomes at Lv 60.
 - **Costumes**: 23 cosmetic outfits, hats and wings in Coco the Costume Tailor's Wardrobe. They change only your look,
   never your stats. Buy them at Coco's Boutique or find them in Wardrobe Boxes.
 - **Dungeons**: eleven instanced dungeons with their own entrances in the world, from Mossy Hollow (Lv 6) to the
@@ -51,6 +59,9 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   Mira the Market Merchant (Market and Auction House), Grimsby the Auctioneer, Aldric the Guild Master (guilds and guild
   wars) and Coco the Costume Tailor (Wardrobe). Their old hotkeys and mission buttons walk you to the NPC and open the
   window when you arrive; walking away closes it. The World Map lists them under Town services with a Go button.
+- **NPC role icons**: every NPC has an icon before their name (an anvil for Gorm, a gem for Opal, a potion stand for
+  Vera, a paw for Mimi...). The same icons mark them on the minimap, and the World Map's **Sylvan Haven** tab shows the
+  whole town with each keeper's icon and name: tap one to walk over and talk.
 - **Relic collections and Red gear**: every dungeon hides four collection relics (crown, seal, idol and tome) dropped by
   its monsters and chest. Completing a set gives a permanent Attack and HP bonus. Four relics of one dungeon, a Crimson
   Core, Star Essence and gold forge a **Red** item at the Crimson Forge: the new top rarity, with four affixes, a
@@ -88,12 +99,16 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 - **Equipment progression**: gear can also be reforged (reroll affixes), re-tempered to your level,
   ascended up a rarity tier (Special gear awakens into a named Unique, Unique into a Legendary) and salvaged into Spirit
   Dust, Shards and Star Essence. The Legendary Codex tracks all 21 named items, grants a collection bonus and pays out at milestones.
-- **Game Master Console**: in the claude.ai version the server list on the title screen has a Game Master Console link for
-  the artifact's owner and editors (on this website it only opens on a local copy or with `#admin`, and shows only your own save). In the published version the game reports each signed-in player's status to the
+- **Game Master Console**: the server list on the title screen has a Game Master Console link for the artifact's owner
+  and editors (and in any local copy). In the published version the game reports each signed-in player's status to the
   artifact's shared database, and the console shows players online, levels, classes, zones, gear, play time, an
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
+- **Title screen**: the world turns behind a winged Aetherheim Tales Online crest. The server list (Elysium, Valhalla,
+  Zephyr, Solaria, Nordheim, Yggdrasil) shows each server's status and how many heroes are on it right now (Low, Medium,
+  High), read live from the multiplayer service without joining it. **Enter Game** continues your hero; a new hero is
+  one click below.
 - **Play together (real time)**: on the website, everyone who picks the same server on the title screen shares one
   world. You see each other walk, ride and wear costumes, your chat reaches everyone on the server, and the **Online**
   panel lists who is on with a Go to button that teleports you next to a friend. Monsters, loot and progress stay
@@ -123,6 +138,10 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   a chosen rarity in one go; locked gear is always kept.
 - **MMO systems**: Battle Rating, bag, skill upgrades, auto battle, auto potions, titles, daily sign-in, online gifts,
   a gold/diamond mall, world and guild chat, minimap and world map.
+- **Quick access menus**: activities sit in a slim panel at the top right (Online, Missions, Dungeon, the World Boss
+  timer) and the character menu in a compact panel at the bottom right (Hero, Bag, Skills, Pets, Gathering, Quests,
+  Map). **More** expands each panel to the rest and collapses again when you pick something or click away; a red dot
+  on More means something inside is waiting.
 - **Phones and tablets**: on small screens the HUD docks to a bar along the bottom (Events, Hero, Bag, Skills, Quests,
   Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
   dot marks a sheet with something waiting. The skill bar sits above the dock with Auto and Mount beside it, a joystick
@@ -162,6 +181,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
 | `js/data-sets.js` | Dungeon sets: pieces, two-piece stats and four-piece powers |
+| `js/data-pets.js` | Pet abilities and how they grow with pet level |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
 | `js/toon.js` | Cel-shaded materials, ink outlines and canvas textures |
 | `js/models.js` | Procedural chibi characters, monsters, pets, mounts and sprites |
