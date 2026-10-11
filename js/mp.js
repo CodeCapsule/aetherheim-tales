@@ -13,6 +13,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const num = (v, lo, hi, d = 0) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, n);
 const STATES = ['idle', 'run', 'attack', 'cast', 'dead'];
+// Movement is sent with its velocity and drawn by dead reckoning: between updates a remote hero keeps walking the
+// way it was going, and each update only nudges it back on course. Updates go out when the prediction the others make
+// drifts, when the hero starts, stops or turns, and at least every SEND_MAX ms while moving. Nothing is sent while
+// nobody else is on the server (Supabase's free plan counts every message each player receives).
+const EXTRAP = 0.9; // seconds a remote hero keeps moving on its last velocity before waiting for news
+const SEND_MIN = 90, SEND_MAX = 600, SEND_IDLE = 15000; // ms between movement updates
+const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
+const _off = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _pt = new THREE.Vector3();
 const SERVER_KEY = 'aetherheim_server';
 
 export const mp = { status: 'off', server: 'S1', id: null, client: null, channel: null, peers: new Map(), error: '' };
@@ -52,7 +60,7 @@ const M = {
   // ============================================================ connection
   async mpStart() {
     this.rplayers = [];
-    this.mpT = 0; this.mpPresT = 0; this.mpLastSent = null; this.mpChatT = 0;
+    this.mpPresT = 0; this.mpLastSent = null; this.mpChatT = 0; this.mpPrev = null; this.mpVx = 0; this.mpVz = 0;
     if (!mpEnabled()) { mp.status = 'off'; return; }
     mp.server = getServer();
     mp.id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).replace(/-/g, '').slice(0, 16);
@@ -105,16 +113,28 @@ const M = {
       const sig = JSON.stringify(this.mpInfo(true));
       if (sig !== this.mpLastInfo) { this.mpLastInfo = sig; mp.channel.track(this.mpInfo()).catch(() => {}); }
     }
-    // movement: about 3 updates a second while moving, a heartbeat every 5 s while standing still
-    this.mpT -= dt;
-    if (this.mpT > 0) return;
+    // own velocity in world units per real second: the others extrapolate with it
+    const now = performance.now(), pv = this.mpPrev;
+    if (pv && now > pv.t) {
+      const sec = (now - pv.t) / 1000, ix = (p.pos.x - pv.x) / sec, iz = (p.pos.z - pv.z) / sec;
+      if (!this.mpMoving || Math.hypot(ix, iz) > 40) { this.mpVx = 0; this.mpVz = 0; } // standing, or a teleport
+      else { const k = 1 - Math.exp(-sec * 30); this.mpVx += (ix - this.mpVx) * k; this.mpVz += (iz - this.mpVz) * k; }
+    }
+    this.mpPrev = { x: p.pos.x, z: p.pos.z, t: now };
     const st = p.dead ? 4 : p.state === 'attack' ? 2 : p.state === 'cast' ? 3 : this.mpMoving ? 1 : 0;
-    const cur = { x: Math.round(p.pos.x * 10) / 10, z: Math.round(p.pos.z * 10) / 10, y: Math.round(p.yaw * 100) / 100, s: st, w: this.dg || this.war ? 0 : 1 };
-    const L = this.mpLastSent;
-    const changed = !L || Math.hypot(cur.x - L.x, cur.z - L.z) > 0.15 || Math.abs(cur.y - L.y) > 0.15 || cur.s !== L.s || cur.w !== L.w;
-    if (!changed && L && performance.now() - L.t < 5000) { this.mpT = 0.2; return; }
-    this.mpT = 0.33;
-    this.mpLastSent = { ...cur, t: performance.now() };
+    if (!mp.peers.size) { this.mpLastSent = null; return; } // alone on the server: nobody to tell
+    const w = this.dg || this.war ? 0 : 1, L = this.mpLastSent, gap = L ? now - L.t : Infinity;
+    let send = !L || gap > SEND_IDLE || w !== L.w || (st !== L.s && gap > 60);
+    if (!send && gap > SEND_MIN) {
+      // where the others currently draw us
+      const a = Math.min(gap / 1000, EXTRAP), ex = L.x + L.vx * a, ez = L.z + L.vz * a;
+      send = Math.hypot(p.pos.x - ex, p.pos.z - ez) > 0.4 || Math.hypot(this.mpVx - L.vx, this.mpVz - L.vz) > 1.2
+        || (st === 1 && gap > SEND_MAX) || (Math.abs(angDiff(p.yaw, L.y)) > 0.5 && gap > 300);
+    }
+    if (!send) return;
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const cur = { x: r2(p.pos.x), z: r2(p.pos.z), y: r2(p.yaw), s: st, w, vx: r2(this.mpVx), vz: r2(this.mpVz) };
+    this.mpLastSent = { ...cur, t: now };
     mp.channel.send({ type: 'broadcast', event: 'm', payload: { i: mp.id, ...cur } }).catch(() => {});
   },
   mpSendChat(text) {
@@ -132,7 +152,7 @@ const M = {
       const info = cleanInfo(metas[metas.length - 1]); if (!info) continue;
       info.id = key; seen.add(key);
       const old = mp.peers.get(key);
-      if (!old) this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`);
+      if (!old) { this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
       mp.peers.set(key, { ...(old || {}), info, net: old?.net || { x: info.x, z: info.z, y: 0, s: 0, w: info.map === 'world' ? 1 : 0, t: performance.now() } });
       this.mpEnsure(key);
     }
@@ -146,7 +166,10 @@ const M = {
   mpMove(m) {
     if (!m || typeof m !== 'object') return;
     const pr = mp.peers.get(str(m.i, 40)); if (!pr) return;
-    pr.net = { x: num(m.x, -5200, 5200, pr.net?.x || 0), z: num(m.z, -400, 5200, pr.net?.z || 0), y: num(m.y, -10, 10, 0), s: num(m.s, 0, 4, 0) | 0, w: m.w ? 1 : 0, t: performance.now() };
+    pr.net = {
+      x: num(m.x, -5200, 5200, pr.net?.x || 0), z: num(m.z, -400, 5200, pr.net?.z || 0), vx: num(m.vx, -40, 40, 0), vz: num(m.vz, -40, 40, 0),
+      y: num(m.y, -10, 10, 0), s: num(m.s, 0, 4, 0) | 0, w: m.w ? 1 : 0, t: performance.now(),
+    };
   },
   mpChat(m) {
     if (!m || typeof m !== 'object') return;
@@ -194,19 +217,29 @@ const M = {
     const n = pr.net, here = !this.dg && !this.war;
     e.netHidden = !here || !n.w || pr.info.map !== 'world';
     if (e.netHidden) { if (e.petModel) e.petModel.visible = false; return; }
-    const d = Math.hypot(n.x - e.pos.x, n.z - e.pos.z);
-    if (d > 30) e.pos.set(n.x, 0, n.z);
-    else { const k = 1 - Math.exp(-dt * 8); e.pos.x += (n.x - e.pos.x) * k; e.pos.z += (n.z - e.pos.z) * k; }
+    // dead reckoning: where the hero should be now, from the last update and its velocity
+    const age = Math.min(Math.max(0, performance.now() - n.t) / 1000, EXTRAP);
+    const vx = n.vx || 0, vz = n.vz || 0, tx = n.x + vx * age, tz = n.z + vz * age;
+    const ox = e.pos.x, oz = e.pos.z;
+    if (Math.hypot(tx - ox, tz - oz) > 12) e.pos.set(tx, 0, tz); // teleported or far behind: jump
+    else {
+      if (age < EXTRAP) { e.pos.x += vx * dt; e.pos.z += vz * dt; }
+      const k = 1 - Math.exp(-dt * 6); e.pos.x += (tx - e.pos.x) * k; e.pos.z += (tz - e.pos.z) * k;
+    }
     e.pos.y = this.world.heightAt(e.pos.x, e.pos.z);
-    e.yawT = n.y;
-    e.moving = d > 0.12 || n.s === 1;
+    const spd = dt > 0 ? Math.hypot(e.pos.x - ox, e.pos.z - oz) / dt : 0;
+    e.drawSpd = (e.drawSpd || 0) + (spd - (e.drawSpd || 0)) * (1 - Math.exp(-dt * 10));
+    const going = Math.hypot(vx, vz) > 0.5 && age < EXTRAP;
+    e.yawT = going ? Math.atan2(vx, vz) : n.y;
+    e.moving = going || e.drawSpd > 1;
     e.state = n.s === 4 ? 'dead' : n.s === 2 ? 'attack' : n.s === 3 ? 'cast' : e.moving ? 'run' : 'idle';
     if ((n.s === 2 || n.s === 3) && e.actT <= 0) { e.actT = e.actDur = 0.45; }
     e.actT = Math.max(0, e.actT - dt);
     if (e.petModel) {
       e.petModel.visible = e.model.visible;
-      const off = new THREE.Vector3(-1.3, 0, -1.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), e.yaw);
-      e.petModel.position.lerp(new THREE.Vector3(e.pos.x + off.x, this.world.heightAt(e.pos.x + off.x, e.pos.z + off.z), e.pos.z + off.z), 1 - Math.exp(-dt * 4));
+      _off.set(-1.3, 0, -1.2).applyAxisAngle(_up, e.yaw);
+      _pt.set(e.pos.x + _off.x, this.world.heightAt(e.pos.x + _off.x, e.pos.z + _off.z), e.pos.z + _off.z);
+      e.petModel.position.lerp(_pt, 1 - Math.exp(-dt * 4));
       e.petModel.rotation.y = e.yaw;
     }
     if (e.bubble) {
