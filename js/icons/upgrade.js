@@ -98,6 +98,11 @@ add('enhance', svg(lg('z-enhance-h', ['#f4f8ff', '#a8b4c8', '#5a6478']) + lg('z-
 <path d="M10 12V28M2 20H18" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M10 12V28M2 20H18" stroke="#ffcb3a" stroke-width="3" stroke-linecap="round"/>
 ${spark(52, 46, 4)}${spark(44, 56, 2.6)}`));
 
+add('online', svg(lg('z-online-a', ['#bfe8ff', '#4aa8ff', '#1a5ac8']) + lg('z-online-b', ['#ffe8b0', '#ffb84a', '#c86a10']),
+  `<circle cx="22" cy="22" r="9" fill="url(#z-online-a)" ${INK}/><path d="M6 50C6 38 13 33 22 33C31 33 38 38 38 50Z" fill="url(#z-online-a)" ${INK}/>
+<circle cx="42" cy="26" r="8" fill="url(#z-online-b)" ${INK}/><path d="M28 54C28 43 34 38 42 38C50 38 56 43 56 54Z" fill="url(#z-online-b)" ${INK}/>
+<circle cx="52" cy="12" r="6" fill="#4ae86a" ${INK2}/>${glint(19, 18, 2)}`));
+
 // soulstones: one per named power
 export const SOUL_LOOK = {
   crit_heal: [['#ff9ab8', '#ff3a6a', '#7a0a2a'], 'leaf'], chain: [['#c8f0ff', '#3ab8ff', '#0a3a8a'], 'bolt'], stun_chance: [['#ffe0a0', '#c8862a', '#5a3008'], 'star'],

@@ -890,6 +890,16 @@ button { font-family: inherit; }
 .adm-flash { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 9px 16px; border-radius: 8px; background: #1a4a2a; border: 1px solid #4ad06a; font-size: 13px; z-index: 5; animation: toastIn .3s; } .adm-flash.bad { background: #4a1a1a; border-color: #ff6a5a; }
 .chip.sel { border-color: var(--gold); color: var(--gold); }
 @media (max-width: 760px) { .adm-split { grid-template-columns: 1fr; } #scr-admin { padding: 10px 10px 0; } .adm-title b { font-size: 17px; } .adm-tile b { font-size: 22px; } }
+
+/* ---- real players online ---- */
+.np.rp .n { color: #ffe04a; } .np.rp .t { color: #ffd890; font-size: 10px; } .np.rp .g { color: #9affb0; }
+.chat-bubble { max-width: 220px; margin: 0 auto 4px; padding: 5px 10px; border-radius: 12px; background: rgba(255, 255, 255, .95); color: #24160f; font-size: 12px; white-space: normal; text-shadow: none; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); position: relative; }
+.chat-bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-top-color: rgba(255, 255, 255, .95); border-bottom: 0; }
+.c-player .ch { color: #ffe04a; } .c-player .who { color: #ffe04a; }
+.mp-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.mp-st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); margin-right: 6px; }
+.mp-st i { width: 8px; height: 8px; border-radius: 50%; background: #8a94b0; } .mp-st.good i { background: #4ad06a; box-shadow: 0 0 6px #4ad06a; } .mp-st.bad { color: #ffb0a0; } .mp-st.bad i { background: #ff6a5a; }
+.row.me { border-color: rgba(255, 224, 74, .45); }
 </style>
 </head>
 <body>

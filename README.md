@@ -82,6 +82,12 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
+- **Play together (real time)**: on the website, everyone who picks the same server on the title screen shares one
+  world. You see each other walk, ride and wear costumes, your chat reaches everyone on the server, and the **Online**
+  panel lists who is on with a Go to button that teleports you next to a friend. Monsters, loot and progress stay
+  separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
+  Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
+  key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
   and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
@@ -129,6 +135,7 @@ Other players, guildmates, market sellers and rivals are simulated, so everythin
 | `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill and Soul Forge |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
+| `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
 | `js/toon.js` | Cel-shaded materials, ink outlines and canvas textures |
 | `js/models.js` | Procedural chibi characters, monsters, pets, mounts and sprites |

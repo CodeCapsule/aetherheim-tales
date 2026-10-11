@@ -34,6 +34,17 @@ for (const [id, r] of Object.entries(RELICS)) registerIcon(id, relicIcon(id, r.s
 for (const [k, c] of Object.entries(CROPS)) registerIcon('seed_' + k, seedIcon('seed_' + k, c.color));
 for (const c of COSTUMES) registerIcon(c.id, costumeIcon(c.id, c.slot, c.c1, c.c2));
 
+// A hero's look from save-like fields ({ cls, gender, hair, eye, wings, wingColor, costume }); used for the player and
+// for other real players seen online.
+export function lookFor(S) {
+  let o = { wings: !!S.wings, ...(S.wingColor ? { wingColor: S.wingColor } : {}) };
+  const out = costumeById(S.costume?.outfit), head = costumeById(S.costume?.head), back = costumeById(S.costume?.back);
+  if (out) o = { ...o, armor: false, robe: false, cape: null, scarf: false, apron: false, hood: null, ...out.look };
+  if (head) o = { ...o, hat: 'none', hood: null, catEars: false, ears: true, hatColor: undefined, ...head.look };
+  if (back) o = { ...o, ...back.look };
+  return classLook(S.cls, S.gender, S.hair, S.eye, o);
+}
+
 export function initLifeSave(S) {
   S.prof = S.prof || {};
   for (const k of Object.keys(PROF)) S.prof[k] = S.prof[k] || { lv: 1, exp: 0 };
@@ -468,15 +479,7 @@ const L = {
     this.ui.refreshPanel(); this.ui.refreshPlayer(); this.save();
   },
   // Costume pieces replace the look of the class outfit / headwear / back; stats never change.
-  playerLook() {
-    const S = this.S;
-    let o = { wings: S.wings, ...(S.wingColor ? { wingColor: S.wingColor } : {}) };
-    const out = costumeById(S.costume?.outfit), head = costumeById(S.costume?.head), back = costumeById(S.costume?.back);
-    if (out) o = { ...o, armor: false, robe: false, cape: null, scarf: false, apron: false, hood: null, ...out.look };
-    if (head) o = { ...o, hat: 'none', hood: null, catEars: false, ears: true, hatColor: undefined, ...head.look };
-    if (back) o = { ...o, ...back.look };
-    return classLook(S.cls, S.gender, S.hair, S.eye, o);
-  },
+  playerLook() { return lookFor(this.S); },
 };
 
 export function installLife(Game) { Object.assign(Game.prototype, L); }

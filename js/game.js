@@ -16,6 +16,7 @@ import { installLife, initLifeSave } from './life.js';
 import { installEconomy, initEconomySave } from './economy.js';
 import { installUpgrade, stoneFor } from './upgrade.js';
 import { installLive, liveBoost } from './live.js';
+import { installMp } from './mp.js';
 import { buildExtraMonster, EXTRA_MONSTER_MODELS } from './models-monsters.js';
 import { buildExtraPet, buildExtraMount, EXTRA_PET_MODELS, EXTRA_MOUNT_MODELS } from './models-extra.js';
 import { MAX_LEVEL, curveStats, DUNGEON_RULES, RELIC_SETS } from './data-world.js';
@@ -118,6 +119,7 @@ export class Game {
     this.ui.bind(this);
     this.ui.refreshAll();
     this.initLive();
+    this.mpStart();
     this.ui.chat('system', 'Welcome to <b>Carlyle</b>! Click the quest in the tracker on the right to auto-path to your goal.');
     this.ui.chat('system', 'Controls: click to move or attack · drag to turn the camera · scroll to zoom · 1–6 skills · R mount · T auto battle.');
     this.ui.chat('system', 'New: <b>Daily & Weekly Missions</b> (H), <b>Guilds</b> (G) with Guild Wars, <b>World Bosses</b> every 15 minutes, the <b>Market</b> (N), the <b>Forge</b> (Y) for crafting, gems and ascension, the <b>Season Pass</b> and leaderboards.');
@@ -449,7 +451,7 @@ export class Game {
     const x = sx - rect.left, y = sy - rect.top;
     let best = null, bd = Infinity;
     const focal = rect.height / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
-    const extra = this.dg ? [this.dg.chestEnt, this.dg.exitEnt].filter(Boolean) : this.war ? [] : [...this.portals, ...(this.lifeEnts || [])];
+    const extra = this.dg ? [this.dg.chestEnt, this.dg.exitEnt].filter(Boolean) : this.war ? [] : [...this.portals, ...(this.lifeEnts || []), ...(this.rplayers || []).filter((e) => !e.netHidden)];
     const cands = [...this.monsters, ...this.npcs, ...(this.S.settings.others ? this.bots : []), ...this.loots.filter((l) => l.map === this.map), ...extra];
     for (const e of cands) {
       if (e.dead || !e.model.visible) continue;
@@ -488,7 +490,7 @@ export class Game {
     if (h) {
       if (h.kind === 'monster') { this.setTarget(h); this.engage = true; this.player.path = []; this.pendingTalk = null; this.autoPathing = false; this.ui.setAutoPath(false); return; }
       if (h.kind === 'npc') { this.talkTo(h); return; }
-      if (h.kind === 'bot') { this.setTarget(h); return; }
+      if (h.kind === 'bot' || h.kind === 'rp') { this.setTarget(h); return; }
       if (h.kind === 'loot' || h.kind === 'chest' || h.kind === 'exit') { this.engage = false; this.pendingTalk = null; this.pathTo(h.pos.x, h.pos.z, false); return; }
       if (h.kind === 'portal') { this.goToPortal(h); return; }
       if (h.kind === 'node' || h.kind === 'plot') { this.lifeClick(h); return; }
@@ -1456,6 +1458,7 @@ export class Game {
   sendChat(text) {
     text = text.trim().slice(0, 80); if (!text) return;
     this.ui.chat('world', esc(text), this.S.name);
+    if (this.mpSendChat) this.mpSendChat(text);
     const low = text.toLowerCase();
     let reply = null;
     if (/\b(hi|hello|hey|yo)\b/.test(low)) reply = pick(['hey there!', 'hi hi~', 'welcome to Carlyle!', 'o/']);
@@ -1480,6 +1483,8 @@ export class Game {
     const d = MONSTERS[type], h = d.height;
     return this.portraits.snap('mon-' + type, () => monsterModel(d, d.variant ?? 0), { w: 96, h: 96, look: [0, h * 0.62, 0], from: [h * 0.35, h * 0.72, h * 1.25], fov: 34 });
   }
+  mountBuild(model) { return MOUNT_BUILD(model); }
+  petBuild(model) { return PET_BUILD(model); }
   botIcon(b) {
     return this.portraits.snap('bot-' + b.name, () => buildHumanoid(b.look), { w: 96, h: 96, look: [0, 1.5, 0], from: [0.45, 1.62, 2.3], fov: 32 });
   }
@@ -1593,7 +1598,7 @@ export class Game {
     if (p.vy !== 0 || p.jumpY > 0) { p.vy -= 24 * dt; p.jumpY = Math.max(0, p.jumpY + p.vy * dt); if (p.jumpY === 0) p.vy = 0; }
     p.pos.y = this.map.heightAt(p.pos.x, p.pos.z);
     p.inner.position.y = p.jumpY;
-    p.moving = moving;
+    p.moving = moving; this.mpMoving = moving;
     if (p.actT <= 0) p.state = moving ? 'run' : 'idle';
     // regen
     const ooc = this.time - this.lastCombat > 5;
@@ -2182,7 +2187,7 @@ export class Game {
       const far = e.pos.distanceTo(camPos) > (e.kind === 'monster' && e.def0.boss ? 220 : 110);
       if (e.kind === 'bot' && !this.S.settings.others) continue;
       if (e.kind === 'monster' && e.dead && e.deadT > 2.4) continue;
-      e.model.visible = !far;
+      e.model.visible = !far && !e.netHidden;
       if (e.kind === 'bot') e.petModel.visible = !far;
       if (far) continue;
       e.yaw = angLerp(e.yaw, e.yawT ?? e.yaw, 1 - Math.exp(-dt * 12));
@@ -2222,7 +2227,7 @@ export class Game {
   updatePlates() {
     const w = this.renderer.domElement.clientWidth, h = this.renderer.domElement.clientHeight;
     const v = new THREE.Vector3();
-    const range = { npc: 80, portal: 90, loot: 40, node: 42, plot: 45 };
+    const range = { npc: 80, portal: 90, loot: 40, node: 42, plot: 45, rp: 100 };
     for (const e of [...this.ents, ...this.loots, ...this.portals, ...(this.lifeEnts || [])]) {
       if (!e.np) continue;
       let show = !(e.kind === 'monster' && e.dead) && !(e.kind === 'bot' && !this.S.settings.others) && (!e.map || e.map === this.map) && !(e.kind === 'portal' && (this.dg || this.war));
@@ -2296,3 +2301,4 @@ installLife(Game);
 installEconomy(Game);
 installUpgrade(Game);
 installLive(Game);
+installMp(Game);

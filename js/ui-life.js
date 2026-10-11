@@ -11,6 +11,8 @@ import { RARITY } from './loot.js';
 import { fmtLeft, COSTUME_SLOTS } from './life.js';
 import { shopEntry, goodName, goodQuality, goodIcon } from './economy.js';
 import { ico } from './icons.js';
+import { mp, mpEnabled, MP_SERVERS } from './mp.js';
+import { CLASSES } from './data.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -371,6 +373,40 @@ const P = {
     acts.appendChild(go); box.appendChild(acts); body.appendChild(box);
     box.querySelector('#sa-q').onchange = (e) => { o.maxQ = +e.target.value; this.renderPanel(); };
     for (const k of ['gear', 'items', 'mats']) box.querySelector('#sa-' + k).onchange = (e) => { o[k] = e.target.checked; this.renderPanel(); };
+  },
+
+  // ------------------------------------------------------------ real players online (public website)
+  panel_online(body) {
+    const g = this.g, S = g.S;
+    if (!mpEnabled()) {
+      const framed = !!(window.claude && typeof window.claude.use === 'function');
+      body.appendChild(h('div', 'note', framed ? 'Playing with friends works on the public website: <b>codecapsule.github.io/aetherheim-tales</b>. Here you play with simulated adventurers only.'
+        : 'Multiplayer is not switched on for this copy yet (no key in <b>js/mp-config.js</b>). For now you play with simulated adventurers only.'));
+      return;
+    }
+    const st = { online: ['good', 'Connected'], connecting: ['', 'Connecting…'], error: ['bad', `Not connected — ${esc(mp.error || 'error')}`], off: ['', 'Offline'] }[mp.status] || ['', mp.status];
+    const head = h('div', 'mp-head', `<span class="mp-st ${st[0]}"><i></i>${st[1]}</span><span class="muted">Server</span>`);
+    for (const sv of MP_SERVERS) { const b = h('button', 'chip' + (sv === mp.server ? ' sel' : ''), sv); b.onclick = () => g.mpSwitchServer(sv); head.appendChild(b); }
+    if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
+    body.appendChild(head);
+    const L = h('div', 'list');
+    const row = (info, me, key) => {
+      const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.botIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
+        <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}</div>`);
+      if (!me) { const b = h('button', 'btn small blue', 'Go to'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
+      L.appendChild(r);
+    };
+    row({ name: S.name, level: S.level, cls: S.cls, guild: S.guild?.name, zone: g.zone?.name }, true);
+    for (const [key, pr] of mp.peers) row(pr.info, false, key);
+    body.appendChild(L);
+    body.appendChild(h('div', 'note', mp.peers.size ? 'You see each other in the world and your chat messages reach everyone on this server. Monsters, loot and progress stay separate for each player.' : `Nobody else is on server ${esc(mp.server)} right now. Ask your friends to pick the same server on the title screen.`));
+  },
+  refreshOnline() {
+    const A = this.acts?.online; if (!A) return;
+    const n = mp.peers.size;
+    const lbl = A.querySelector('.al'); if (lbl) lbl.textContent = mp.status === 'online' ? `Online ${n + 1}` : 'Online';
+    A.classList.toggle('glow', n > 0);
+    if (this.panelName === 'online') this.softRefresh();
   },
 
   // target frame: trade button for other adventurers

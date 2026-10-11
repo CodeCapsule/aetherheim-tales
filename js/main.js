@@ -13,6 +13,7 @@ import { buildHumanoid, classLook, HAIR_COLORS, EYE_COLORS, animateHumanoid } fr
 import { magicCircleTexture } from './toon.js';
 import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
+import { getServer, setServer, mpEnabled } from './mp.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -96,14 +97,16 @@ function showTitle(save) {
   $('scr-title').hidden = false;
   const servers = [['S1 Carlyle', 'New', '#3ac84a'], ['S2 Sylvan Haven', 'Hot', '#ff8a2a'], ['S3 Breezy Meadow', 'Smooth', '#3ac84a'], ['S4 Mossveil', 'Full', '#ff3a3a'], ['S5 Elder Ruins', 'Hot', '#ff8a2a'], ['S6 Yggdrasil', 'Smooth', '#3ac84a']];
   const list = $('server-list'); list.innerHTML = '';
+  const cur = getServer();
   servers.forEach(([n, tag, col], i) => {
-    const b = document.createElement('button');
-    b.className = 'server' + (i === 0 ? ' sel' : '');
+    const b = document.createElement('button'), sid = 'S' + (i + 1);
+    b.className = 'server' + (sid === cur ? ' sel' : '');
     b.innerHTML = `<span class="dot" style="background:${col};box-shadow:0 0 6px ${col}"></span>${n}<span class="tag" style="background:${col}">${tag}</span>`;
-    b.onclick = () => { list.querySelectorAll('.server').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); sfx.ensure(); sfx.play('click'); };
+    b.onclick = () => { list.querySelectorAll('.server').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); setServer(sid); sfx.ensure(); sfx.play('click'); };
     list.appendChild(b);
   });
   refreshTitleLive();
+  const h3 = document.querySelector('#scr-title .server-box h3'); if (h3) h3.textContent = mpEnabled() ? 'SELECT SERVER · PLAY WITH FRIENDS ON THE SAME ONE' : 'SELECT SERVER';
   const cont = $('btn-continue');
   if (save) { cont.hidden = false; cont.textContent = `Continue · ${save.name} Lv${save.level}`; $('btn-enter').textContent = 'New Hero'; }
   cont.onclick = () => { sfx.ensure(); sfx.play('open'); startGame(save); };

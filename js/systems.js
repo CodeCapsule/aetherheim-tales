@@ -82,6 +82,7 @@ const M = {
     this.updateLife(dt);
     this.updateEconomy(dt);
     this.updateLive(dt);
+    this.mpUpdate(dt);
     if (this.festival) this.festival.update(this.time);
     if (this.wb && this.wb.altarFx) this.wb.altarFx(this.time);
     if (this.sysT <= 0) {
