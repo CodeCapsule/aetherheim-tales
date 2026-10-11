@@ -1,5 +1,6 @@
 // Item rarity tiers, random affixes, named Unique/Legendary items and loot generation. Pure JS (no three.js).
-import { SLOTS, WEAPON_NAMES, SLOT_BASE, SLOT_INFO } from './data.js';
+import { SLOTS, WEAPON_NAMES, SLOT_BASE, SLOT_INFO, DUNGEONS } from './data.js';
+import { SETS, SET_EFFECTS, SET_COLOR } from './data-sets.js';
 import { SOCKETS, GEMS, GEM_LV, parseGem, parseSoul, SOULS, SOCKET_MAX } from './systems-data.js';
 
 export const RARITY = [
@@ -57,6 +58,7 @@ export const EFFECTS = {
   double_strike: { id: 'double_strike', tier: 'unique', name: 'Twin Fang', desc: '15% chance on hit to strike again for 70% of the damage.', params: { chance: 15, pct: 70 } },
   executioner: { id: 'executioner', tier: 'unique', name: 'Executioner', desc: '+40% damage to enemies below 30% HP.', params: { below: 30, pct: 40 } },
   giant_slayer: { id: 'giant_slayer', tier: 'legendary', name: 'Giant Slayer', desc: '+20% damage to elites, bosses and world bosses.', params: { pct: 20 } },
+  ...SET_EFFECTS,
 };
 // Enhancement: base stats grow 7% per level with bonus steps at +5, +10 and +15; from +10 affixes grow too.
 export const enhMult = (enh = 0) => 1 + 0.07 * enh + (enh >= 5 ? 0.05 : 0) + (enh >= 10 ? 0.15 : 0) + (enh >= 15 ? 0.35 : 0);
@@ -182,6 +184,25 @@ export function genRed({ adj, set, slot, lvl, cls, uid, rng = Math.random }) {
   };
 }
 
+// Dungeon set piece: Unique-strength base stats and affixes, named after its set.
+export function genSet(setId, { slot, lvl, cls, uid, rng = Math.random } = {}) {
+  const set = SETS[setId]; if (!set) return null;
+  if (!set.slots.includes(slot)) slot = set.slots[Math.floor(rng() * set.slots.length)];
+  lvl = Math.max(1, Math.round(lvl || 1));
+  const dg = DUNGEONS.find((d) => d.id === set.dungeon);
+  return {
+    uid, slot, name: `${set.name} ${SLOT_BASE[slot]}`, quality: 4, lvl, stats: baseStats(slot, lvl, 4),
+    affixes: rollAffixes(RARITY[4].affixes, lvl, 4, rng), effect: null, named: null, set: setId, enh: 0,
+    icon: iconKey(slot, cls, 4), flavor: `One of four ${set.name} pieces, found in ${dg?.name || 'a dungeon'}.`, gems: new Array(SOCKETS[4]).fill(null),
+  };
+}
+// how many pieces of each set are equipped
+function setCounts(equipMap) {
+  const n = {};
+  for (const slot of SLOTS) { const eq = equipMap && equipMap[slot]; if (eq?.set && SETS[eq.set]) n[eq.set] = (n[eq.set] || 0) + 1; }
+  return n;
+}
+
 export function namedBySource(source) {
   return [...NAMED.values()].filter((d) => d.source && d.source === source);
 }
@@ -230,8 +251,14 @@ export function aggregateEquip(equipMap) {
     if (eq.effect && EFFECTS[eq.effect] && !effects.includes(eq.effect)) effects.push(eq.effect);
     for (const gid of eq.gems || []) { const fx = parseSoul(gid); if (fx && EFFECTS[fx] && !effects.includes(fx)) effects.push(fx); }
   }
+  const sets = setCounts(equipMap);
+  for (const [id, n] of Object.entries(sets)) {
+    const set = SETS[id];
+    if (n >= 2) for (const [k, v] of Object.entries(set.two)) stats[k] += v;
+    if (n >= 4 && !effects.includes(set.power)) effects.push(set.power);
+  }
   for (const k in CAPS) stats[k] = Math.min(CAPS[k], stats[k]);
-  return { stats, effects };
+  return { stats, effects, sets };
 }
 
 const WEIGHTS = { atk: 9, def: 7, hp: 0.55, crit: 14, critDmg: 4, speed: 10, lifesteal: 25, cdr: 20, expGain: 3, goldFind: 2, thorns: 6, regen: 8, manaCost: 6 };
@@ -241,15 +268,17 @@ export function itemScore(eq) {
   let score = 0;
   for (const k in WEIGHTS) score += (s[k] || 0) * WEIGHTS[k];
   if (eq.effect && EFFECTS[eq.effect]) score += EFFECTS[eq.effect].tier === 'legendary' ? 900 : 350;
+  if (eq.set) score += 250;
   for (const gid of eq.gems || []) { const fx = parseSoul(gid); if (fx && EFFECTS[fx]) score += EFFECTS[fx].tier === 'legendary' ? 900 : 350; }
   return Math.round(score);
 }
 
 const STAT_LABEL = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: 'Critical' };
-export function itemLines(eq) {
+const SET_STAT = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: '% Critical', critDmg: '% Crit Damage', speed: '% Move Speed', lifesteal: '% Lifesteal', cdr: '% Cooldown Reduction', expGain: '% EXP Gain', goldFind: '% Gold Find', thorns: '% Thorns', regen: ' HP per second', manaCost: '% Skill MP Cost Reduction' };
+export function itemLines(eq, equipMap = null) {
   const R = RARITY[eq.quality] || RARITY[0];
-  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: R.color }];
-  lines.push({ text: `${R.name} ${SLOT_INFO[eq.slot]?.label || eq.slot} · Lv ${eq.lvl}`, color: '#b6c2dc' });
+  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: eq.set ? SET_COLOR : R.color }];
+  lines.push({ text: `${eq.set ? 'Set' : R.name} ${SLOT_INFO[eq.slot]?.label || eq.slot} · Lv ${eq.lvl}`, color: '#b6c2dc' });
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);
   for (const s of ['atk', 'def', 'hp']) if (eq.stats?.[s]) lines.push({ text: `${STAT_LABEL[s]} +${Math.round(eq.stats[s] * k)}`, color: '#ffffff' });
   if (eq.stats?.crit) lines.push({ text: `Critical +${r1(eq.stats.crit)}%`, color: '#ffffff' });
@@ -263,6 +292,14 @@ export function itemLines(eq) {
     const g = parseGem(gid), fx = parseSoul(gid);
     lines.push(g ? { text: `◆ ${GEM_LV[g.lv - 1]} ${GEMS[g.type].name}: ${GEMS[g.type].label(GEMS[g.type].vals[g.lv - 1])}`, color: GEMS[g.type].color }
       : fx ? { text: `✦ ${SOULS[fx]} Soulstone: ${EFFECTS[fx].desc}`, color: '#ff9ae8' } : { text: '◇ Empty socket', color: '#8a94b0' });
+  }
+  const set = eq.set && SETS[eq.set];
+  if (set) {
+    const n = setCounts(equipMap)[eq.set] || 0, worn = new Set(SLOTS.filter((s) => equipMap?.[s]?.set === eq.set));
+    lines.push({ text: `${set.name} Set (${n}/4): ${set.slots.map((s) => (worn.has(s) ? '●' : '○') + ' ' + SLOT_INFO[s].label).join('  ')}`, color: SET_COLOR });
+    lines.push({ text: `(2) ${Object.entries(set.two).map(([k, v]) => `+${v}${SET_STAT[k]}`).join(', ')}`, color: n >= 2 ? SET_COLOR : '#8a94b0' });
+    const P = EFFECTS[set.power];
+    lines.push({ text: `(4) ${P.name}: ${P.desc}`, color: n >= 4 ? SET_COLOR : '#8a94b0' });
   }
   if (eq.flavor) lines.push({ text: `"${eq.flavor}"`, color: '#b6c2dc' });
   return lines;
@@ -304,6 +341,7 @@ export function retemperItem(eq, lvl) {
 // keeping level, enhancement and socketed gems. Returns gems that no longer fit (none in practice; sockets only grow).
 export function ascendItem(eq, cls, rng = Math.random) {
   const q = eq.quality;
+  if (eq.set) return eq; // set pieces keep their set
   if (q >= 5) return eq;
   if (q >= 3) {
     const list = (q === 3 ? UNIQUE_ITEMS : LEGENDARY_ITEMS).filter((d) => d.slot === eq.slot && (!d.cls || d.cls === cls));

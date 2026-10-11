@@ -2,6 +2,7 @@
 import {
   NEW_ZONES, NEW_MONSTERS, DUNGEON_MONSTERS, NEW_SPAWNS, NEW_DUNGEONS, NEW_ITEMS, NEW_PETS, NEW_MOUNTS, NEW_NPCS, NEW_TELEPORTS, NEW_TITLES, NEW_DROPS,
 } from './data-world.js';
+import { STORY_QUESTS, STORY_ITEMS, STORY_TITLES } from './data-story.js';
 
 export const CLASSES = {
   knight: {
@@ -270,9 +271,9 @@ export const NPCS = [
     greet: 'The four Spirits watch over Carlyle. Listen closely and they will guide you.' },
   { id: 'nix', name: 'Nix', title: 'Teleporter', x: 0, z: -40, look: 'nix', face: 0, service: 'teleport',
     greet: 'Where shall the winds carry you today?' },
-  { id: 'mira', name: 'Mira', title: 'Market Broker', x: -30, z: 14, look: 'mira', face: 2.1, service: 'market',
+  { id: 'mira', name: 'Mira', title: 'Market Merchant', x: -30, z: 14, look: 'mira', face: 2.1, service: 'market',
     greet: 'Buying? Selling? Every adventurer in Carlyle trades through my ledger. Prices change by the hour, so look sharp~' },
-  { id: 'aldric', name: 'Aldric', title: 'Guild Envoy', x: 30, z: -16, look: 'aldric', face: -0.9, service: 'guild',
+  { id: 'aldric', name: 'Aldric', title: 'Guild Master', x: 30, z: -16, look: 'aldric', face: -0.9, service: 'guild',
     greet: 'A hero alone is strong; a guild is unstoppable. Join one, or found your own banner!' },
   { id: 'host', name: 'Pumpkin Pam', title: 'Festival Host', x: -16, z: 22, look: 'host', face: 2.4, service: 'event', event: true,
     greet: 'Happy festival! Bring me your festival tokens and I will trade you something wonderful!' },
@@ -318,9 +319,10 @@ export const QUESTS = [
   { id: 'q10', name: 'The Treant King', giver: 'elena', turnin: 'elder', type: 'kill', target: 'boss', count: 1,
     text: 'Treant King Yggr, an ancient spirit of the wood, has been corrupted. He waits in the northern arena of the Elder Ruins. Watch for the red circles on the ground — step out of them! Defeat him and report to Elder Rowan.',
     done: 'You freed Yggr from the corruption... The Spirits sing your name tonight, hero of Carlyle!', rewards: { exp: 8000, gold: 2000, diamonds: 150, pet: 'pet_dragon', equip: 'necklace' }, next: 'q11' },
-  { id: 'q11', name: 'Beyond the World Tree', giver: 'elder', turnin: 'elder', type: 'end',
-    text: 'Look north, past the mountains: the World Tree, Yggdrasil. Its roots bind the realms together, and something stirs in its branches. Chapter I of your tale ends here. Keep training, take bounties from Captain Elena, and collect every pet and mount you can!',
-    done: '', rewards: {}, next: null },
+  { id: 'q11', name: 'Beyond the World Tree', giver: 'elder', turnin: 'sylphie', type: 'talk',
+    text: 'Look north, past the mountains: the World Tree, Yggdrasil. Its roots bind the realms together, and something stirs beneath them. Sylphie felt the Spirit of Earth tremble last night. Go to her.',
+    done: 'You came. The Spirit of Earth is sick, and the sickness is spreading. Chapter I of your tale is complete, but the story of Carlyle is only beginning.', rewards: { exp: 2000, gold: 1000, diamonds: 50 }, next: 'c2_1' },
+  ...STORY_QUESTS,
 ];
 
 export const BOUNTY_TARGETS = ['jelly', 'bunny', 'shroom', 'wolf', 'golem', 'treant'];
@@ -376,11 +378,11 @@ Object.assign(MONSTERS, NEW_MONSTERS, DUNGEON_MONSTERS);
 SPAWNS.push(...NEW_SPAWNS);
 ZONES.push(...NEW_ZONES);
 DUNGEONS.push(...NEW_DUNGEONS);
-Object.assign(ITEMS, NEW_ITEMS);
+Object.assign(ITEMS, NEW_ITEMS, STORY_ITEMS);
 PETS.push(...NEW_PETS);
 MOUNTS.push(...NEW_MOUNTS);
 NPCS.push(...NEW_NPCS);
 TELEPORTS.push(...NEW_TELEPORTS);
-TITLES.push(...NEW_TITLES);
+TITLES.push(...NEW_TITLES, ...STORY_TITLES);
 for (const [m, list] of Object.entries(NEW_DROPS)) if (MONSTERS[m]) MONSTERS[m].drops = [...(MONSTERS[m].drops || []), ...list.map(([id, chance]) => ({ id, chance }))];
 BOUNTY_TARGETS.push('sunsprite', 'tuskboar', 'bumblebuzz', 'bogcroaker', 'miresnapper', 'cinderimp', 'lavasala', 'snowboar', 'yeti', 'amethystbeetle', 'crystalstag', 'gloomboar', 'fenwraith', 'starling', 'celestag');

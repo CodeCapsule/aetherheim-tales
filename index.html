@@ -888,15 +888,15 @@ button { font-family: inherit; }
 #hud-party .pi { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; border: 2px solid #7aff9a; flex: none; background: radial-gradient(circle at 40% 30%, #6a8a7a, #1a2a22); }
 #hud-party .pm.lead .pi { border-color: var(--gold); }
 #hud-party .pi img { width: 100%; height: 100%; object-fit: cover; }
-#hud-party .pt { flex: 1; min-width: 0; }
-#hud-party .pt b { display: block; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#hud-party .pt small { color: var(--muted); font-size: 10px; }
+#hud-party .pmt { flex: 1; min-width: 0; }
+#hud-party .pmt b { display: block; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud-party .pmt small { color: var(--muted); font-size: 10px; }
 #hud-party .bar { height: 6px; margin-top: 2px; border-radius: 3px; background: rgba(0, 0, 0, .6); overflow: hidden; position: relative; }
 #hud-party .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #ff7a6a, #c8202a); transition: width .3s; }
-#hud-party .pt em { display: block; font-style: normal; color: #ffcf7a; font-size: 10px; }
-#hud-party .pt em:empty { display: none; }
+#hud-party .pmt em { display: block; font-style: normal; color: #ffcf7a; font-size: 10px; }
+#hud-party .pmt em:empty { display: none; }
 #hud-party .pm-wait { color: var(--dim); font-size: 11px; }
-#hud-wb { top: calc(206px + var(--party-h, 0px)); }
+#hud-wb { top: 206px; left: calc(10px + var(--party-w, 0px)); }
 #party-invite { position: absolute; left: 50%; top: 140px; transform: translateX(-50%); width: 320px; padding: 10px 12px 12px; font-size: 13px; z-index: 7; animation: toastIn .3s; }
 #party-invite .th { font-family: var(--f-title); color: #9affb0; font-size: 14px; margin-bottom: 4px; }
 #party-invite .tt { color: var(--muted); line-height: 1.45; }
@@ -913,11 +913,11 @@ button { font-family: inherit; }
 .party-box .crown { font-size: 10px; color: #241a08; background: var(--gold); border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
 @media (max-width: 900px) {
   #hud-party { top: 196px; transform: scale(.85); transform-origin: top left; }
-  #hud-wb { top: calc(196px + var(--party-h, 0px) * .85); }
+  #hud-wb { top: calc(196px + var(--party-h, 0px) * .85); left: 10px; }
 }
 @media (max-width: 640px) {
   #hud-party { top: 172px; transform: scale(.78); }
-  #hud-wb { top: calc(172px + var(--party-h, 0px) * .78); }
+  #hud-wb { top: calc(172px + var(--party-h, 0px) * .78); left: 10px; }
   #party-invite { width: calc(100% - 20px); top: 96px; }
 }
 
@@ -1015,6 +1015,33 @@ button { font-family: inherit; }
   #hud-chat.open { top: 64px; }
   #hud-chat.open .chat-log { max-height: calc(100vh - 270px); }
 }
+
+/* ---- party frame fixes: bars fit the panel, buffs share the BR line, compact party in landscape ---- */
+#hud-party .bar { width: auto; border-width: 0; box-shadow: none; }
+.pf-br { display: inline-flex; vertical-align: middle; }
+#pf-buffs { display: inline-flex; gap: 3px; margin: 0 0 0 6px; vertical-align: middle; max-width: 136px; overflow: hidden; }
+#pf-buffs .buff { width: 20px; height: 20px; flex: none; }
+@media (max-height: 500px) {
+  #hud-pet { display: none !important; }
+  #hud-wallet { top: 76px; }
+  #hud-party { top: 118px; transform: scale(.78); transform-origin: top left; padding: 4px 6px 5px; width: 200px; }
+  #hud-party .pmt { display: flex; align-items: center; gap: 6px; }
+  #hud-party .pmt b { width: 74px; flex: none; }
+  #hud-party .pmt .bar { flex: 1; margin-top: 0; }
+  #hud-party .pi, #hud-party .pmt small, #hud-party .pmt em { display: none; }
+  #hud-party .pm { padding: 1px 2px; gap: 4px; }
+  #hud-party .pmt b { font-size: 11px; }
+  #hud-party .ph { margin-bottom: 2px; font-size: 12px; }
+  #hud-wb { top: 64px; left: 50%; transform: translateX(-50%) scale(.72); transform-origin: top center; }
+  #hud-stick { width: 92px; height: 92px; bottom: 66px; }
+  #hud-stick .knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+}
+
+/* ---- dungeon sets ---- */
+.dg-set { font-size: 12px; color: var(--muted); padding: 6px 8px; border-radius: 8px; background: rgba(90, 255, 154, .06); border: 1px solid rgba(90, 255, 154, .25); margin-bottom: 8px; }
+.dg-set > span { display: inline-block; margin-right: 10px; color: var(--dim); }
+.dg-set > span.got { color: #5aff9a; }
+.dg-set b { color: #9affc0; }
 </style>
 </head>
 <body>

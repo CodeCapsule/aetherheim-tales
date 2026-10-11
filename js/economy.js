@@ -120,22 +120,24 @@ const E = {
     this.ui.toast(`Bought ${x.name}${x.qty * times > 1 ? ` x${x.qty * times}` : ''}`, 'good');
     this.ui.refreshWallet(); this.ui.refreshPanel(); this.save();
   },
-  // extra dialog buttons for the service NPCs
+  // extra dialog buttons for the service NPCs; their station windows open only here (see Game.stationFor)
   serviceButtons(d) {
     const ui = this.ui, out = [];
     const shop = (k, label) => out.push({ label, cls: 'blue', fn: () => this.openShop(k) });
     const panel = (name, label, sel = {}) => out.push({ label, cls: 'blue', fn: () => { Object.assign(ui.sel, sel); ui.closeDialog(); ui.togglePanel(name, true); } });
+    const station = (name, label, sel = {}) => out.push({ label, cls: 'blue', fn: () => ui.openStation(name, d.id, sel) });
     const s = d.service || '';
     if (s.startsWith('shop:')) shop(s.slice(5), 'Browse Wares');
+    if (d.id === 'opal') station('forge', 'Gem Workshop', { fgTab: 'gems' });
     if (s === 'farm') { shop('farm', 'Seed Shop'); panel('life', 'My Farm', { lifeTab: 'farm' }); }
-    if (s === 'alchemy') { shop('alchemy', 'Apothecary'); panel('life', 'Brew Potions', { lifeTab: 'alchemy' }); }
-    if (s === 'tailor') { shop('tailor', 'Boutique'); panel('wardrobe', 'Wardrobe'); }
-    if (s === 'auction') panel('auction', 'Auction House', { aucTab: 'browse' });
+    if (s === 'alchemy') { shop('alchemy', 'Apothecary'); station('life', 'Brew Potions', { lifeTab: 'alchemy' }); }
+    if (s === 'tailor') { shop('tailor', 'Boutique'); station('wardrobe', 'Wardrobe'); }
+    if (s === 'auction') station('auction', 'Auction House', { aucTab: 'browse' });
     if (s === 'collector') { shop('collector', 'Curio Shop'); panel('collect', 'Relic Collection'); }
     if (s === 'pets') shop('pets', 'Pet Shop');
     if (s === 'mounts') shop('stable', 'Stable Shop');
-    if (s === 'enhance') { panel('life', 'Smithing', { lifeTab: 'smithing' }); panel('life', 'Crimson Forge', { lifeTab: 'red' }); }
-    if (s === 'market') panel('auction', 'Auction House', { aucTab: 'browse' });
+    if (s === 'enhance') { station('life', 'Smithing', { lifeTab: 'smithing' }); station('life', 'Crimson Forge', { lifeTab: 'red' }); }
+    if (s === 'market') station('auction', 'Auction House', { aucTab: 'browse' });
     return out;
   },
 

@@ -388,7 +388,10 @@ const P = {
   },
   panel_forge(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'fgTab', [['enhance', 'Enhance'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['gems', 'Gems'], ['salvage', 'Salvage']]);
+    // Gorm runs the forge; Opal's Gem Workshop is the same window with only the Gems tab
+    const gems = this.station?.npc === 'opal';
+    if (gems) this.sel.fgTab = 'gems'; else if (this.sel.fgTab === 'gems') this.sel.fgTab = 'enhance';
+    const tab = this.tabs(body, 'fgTab', gems ? [['gems', 'Gems']] : [['enhance', 'Enhance'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['salvage', 'Salvage']]);
     if (tab === 'enhance') this.forgeEnhance(body);
     else if (tab === 'craft') {
       const L = h('div', 'list');
@@ -418,8 +421,9 @@ const P = {
       };
       action('reforge', 'Reforge', RARITY[eq.quality].affixes ? `Reroll all ${RARITY[eq.quality].affixes} bonus affixes${eq.effect ? ' (the named power stays)' : ''}` : 'Common and Uncommon gear has no affixes', reforgeCost(eq), 'Reforge', () => g.reforge(ref), !RARITY[eq.quality].affixes);
       action('levelup', `Re-temper to Lv ${S.level}`, eq.lvl >= S.level ? 'Already at your level' : `Raise item level ${eq.lvl} → ${S.level}; stats and affixes grow with it`, eq.lvl < S.level ? retemperCost(eq, S.level) : null, 'Re-temper', () => g.retemper(ref), eq.lvl >= S.level);
-      const A = ASCEND[eq.quality];
-      action('ascend', A ? `Ascend to ${RARITY[A.to].name}` : 'Ascend', A ? (A.to >= 4 ? `Awaken into a named ${RARITY[A.to].name} ${SLOT_INFO[eq.slot].label.toLowerCase()} with a special power. Level, enhancement and gems are kept.` : `Raise rarity: stronger base stats, +1 affix, more gem sockets (${SOCKETS[A.to]}).`) : 'Legendary is the highest tier', A ? { gold: A.gold, mats: A.mats } : null, 'Ascend', () => g.ascend(ref), !A);
+      const A = eq.set ? null : ASCEND[eq.quality];
+      if (eq.set) action('ascend', 'Ascend', 'Set pieces keep their set bonus, so they cannot be ascended. Reforge, re-temper and enhance them instead.', null, 'Ascend', () => {}, true);
+      else action('ascend', A ? `Ascend to ${RARITY[A.to].name}` : 'Ascend', A ? (A.to >= 4 ? `Awaken into a named ${RARITY[A.to].name} ${SLOT_INFO[eq.slot].label.toLowerCase()} with a special power. Level, enhancement and gems are kept.` : `Raise rarity: stronger base stats, +1 affix, more gem sockets (${SOCKETS[A.to]}).`) : 'Legendary is the highest tier', A ? { gold: A.gold, mats: A.mats } : null, 'Ascend', () => g.ascend(ref), !A);
       body.appendChild(L);
     } else if (tab === 'gems') {
       this.forgeGems(body);

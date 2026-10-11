@@ -45,7 +45,11 @@ const P = {
 
   // ------------------------------------------------------------ professions
   panel_life(body) {
-    const tab = this.tabs(body, 'lifeTab', [['gather', 'Gathering'], ['farm', 'Farm'], ['alchemy', 'Alchemy'], ['smithing', 'Smithing'], ['red', 'Crimson Forge']]);
+    // brewing and smithing happen at Vera and Gorm; anywhere else the window shows gathering and the farm
+    const at = this.station?.npc;
+    const list = at === 'vera' ? [['alchemy', 'Alchemy']] : at === 'gorm' ? [['smithing', 'Smithing'], ['red', 'Crimson Forge']] : [['gather', 'Gathering'], ['farm', 'Farm']];
+    if (!list.some(([id]) => id === this.sel.lifeTab)) this.sel.lifeTab = list[0][0];
+    const tab = this.tabs(body, 'lifeTab', list);
     this['life_' + tab](body);
   },
   life_gather(body) {

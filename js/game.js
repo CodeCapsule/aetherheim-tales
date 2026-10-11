@@ -20,10 +20,12 @@ import { installParty } from './party.js';
 import { buildExtraMonster, EXTRA_MONSTER_MODELS } from './models-monsters.js';
 import { buildExtraPet, buildExtraMount, EXTRA_PET_MODELS, EXTRA_MOUNT_MODELS } from './models-extra.js';
 import { MAX_LEVEL, curveStats, DUNGEON_RULES, RELIC_SETS } from './data-world.js';
+import { CHAPTERS } from './data-story.js';
+import { setOfDungeon } from './data-sets.js';
 import { activeEvent } from './systems-data.js';
 import { Dungeon } from './dungeon.js';
 import {
-  RARITY, EFFECTS, rollRarity, genEquip, genNamed, namedBySource, normalizeItem, aggregateEquip, sellPrice,
+  RARITY, EFFECTS, rollRarity, genEquip, genNamed, genSet, namedBySource, normalizeItem, aggregateEquip, sellPrice,
 } from './loot.js';
 import { iconCanvas } from './icons.js';
 import { shadowTexture, textTexture, targetRingTexture, beamTexture, ringTexture, glowTexture } from './toon.js';
@@ -37,6 +39,7 @@ const angLerp = (a, b, t) => { let d = b - a; while (d > Math.PI) d -= Math.PI *
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toISOString().slice(0, 10);
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const POTION_TIERS = { hp: [['potion_hp3', 0.7], ['potion_hp2', 0.5], ['hp_potion', 0.35]], mp: [['potion_mp3', 0.7], ['potion_mp2', 0.5], ['mp_potion', 0.35]] };
 export const PET_TIER = [1, 2, 3, 5]; // pet rarity (Common, Rare, Special, Legendary) -> item tier colors
 
@@ -71,6 +74,7 @@ export function migrateSave(S) {
   for (const k of Object.keys(S.equip || {})) if (S.equip[k]) normalizeItem(S.equip[k], S.cls);
   S.bag = (S.bag || []).filter((b) => b.eq || ITEMS[b.id]);
   initSystemsSave(S); initLifeSave(S); initEconomySave(S);
+  if (!S.quest || (!S.quest.id && S.quest.status === 'done' && !S.storyDone)) S.quest = { id: 'q11', status: 'available', prog: 0 }; // Chapter I used to end here
   S.v = 3;
   return S;
 }
@@ -84,7 +88,7 @@ export class Game {
     this.keys = {}; this.stick = { x: 0, y: 0 }; this.cd = {}; this.potionCD = 0;
     this.cam = { yaw: 0.35, pitch: 0.6, dist: 15, target: new THREE.Vector3() };
     this.auto = false; this.autoPathing = false; this.engage = false; this.pendingSkill = null; this.pendingTalk = null;
-    this.mounted = false; this.lastCombat = -99; this.zone = null; this.saveT = 0;
+    this.mounted = false; this.lastCombat = -99; this.zone = null; this.saveT = 0; this.swarmHits = 0;
     this.layer = document.getElementById('world-ui');
     this.ray = new THREE.Raycaster();
     this.map = this.world; this.dg = null;
@@ -121,8 +125,8 @@ export class Game {
     this.mpStart();
     this.ui.chat('system', 'Welcome to <b>Carlyle</b>! Click the quest in the tracker on the right to auto-path to your goal.');
     this.ui.chat('system', 'Controls: click to move or attack · drag to turn the camera · scroll to zoom · 1–6 skills · R mount · T auto battle.');
-    this.ui.chat('system', 'New: <b>Daily & Weekly Missions</b> (H), <b>Guilds</b> (G) with Guild Wars, <b>World Bosses</b> every 15 minutes, the <b>Market</b> (N), the <b>Forge</b> (Y) for crafting, gems and ascension, the <b>Season Pass</b> and leaderboards.');
-    this.ui.chat('system', 'New: the world is four times larger with zones up to <b>Lv 200</b>. <b>Professions</b> (Z): gather ore, herbs and wood, farm the homestead west of town, brew with Vera. The <b>Auction House</b> (Grimsby), <b>Wardrobe</b> (V), shops all over town, relic collections and <b>Red</b> gear at the Crimson Forge.');
+    this.ui.chat('system', 'Daily & Weekly <b>Missions</b> (H), <b>World Bosses</b> every 15 minutes, the <b>Season Pass</b> and leaderboards. <b>Professions</b> (Z): gather ore, herbs and wood and farm the homestead west of town.');
+    this.ui.chat('system', 'Town services are run by their keepers in Sylvan Haven: <b>Gorm</b> (Forge), <b>Opal</b> (Gem Workshop), <b>Vera</b> (Alchemy), <b>Mira</b> (Market), <b>Grimsby</b> (Auction House), <b>Aldric</b> (Guilds) and <b>Coco</b> (Wardrobe). The World Map (M) lists them with a Go button.');
     if (this.event) this.ui.chat('announce', `<b>[Festival]</b> The <span style="color:${this.event.color}">${esc(this.event.name)}</span> is on! ${esc(this.event.desc)}`);
     if (S.level === 1 && S.quest.id === 'q1') setTimeout(() => this.ui.banner('Sylvan Haven', 'Carlyle · Town', 'zone'), 400);
     this.bindInput();
@@ -303,7 +307,7 @@ export class Game {
     p.hp = fill ? p.maxHp : Math.max(1, Math.round(p.maxHp * ratio)); p.mp = fill ? p.maxMp : Math.round(p.maxMp * mratio);
     this.healMod = heal; this.cdr = cdr;
     const extras = (gs.critDmg || 0) * 4 + (gs.speed || 0) * 10 + (gs.lifesteal || 0) * 25 + (gs.cdr || 0) * 20 + (gs.expGain || 0) * 3 + (gs.goldFind || 0) * 2
-      + (gs.thorns || 0) * 6 + (gs.regen || 0) * 8 + (gs.manaCost || 0) * 6 + [...fxs].reduce((a, id) => a + (EFFECTS[id]?.tier === 'legendary' ? 900 : 350), 0);
+      + (gs.thorns || 0) * 6 + (gs.regen || 0) * 8 + (gs.manaCost || 0) * 6 + [...fxs].reduce((a, id) => a + (EFFECTS[id]?.tier === 'legendary' ? 900 : EFFECTS[id]?.tier === 'set' ? 700 : 350), 0);
     this.br = Math.round(p.maxHp * 0.55 + atk * 9 + def * 7 + crit * 14 + petBR + spBR + mountBR + (S.wings ? 300 : 0) + extras + X.br);
     this.ui.refreshPlayer && this.ui.refreshPlayer();
   }
@@ -404,10 +408,10 @@ export class Game {
       case 'g': this.ui.togglePanel('guild'); break;
       case 'h': this.ui.togglePanel('missions'); break;
       case 'n': this.ui.togglePanel('market'); break;
-      case 'y': this.ui.togglePanel('forge'); break;
+      case 'y': if (this.ui.sel.fgTab === 'gems') this.ui.sel.fgTab = 'enhance'; this.ui.togglePanel('forge'); break;
       case 'x': this.ui.togglePanel('codex'); break;
       case 'j': this.ui.togglePanel('season'); break;
-      case 'z': this.ui.togglePanel('life'); break;
+      case 'z': if (['alchemy', 'smithing', 'red'].includes(this.ui.sel.lifeTab)) this.ui.sel.lifeTab = 'gather'; this.ui.togglePanel('life'); break;
       case 'v': this.ui.togglePanel('wardrobe'); break;
     }
   }
@@ -537,6 +541,7 @@ export class Game {
     if (t && ['target', 'dash', 'proj', 'aoeTarget'].includes(sk.kind)) p.yaw = p.yawT = Math.atan2(t.pos.x - p.pos.x, t.pos.z - p.pos.z);
     p.mp -= this.mpCost(sk);
     if (!sk.basic) this.track('skill');
+    if (!sk.basic && this.hasFx('set_riptide')) p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.03);
     this.cd[sk.id] = this.time + sk.cd * (sk.basic ? (this.hasFx('swift') ? 0.88 : 1) : 1 - this.cdr);
     const ranged = CLASSES[this.S.cls].ranged || ['buff', 'heal', 'zone'].includes(sk.kind);
     p.state = ranged ? 'cast' : 'attack'; p.actDur = p.actT = sk.basic ? 0.42 : 0.5;
@@ -550,7 +555,12 @@ export class Game {
   applySkill(sk, t) {
     const p = this.player; if (p.dead) return;
     const lv = 1 + 0.08 * (this.skillLevel(sk.id) - 1);
-    const mult = (sk.mult || 0) * lv;
+    let mult = (sk.mult || 0) * lv;
+    if (!sk.basic && this.hasFx('set_riptide')) mult *= 1.18;
+    if (!sk.basic && mult > 0 && this.hasFx('set_constellation') && (this.procCD.constel || 0) <= this.time) {
+      this.procCD.constel = this.time + 10; mult *= 2;
+      this.fx.text(this.player.pos.clone().setY(this.player.pos.y + this.player.height + 0.5), 'Constellation!', 'crit');
+    }
     const elem = CLASSES[this.S.cls].elemColor;
     const hits = sk.hits || 1;
     const hand = p.pos.clone().add(new THREE.Vector3(Math.sin(p.yaw) * 0.6, 1.3, Math.cos(p.yaw) * 0.6));
@@ -670,7 +680,7 @@ export class Game {
     const canCrit = o.canCrit !== false && o.fixed == null;
     let base = this.atkOf(src) * mult * rnd(0.9, 1.1);
     const crit = canCrit && Math.random() * 100 < this.critOf(src);
-    if (crit) base *= 1 + (src.critDmg ?? 0.6);
+    if (crit) { let cd = src.critDmg ?? 0.6; for (const b of src.buffs || []) if (b.mods?.critDmg) cd += b.mods.critDmg; base *= 1 + cd; }
     if (src.kind === 'monster' && o.fixed == null && Math.random() < 0.05) {
       if (dst === this.player) this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height), 'Miss', 'miss');
       return 0;
@@ -678,7 +688,10 @@ export class Game {
     if (src === this.player && o.fixed == null) {
       if (this.hasFx('giant_slayer') && (dst.def0?.elite || dst.def0?.boss || dst.wb)) base *= 1.2;
       if (this.hasFx('executioner') && dst.maxHp && dst.hp < dst.maxHp * 0.3) base *= 1.4;
+      if (this.hasFx('set_entangle') && dst.rootedT > this.time) base *= 1.15;
+      if (this.hasFx('set_shatter') && dst.frozenT > this.time) base *= 1.3;
     }
+    if (this.hasFx('set_covenant') && o.fixed == null) { if (src === this.player || src.kind === 'pet') base *= 1.15; else if (dst === this.player) base *= 0.85; }
     const K = 50 + 8 * (src.level || 1); // armor matters relative to the attacker's level, so it scales to Lv 200
     let dmg = o.fixed != null ? Math.max(1, Math.round(o.fixed)) : Math.max(1, Math.round(base * K / (K + this.defOf(dst))));
     if (dst.shield > 0) {
@@ -689,7 +702,7 @@ export class Game {
     dst.hp -= dmg;
     const head = dst.pos.clone().setY(dst.pos.y + dst.height * 0.9);
     const mine = src === this.player || src.kind === 'pet';
-    if (dst === this.player) { if (dmg) this.fx.text(head, '-' + dmg, 'hurt'); this.sfx.play('hurt'); this.lastCombat = this.time; }
+    if (dst === this.player) { if (dmg) this.fx.text(head, '-' + dmg, 'hurt'); this.sfx.play('hurt'); this.lastCombat = this.time; if (dmg > 0) this.setPowersHurt(src); }
     else if (mine) {
       this.fx.text(head, String(dmg), o.cls || (src.kind === 'pet' ? 'pet' : crit ? 'crit' : 'dmg'));
       if (!o.proc) this.sfx.play(crit ? 'crit' : 'hit');
@@ -741,9 +754,29 @@ export class Game {
       const c = dst.pos.clone();
       this.fx.meteor(c, 0xffb02a, 0.6, () => { this.sfx.play('boom'); this.aoe(c, 5, 2.6, 0, true); });
     }
+    if (this.hasFx('set_entangle') && !dst.dead && !dst.def0?.boss && !dst.wb && Math.random() < 0.12) { dst.stun = Math.max(dst.stun || 0, 2); dst.rootedT = this.time + 2; this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height + 0.4), 'Rooted', 'miss'); this.fx.circle(dst.pos, '#7ad85a', 1.4, 2, null); }
+    if (this.hasFx('set_swarm') && ++this.swarmHits % 5 === 0) for (let i = 0; i < 3; i++) {
+      this.after(0.12 + i * 0.14, () => { if (dst.dead) return; this.fx.projectile(p.pos.clone().setY(p.pos.y + 1.6), dst, { color: 0xffd23a, size: 0.22, speed: 26, onHit: () => this.damage(p, dst, 0.6, { proc: true }) }); });
+    }
+    if (crit && this.hasFx('set_shatter') && !dst.dead && !dst.def0?.boss && !dst.wb) { dst.stun = Math.max(dst.stun || 0, 1); dst.frozenT = this.time + 1; this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height + 0.4), 'Frozen', 'miss'); this.fx.emit(dst.pos.clone().setY(dst.pos.y + 1), { count: 18, colors: [0xc8f0ff, 0xffffff], speed: 3, life: 0.6, size: 0.5 }); }
+    if (this.hasFx('set_refraction') && !dst.dead && Math.random() < 0.18) this.after(0.1, () => { if (dst.dead) return; this.fx.bolt(p.pos.clone().setY(p.pos.y + 1.4), dst.pos.clone().setY(dst.pos.y + dst.height * 0.6), 0xd8a0ff); this.damage(p, dst, 1.5, { proc: true }); });
     if (crit && this.hasFx('starfall') && !dst.dead) {
       const from = dst.pos.clone().add(new THREE.Vector3(rnd(-3, 3), 16, rnd(-3, 3)));
       this.fx.projectile(from, dst, { color: 0xfff08a, size: 0.55, speed: 34, onHit: () => this.damage(p, dst, 1.2, { proc: true }) });
+    }
+  }
+  // dungeon set powers that react to being hit
+  setPowersHurt(src) {
+    const p = this.player;
+    if (this.hasFx('set_gravepact') && p.hp > 0 && p.hp < p.maxHp * 0.3 && (this.procCD.grave || 0) <= this.time) {
+      this.procCD.grave = this.time + 45;
+      p.shield = (p.shield || 0) + p.maxHp * 0.25;
+      p.buffs.push({ id: 'gravepact', icon: 'm5', until: this.time + 10, shield: true });
+      this.fx.circle(p.pos, '#9ad0ff', 2.2, 1.2, p.model); this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.4), 'Grave Pact', 'heal');
+    }
+    if (this.hasFx('set_moltencore') && src && src.kind === 'monster' && !src.dead && (src.burnUntil || 0) <= this.time) {
+      src.burnUntil = this.time + 3;
+      for (let i = 1; i <= 3; i++) this.after(i, () => { if (!src.dead) { this.fx.emit(src.pos.clone().setY(src.pos.y + src.height * 0.6), { count: 8, colors: [0xff6a1a, 0xffc04a], speed: 2, life: 0.5, size: 0.5, up: 2 }); this.damage(p, src, 0.3, { canCrit: false, proc: true, cls: 'pet' }); } });
     }
   }
   chainLightning(from) {
@@ -794,6 +827,12 @@ export class Game {
     this.fx.coins(m.pos, p, Math.min(8, 2 + (gold / 15) | 0), () => { this.S.gold += gold; this.sfx.play('coin'); this.ui.refreshWallet(); this.fx.text(p.pos.clone().setY(p.pos.y + p.height), `+${gold} Gold`, 'gold', 0.5); this.track('gold', gold); });
     this.S.kills[m.type] = (this.S.kills[m.type] || 0) + 1;
     if (this.hasFx('frenzy')) this.addFrenzy();
+    if (this.hasFx('set_mossmend')) this.heal(p, p.maxHp * 0.03);
+    if (this.hasFx('set_soulharvest')) {
+      let b = p.buffs.find((x) => x.id === 'soulharvest');
+      if (!b) { b = { id: 'soulharvest', icon: 'a5', stacks: 0, mods: { atk: 1, critDmg: 0 } }; p.buffs.push(b); }
+      b.stacks = Math.min(5, b.stacks + 1); b.mods.atk = 1 + 0.04 * b.stacks; b.mods.critDmg = 0.04 * b.stacks; b.until = this.time + 10;
+    }
     if (!d.structure && !d.war) this.rollDrops(m);
     this.onKillSystems(m);
     if (m.dungeon && this.dg) this.dungeonRelicDrop(m);
@@ -925,6 +964,7 @@ export class Game {
       const unlocked = this.skillList().filter((s) => s.lvl === S.level && !s.basic);
       for (const s of unlocked) { this.ui.toast(`New skill unlocked: ${s.name}`, 'good'); this.ui.chat('system', `New skill unlocked: <b>${esc(s.name)}</b>`); }
       if (S.level >= 10 && S.title < 3) { S.title = 3; this.refreshPlayerPlate(); }
+      this.questLevelUp();
       if (S.level >= MAX_LEVEL) { this.unlockTitle('Legend of Aetherheim'); this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached the maximum level ${MAX_LEVEL}!`); }
       else if (S.level % 25 === 0) this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached Level ${S.level}!`);
       this.ui.refreshSkills();
@@ -1185,10 +1225,29 @@ export class Game {
     const p = this.player;
     if (this.dg || this.war) { this.ui.toast(this.war ? 'Finish the battle first' : 'Leave the dungeon first', 'warn'); return; }
     if (flat(p.pos, n.pos) > 4.5) { this.pendingTalk = n; this.pathTo(n.pos.x, n.pos.z, flat(p.pos, n.pos) > 12); return; }
-    this.pendingTalk = null; p.path = []; this.autoPathing = false; this.ui.setAutoPath(false);
+    const sent = this.pendingTalk === n, st = this.pendingStation;
+    this.pendingTalk = null; this.pendingStation = null; p.path = []; this.autoPathing = false; this.ui.setAutoPath(false);
     n.yaw = Math.atan2(p.pos.x - n.pos.x, p.pos.z - n.pos.z);
     this.sfx.play('open');
-    this.openDialog(n);
+    if (st && sent && st.npc === n.id) this.ui.openStation(st.name, n.id);
+    else this.openDialog(n);
+  }
+  // Station windows (forge, gems, alchemy, smithing, market, guild, wardrobe, auction) open only at their NPC.
+  stationFor(name) {
+    const sel = this.ui.sel;
+    if (name === 'forge') return sel.fgTab === 'gems' ? 'opal' : 'gorm';
+    if (name === 'life') return { alchemy: 'vera', smithing: 'gorm', red: 'gorm' }[sel.lifeTab] || null;
+    return { market: 'mira', guild: 'aldric', wardrobe: 'coco', auction: 'grimsby' }[name] || null;
+  }
+  // walk to the NPC that runs a station and open it on arrival
+  goToStation(name) {
+    const id = this.stationFor(name), n = id && this.npcById(id); if (!n) return;
+    if (this.dg || this.war) { this.ui.toast(`Visit ${n.data.name} the ${n.data.title} in Sylvan Haven`, 'warn'); return; }
+    this.ui.closePanels(); this.ui.closeDialog();
+    if (flat(this.player.pos, n.pos) <= 4.5) { this.ui.openStation(name, id); return; }
+    this.ui.toast(`Heading to ${n.data.name} the ${n.data.title}`);
+    this.pendingStation = { npc: id, name };
+    this.talkTo(n);
   }
 
   openDialog(n) {
@@ -1196,11 +1255,13 @@ export class Game {
     const btns = [];
     let text = d.greet, qname = null, rewards = null;
     if (q && q.def) {
-      if (q.status === 'available' && q.def.giver === n.id) {
-        qname = q.def.name; text = q.def.text; rewards = q.def.type === 'end' ? null : { ...q.def.rewards, equipQ: q.def.id === 'q10' ? 4 : q.def.id === 'q9' ? 3 : 2 };
+      if (q.status === 'available' && q.def.giver === n.id && q.def.minLv > S.level) {
+        qname = q.def.name; text = `${q.def.text} (You must be Lv ${q.def.minLv} to take this on. Come back when you are stronger.)`;
+      } else if (q.status === 'available' && q.def.giver === n.id) {
+        qname = q.def.name; text = q.def.text; rewards = q.def.type === 'end' ? null : { ...q.def.rewards, equipQ: this.questEquipQ(q.def) };
         btns.push({ label: q.def.type === 'end' ? 'Farewell' : 'Accept', fn: () => this.acceptQuest() });
       } else if (q.status === 'complete' && q.def.turnin === n.id) {
-        qname = q.def.name; text = q.def.done; rewards = { ...q.def.rewards, equipQ: q.def.id === 'q10' ? 4 : q.def.id === 'q9' ? 3 : 2 };
+        qname = q.def.name; text = q.def.done; rewards = { ...q.def.rewards, equipQ: this.questEquipQ(q.def) };
         btns.push({ label: 'Complete', cls: 'green', fn: () => this.completeQuest(n) });
       } else if (q.status === 'active' && q.def.turnin === n.id) {
         qname = q.def.name; text = `Still working on it? ${this.questObjective()}.`;
@@ -1211,8 +1272,8 @@ export class Game {
       if (B && B.status === 'complete') btns.push({ label: 'Turn in Bounty', cls: 'green', fn: () => this.completeBounty() });
       else if (!B) btns.push({ label: 'Take a Bounty', cls: 'blue', fn: () => this.takeBounty() });
     }
-    const svc = { pets: ['Pet Collection', 'pets'], mounts: ['Mount Stable', 'mounts'], shop: ['Open Shop', 'mall'], enhance: ['Open the Forge', 'forge'], market: ['Open the Market', 'market'], guild: [S.guild ? 'Guild Hall' : 'Find a Guild', 'guild'], event: ['Festival Exchange', 'event'] }[d.service];
-    if (svc) btns.push({ label: svc[0], cls: 'blue', fn: () => this.ui.togglePanel(svc[1], true) });
+    const svc = { pets: ['Pet Collection', 'pets'], mounts: ['Mount Stable', 'mounts'], shop: ['Open Shop', 'mall'], enhance: ['Open the Forge', 'forge', { fgTab: 'enhance' }], market: ['Open the Market', 'market'], guild: [S.guild ? 'Guild Hall' : 'Find a Guild', 'guild', { guildTab: 'hall' }], event: ['Festival Exchange', 'event'] }[d.service];
+    if (svc) btns.push({ label: svc[0], cls: 'blue', fn: () => (['forge', 'market', 'guild'].includes(svc[1]) ? this.ui.openStation(svc[1], n.id, svc[2]) : this.ui.togglePanel(svc[1], true)) });
     btns.push(...this.serviceButtons(d));
     if (d.service === 'guild' && S.guild && S.level >= 10) btns.push({ label: `Guild War (${this.warEntriesLeft()} left)`, cls: 'green', fn: () => { this.ui.closeDialog(); this.startWar(); } });
     if (d.service === 'event' && this.event) text = `${d.greet} ${this.event.desc}`;
@@ -1224,9 +1285,12 @@ export class Game {
   questObjective(q = this.quest()) {
     if (!q || !q.def) return '';
     const d = q.def;
+    if (q.status === 'available' && d.minLv > this.S.level) return `Reach Lv ${d.minLv} to continue (now Lv ${this.S.level})`;
     if (q.status === 'available') return `Talk to ${this.npcName(d.giver)}`;
     if (q.status === 'complete') return `${d.type === 'talk' ? 'Talk to' : 'Return to'} ${this.npcName(d.turnin)}`;
     if (d.type === 'kill') return `Defeat ${MONSTERS[d.target].name} (${q.prog}/${d.count})`;
+    if (d.type === 'dungeon') return `Clear ${DUNGEONS.find((x) => x.id === d.target)?.name || 'the dungeon'} (${q.prog}/${d.count})`;
+    if (d.type === 'level') return `Reach Lv ${d.count} (now Lv ${this.S.level})`;
     if (d.type === 'collect') return `Collect ${ITEMS[d.item].name} (${Math.min(d.count, this.countItem(d.item))}/${d.count})`;
     return `Talk to ${this.npcName(d.turnin)}`;
   }
@@ -1234,14 +1298,16 @@ export class Game {
   acceptQuest() {
     const q = this.quest(), S = this.S; if (!q) return;
     const d = q.def;
+    if (d.minLv > S.level) { this.ui.toast(`Reach Lv ${d.minLv} first`, 'warn'); return; }
     this.sfx.play('quest');
-    if (d.type === 'end') { S.quest = { id: null, status: 'done', prog: 0 }; this.ui.banner('Chapter I Complete', 'Thank you for playing!'); this.ui.refreshQuest(); this.save(); return; }
+    if (d.type === 'end') { S.quest = { id: null, status: 'done', prog: 0 }; S.storyDone = true; this.ui.banner('The End', 'Your legend is complete. Thank you for playing!'); this.ui.closeDialog(); this.ui.refreshQuest(); this.save(); return; }
     if (d.type === 'talk') {
       S.quest.status = 'complete';
       if (d.turnin === d.giver) { this.completeQuest(this.npcById(d.giver)); return; }
     } else {
       S.quest.status = 'active'; S.quest.prog = 0;
       if (d.type === 'collect') this.questCollectCheck();
+      if (d.type === 'level' && S.level >= d.count) { S.quest.prog = d.count; this.questReady(d); }
     }
     this.ui.toast(`Quest accepted: ${d.name}`, 'good');
     this.ui.chat('system', `Quest accepted: <b>${esc(d.name)}</b>`);
@@ -1259,7 +1325,9 @@ export class Game {
     if (r.gold) { S.gold += r.gold; }
     if (r.diamonds) { S.diamonds += r.diamonds; }
     if (r.items) for (const [id, qty] of r.items) this.addItem(id, qty);
-    if (r.equip) { const eq = this.makeEquip(r.equip, Math.max(S.level, 2), d.id === 'q10' ? 4 : d.id === 'q9' ? 3 : 2); if (this.addEquip(eq)) this.lootMsg(eq.name, RARITY[eq.quality].color); }
+    if (r.equip) { const eq = this.makeEquip(r.equip, Math.max(S.level, 2), this.questEquipQ(d)); if (this.addEquip(eq)) this.lootMsg(eq.name, RARITY[eq.quality].color); }
+    if (r.mats) for (const [id, n] of Object.entries(r.mats)) this.addMat(id, n, true);
+    if (r.title) this.unlockTitle(r.title);
     if (r.pet) this.gainPet(r.pet, d.id === 'q10');
     if (r.mount) { this.gainMount(r.mount); }
     if (r.sprite) { const sid = CLASS_SPRITE[S.cls]; if (!S.sprites.includes(sid)) S.sprites.push(sid); this.setSprite(sid); this.ui.chat('system', `The Sprite <b>${SPRITES.find((x) => x.id === sid).name}</b> now flies at your side.`); }
@@ -1269,12 +1337,31 @@ export class Game {
     if (r.exp) this.gainExp(r.exp);
     this.ui.refreshWallet();
     S.quest = d.next ? { id: d.next, status: 'available', prog: 0 } : { id: null, status: 'done', prog: 0 };
+    const nd = d.next && QUESTS.find((x) => x.id === d.next), ch = CHAPTERS.find((c) => c.n === (nd?.ch || 1));
+    if (nd && (nd.ch || 1) !== (d.ch || 1) && ch) {
+      setTimeout(() => this.ui.banner(`Chapter ${ROMAN[ch.n]}`, ch.name, 'clear'), 1600);
+      this.ui.chat('announce', `<b>Chapter ${ROMAN[(d.ch || 1)]} complete!</b> Chapter ${ROMAN[ch.n]} · <b>${esc(ch.name)}</b> begins (${esc(ch.lv)}).`);
+      this.logEvent('story', `Started Chapter ${ROMAN[ch.n]}: ${ch.name}`, true);
+    }
     this.recalc(); this.ui.refreshQuest(); this.ui.refreshPanel(); this.save();
     const nq = this.quest();
     if (nq && nq.def && nq.def.giver === n?.id) setTimeout(() => this.openDialog(n), 350);
     else this.ui.closeDialog();
   }
 
+  questEquipQ(d) { return d.rewards?.equipQ ?? (d.id === 'q10' ? 4 : d.id === 'q9' ? 3 : 2); }
+  questLevelUp() {
+    const q = this.quest();
+    if (q && q.def && q.status === 'active' && q.def.type === 'level' && this.S.level >= q.def.count) { this.S.quest.prog = q.def.count; this.questReady(q.def); }
+    this.ui.refreshQuest();
+  }
+  questDungeon(id) {
+    const q = this.quest(), d = q?.def;
+    if (!d || q.status !== 'active' || d.type !== 'dungeon' || d.target !== id) return;
+    this.S.quest.prog = Math.min(d.count, (this.S.quest.prog || 0) + 1);
+    if (this.S.quest.prog >= d.count) this.questReady(d);
+    this.ui.refreshQuest();
+  }
   questKill(m) {
     const q = this.quest(), S = this.S;
     if (q && q.def && q.status === 'active') {
@@ -1335,9 +1422,12 @@ export class Game {
       else type = B.target;
     } else {
       const q = this.quest(); if (!q || !q.def) return;
+      if (q.status === 'available' && q.def.minLv > this.S.level) { this.ui.toast(`Reach Lv ${q.def.minLv} to continue the story: try bounties, dungeons and the zone for your level`, 'warn'); return; }
       if (q.status === 'available') npc = this.npcById(q.def.giver);
       else if (q.status === 'complete') npc = this.npcById(q.def.turnin);
       else if (q.def.type === 'kill' || q.def.type === 'collect') type = q.def.target;
+      else if (q.def.type === 'dungeon') { const h = this.portals.find((x) => x.def?.id === q.def.target); if (h) this.goToPortal(h); else this.ui.togglePanel('dungeons', true, q.def.target); return; }
+      else if (q.def.type === 'level') { this.ui.toast(`Reach Lv ${q.def.count}: try bounties, dungeons and the zone for your level`, 'warn'); return; }
       else npc = this.npcById(q.def.turnin);
     }
     if (npc) { this.talkTo(npc); return; }
@@ -1961,6 +2051,7 @@ export class Game {
     const dg = this.dg, def = dg.def, S = this.S, map = dg.map;
     if (dg.done) return;
     dg.done = true; dg.time = this.time - dg.startT;
+    this.questDungeon(def.id);
     const par = def.par || 300;
     dg.rating = dg.deaths === 0 && dg.time <= par ? 'S' : dg.deaths <= 1 && dg.time <= par * 1.6 ? 'A' : 'B';
     const order = { S: 3, A: 2, B: 1 };
@@ -2002,6 +2093,15 @@ export class Game {
       if (i === 0 && dg.firstClear) q = Math.max(q, 4);
       const nd = q >= 4 && named.length && Math.random() < 0.5 ? pick(named) : null;
       items.push(nd ? genNamed(nd.id, { lvl, cls: S.cls, uid: S.uid++ }) : this.makeEquip(null, lvl, q));
+    }
+    // this dungeon's set: a piece now and then (always on the first clear), favouring pieces you do not have yet
+    const set = setOfDungeon(dg.def.id);
+    if (set && Math.random() < (dg.firstClear ? 1 : { S: 0.6, A: 0.4, B: 0.25 }[dg.rating])) {
+      const own = new Set([...S.bag.filter((b) => b.eq?.set === set.id).map((b) => b.eq.slot), ...Object.values(S.equip).filter((e) => e?.set === set.id).map((e) => e.slot)]);
+      const missing = set.slots.filter((sl) => !own.has(sl));
+      const piece = genSet(set.id, { slot: missing.length && Math.random() < 0.7 ? pick(missing) : pick(set.slots), lvl, cls: S.cls, uid: S.uid++ });
+      items.push(piece);
+      this.logEvent('set', `Found ${piece.name} (${set.name} set)`, true);
     }
     const gold = Math.round(150 * dg.def.lv * (1 + dg.def.lv / 40) * ({ S: 1.6, A: 1.25, B: 1 }[dg.rating]));
     const diamonds = { S: 25, A: 15, B: 10 }[dg.rating];
@@ -2070,11 +2170,12 @@ export class Game {
     // quest marker
     const q = this.quest(); let mark = null;
     if (q && q.def) {
-      if (q.status === 'available' && q.def.giver === n.id) mark = '!';
+      if (q.status === 'available' && q.def.giver === n.id && !(q.def.minLv > this.S.level)) mark = '!';
       else if (q.status === 'complete' && q.def.turnin === n.id) mark = '?';
       else if (q.status === 'active' && q.def.turnin === n.id) mark = '…';
     }
     if (n.id === 'elena' && this.S.bounty && this.S.bounty.status === 'complete') mark = '?';
+    if (n.id === 'grimsby' && !mark && this.S.auc?.claims?.length) mark = '?'; // auction items or gold waiting to be collected
     if (mark !== n.markChar) {
       n.markChar = mark;
       if (mark) { n.marker.material.map = textTexture(mark, mark === '…' ? { color: '#c8d0e0', stroke: '#2a2a3a' } : {}); n.marker.material.needsUpdate = true; }

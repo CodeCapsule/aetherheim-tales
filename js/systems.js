@@ -797,6 +797,7 @@ const M = {
   },
   ascend(ref) {
     const eq = this.refItem(ref), S = this.S; if (!eq) return;
+    if (eq.set) { this.ui.toast('Set pieces cannot be ascended', 'warn'); return; }
     const A = ASCEND[eq.quality]; if (!A) { this.ui.toast('Already Legendary', 'warn'); return; }
     if (!this.pay({ gold: A.gold, mats: A.mats })) return;
     const before = eq.name;

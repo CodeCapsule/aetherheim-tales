@@ -27,17 +27,30 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   about five new monster types, elites, a field boss and an outpost camp with a merchant and a teleport point. The level
   cap is 200, and monster HP grows faster than their damage, so high-level monsters take far longer to kill.
 - **4 classes, each tied to one of the four elements**: Knight (Earth), Assassin (Wind), Mage (Fire) and Priest (Water). Each class has 6 skills and a dual talent.
-- **Story chapter**: 11 quests with NPC dialogs, auto-pathing from the quest tracker, kill and collect objectives and
-  the Treant King Yggr boss with telegraphed red-circle attacks. Repeatable bounties follow.
+- **Main story**: six chapters and 58 quests from Lv 1 to Lv 200. Chapter I (The Restless Spirits) ends with the
+  Treant King Yggr; Chapter II (The Withering Bloom, Sunpetal Plains and Whispering Marsh), III (Embers of the Old War,
+  Ember Canyon and Frostpeak), IV (The Crystal Choir), V (Shadows Beneath the Roots) and VI (Starfall, ending in the
+  Throne of Yggdrasil) follow the zones. Objectives include kills, quest-item collection, field bosses, dungeon clears
+  and level gates (a quest waits until you reach its level, shown in the tracker). Chapter finales award titles, pets,
+  mounts and Unique or Legendary gear. The quest tracker auto-paths to the next step, including dungeon entrances.
 - **Pets, sprites, mounts and wings**: 27 collectible pets that fight beside you (up to Lv 60), 4 elemental sprites,
   13 mounts and fairy wings. New pets and mounts drop from the new monsters and bosses or are sold by Mimi and Brom.
-- **Costumes**: 23 cosmetic outfits, hats and wings in the Wardrobe (V). They change only your look, never your stats.
-  Buy them at Coco's Boutique or find them in Wardrobe Boxes.
+- **Costumes**: 23 cosmetic outfits, hats and wings in Coco the Costume Tailor's Wardrobe. They change only your look,
+  never your stats. Buy them at Coco's Boutique or find them in Wardrobe Boxes.
 - **Dungeons**: eleven instanced dungeons with their own entrances in the world, from Mossy Hollow (Lv 6) to the
   Throne of Yggdrasil, where Fenrir, the World Devourer waits as the Lv 200 boss. Clear each chamber to break the rune
   seal ahead, then fight a boss with telegraphed attacks (slams, novas, root bursts, dragon breath, summons). Dungeons
   are hard: monsters inside are tougher than in the field, a run fails after 15 minutes or a fourth death, and bosses go
   berserk after 4 minutes. Runs are rated S/A/B; the rating sets the size of the treasure chest.
+- **Dungeon sets**: each dungeon's chest can hold a piece of its own four-piece set (always on the first clear, then
+  25/40/60% by rating, favouring pieces you lack). Two pieces add stats; all four unlock a set power found nowhere else:
+  Moss Mend, Grave Pact, Entangle, Swarm, Riptide, Molten Core, Shatter, Refraction, Soul Harvest, Constellation and
+  Spirit Covenant. Tooltips and the Dungeons window show which pieces you own; set pieces cannot be ascended.
+- **Town services at their NPCs**: windows open only at the NPC who runs them. Gorm the Blacksmith (Forge: enhance,
+  craft, upgrade, salvage, smithing, Crimson Forge), Opal the Gemcutter (Gem Workshop), Vera the Alchemist (alchemy),
+  Mira the Market Merchant (Market and Auction House), Grimsby the Auctioneer, Aldric the Guild Master (guilds and guild
+  wars) and Coco the Costume Tailor (Wardrobe). Their old hotkeys and mission buttons walk you to the NPC and open the
+  window when you arrive; walking away closes it. The World Map lists them under Town services with a Go button.
 - **Relic collections and Red gear**: every dungeon hides four collection relics (crown, seal, idol and tome) dropped by
   its monsters and chest. Completing a set gives a permanent Attack and HP bonus. Four relics of one dungeon, a Crimson
   Core, Star Essence and gold forge a **Red** item at the Crimson Forge: the new top rarity, with four affixes, a
@@ -126,8 +139,8 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 | Skills | 1–6 |
 | Potions | Q (HP), E (MP) |
 | Mount / Auto battle | R / T |
-| Panels | C character, B bag, K skills, P pets, U mounts, Z professions, V wardrobe, L quests, M map, O settings |
-| Live systems | H missions, G guild, N market, Y forge, X codex, J season pass |
+| Panels | C character, B bag, K skills, P pets, U mounts, Z professions, L quests, M map, O settings |
+| Live systems | H missions, X codex, J season pass; Y forge, N market, G guild and V wardrobe walk you to their NPC |
 | Other | Space jump, Tab next target, F talk, Enter chat, Esc close |
 
 Progress saves to the browser's local storage. Daily and weekly resets, world boss times and seasons follow the real clock (UTC).
@@ -147,6 +160,8 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
+| `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
+| `js/data-sets.js` | Dungeon sets: pieces, two-piece stats and four-piece powers |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
 | `js/toon.js` | Cel-shaded materials, ink outlines and canvas textures |
 | `js/models.js` | Procedural chibi characters, monsters, pets, mounts and sprites |

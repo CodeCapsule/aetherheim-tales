@@ -15,7 +15,7 @@ const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
 const ago = (t) => { if (!t) return '—'; const s = Math.max(0, (Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`; };
 const hrs = (sec) => (sec >= 3600 ? `${(sec / 3600).toFixed(1)} h` : `${Math.round(sec / 60)} min`);
 const ONLINE_MS = 3 * 60 * 1000;
-const EVENT_LABEL = { login: 'Login', level: 'Level up', death: 'Death', dungeon: 'Dungeon clear', dungeonFail: 'Dungeon failed', loot: 'Rare loot', red: 'Red item', enhance: 'Enhance', soul: 'Soulstone', worldboss: 'World boss', war: 'Guild war', gift: 'Gift' };
+const EVENT_LABEL = { login: 'Login', level: 'Level up', death: 'Death', dungeon: 'Dungeon clear', dungeonFail: 'Dungeon failed', loot: 'Rare loot', red: 'Red item', enhance: 'Enhance', soul: 'Soulstone', worldboss: 'World boss', war: 'Guild war', gift: 'Gift', story: 'Story', set: 'Set item' };
 const HIDE_KEY = 'alfheim_admin_err_hide';
 
 function localStatus(S) {

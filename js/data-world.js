@@ -373,7 +373,7 @@ export const SHOPS = {
 export const NEW_NPCS = [
   { id: 'tilly', name: 'Tilly', title: 'Farmer', x: -44, z: 36, look: 'tilly', face: -2.3, service: 'farm', greet: 'Good soil, good seeds, good friends! Your own plots are ready right behind me.' },
   { id: 'vera', name: 'Vera', title: 'Alchemist', x: 22, z: -28, look: 'vera', face: -0.6, service: 'alchemy', greet: 'Herbs from the wilds, fruit from the farm, a little patience over the flame... that is alchemy.' },
-  { id: 'coco', name: 'Coco', title: 'Tailor', x: -38, z: -22, look: 'coco', face: 1.0, service: 'tailor', greet: 'Darling! Stats are for armor. Style is forever. Come try something on!' },
+  { id: 'coco', name: 'Coco', title: 'Costume Tailor', x: -38, z: -22, look: 'coco', face: 1.0, service: 'tailor', greet: 'Darling! Stats are for armor. Style is forever. Come try something on!' },
   { id: 'opal', name: 'Opal', title: 'Gemcutter', x: -36, z: 2, look: 'opal', face: 1.6, service: 'shop:gems', greet: 'Rubies for fury, sapphires for steel, emeralds for life, topaz for luck. Which calls to you?' },
   { id: 'hilda', name: 'Hilda', title: 'Quartermaster', x: 40, z: 18, look: 'hilda', face: -1.9, service: 'shop:general', greet: 'Potions, scrolls and bigger bags. An adventurer is only as good as their supplies!' },
   { id: 'grimsby', name: 'Grimsby', title: 'Auctioneer', x: -14, z: -30, look: 'grimsby', face: 0.4, service: 'auction', greet: 'Going once, going twice! The Auction House never sleeps, and neither do the bargains.' },
