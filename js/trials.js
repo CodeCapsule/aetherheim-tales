@@ -402,7 +402,7 @@ const T = {
   setup_duel(tr) {
     const c = tr.map.rooms[0];
     tr.boss = this.trialFoe('tr_warden', c.x, c.z - 6, { ai: 'duel', name: 'The Gate Warden', hits: 70, look: FOE_LOOK.warden(), speed: 5, prefR: 2.6, delay: 3 });
-    tr.goal = 'Defeat the Gate Warden. Every attack is telegraphed: roll through it (Space) or block it (Guardians, Shift).';
+    tr.goal = 'Defeat the Gate Warden. Every attack is telegraphed: roll through it (Shift) or block it (Guardians, hold the right mouse button).';
   },
   // ================================================================ Trial II: Lost Road
   setup_road(tr) {

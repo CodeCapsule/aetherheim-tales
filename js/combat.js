@@ -8,7 +8,7 @@ import { CLASSES, BASIC, CLASS_SKILLS, SKILL_BY_ID, MAX_RANK, skillPointsFor, ra
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const today = () => new Date().toISOString().slice(0, 10);
 const MELEE_KINDS = new Set(['strike', 'cone', 'nova', 'channel']);
-const ROLL = { dur: 0.42, dist: 5.2, cost: 30, perfect: 0.2 };
+const ROLL = { dur: 0.42, dist: 4.5, cost: 30, perfect: 0.2 };
 const basicCache = {};
 
 const CB = {
@@ -517,7 +517,7 @@ const CB = {
   updateRoll(dt) {
     const p = this.player, R = this.rolling;
     p.sta = Math.min(100, (p.sta ?? 100) + 22 * (1 + this.ps('stamina') / 100) * this.buffMod(p, 'staRegen') * dt * (this.rolling || this.blocking ? 0.3 : 1));
-    if (this.blocking && (!this.keys.shift && !this.blockHold || p.dead || (p.sta ?? 0) <= 0)) { this.blocking = null; }
+    if (this.blocking && (!this.blockHold || p.dead || (p.sta ?? 0) <= 0)) { this.blocking = null; }
     if (this.blocking) { p.state = 'block'; p.actT = Math.max(p.actT, 0.05); }
     if (!R) return false;
     const k = Math.min(1, (this.time - R.t0) / ROLL.dur);

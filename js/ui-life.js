@@ -59,7 +59,7 @@ const P = {
     const grid = h('div', 'prof-grid');
     for (const k of Object.keys(PROF)) grid.appendChild(h('div', '', this.profBar(k)));
     body.appendChild(grid);
-    // the tools in your bag: each one gathers its own kind of node up to its tier
+    // the tool belt: each tool gathers its own kind of node up to its tier
     const tl = h('div', 'tool-row');
     for (const [k, K] of Object.entries(TOOL_KINDS)) {
       const t = g.bestTool(K.node);
@@ -170,7 +170,7 @@ const P = {
     const L = h('div', 'list');
     for (const r of TOOL_RECIPES.filter((x) => ITEMS[x.tool].tool === kind)) {
       const it = ITEMS[r.tool], lock = g.profLv('smithing') < r.lv, have = best && best.tier >= it.tier;
-      const needFrom = r.from && !g.countItem(r.from), ok = !lock && !needFrom && g.canAfford({ gold: r.gold, mats: r.mats });
+      const needFrom = r.from && !g.hasTool(r.from), ok = !lock && !needFrom && g.canAfford({ gold: r.gold, mats: r.mats });
       const row = h('div', 'row slim' + (lock ? ' locked' : ''), `<div class="ic q${it.quality}">${ico(r.tool)}</div><div class="tx"><b style="color:${RARITY[it.quality].color}">${esc(it.name)}</b>${lock ? `Smithing Lv ${r.lv}` : `Gathers tier ${it.tier + 1} ${GATHER[TOOL_KINDS[kind].node].names[it.tier]}s and below${have ? ' · <span class="good">owned</span>' : ''}`}<div class="needs">${r.from ? `<span class="need ${needFrom ? 'no' : ''}">${ico(r.from, 'ico inl')}${esc(ITEMS[r.from].name)}</span>` : ''}${this.costLine({ gold: r.gold, mats: r.mats })}</div></div>`);
       const b = h('button', 'btn small green', 'Forge'); b.disabled = !ok; b.onclick = () => g.smithTool(r.id); row.appendChild(b);
       L.appendChild(row);

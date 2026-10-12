@@ -271,9 +271,10 @@ export const TITLES = ['Novice Adventurer', 'Jelly Hunter', 'Pet Lover', 'Rising
 
 
 export const TIPS = [
-  'Click a quest in the tracker to hear the way there; your journal keeps the directions.',
+  'Click a quest in the tracker to auto-path there; your journal keeps the directions quest givers tell you.',
+  'Your Axe, Pickaxe and Sickle sit on the tool belt above the skill bar: press 8, 9 or 0 to gather the nearest node.',
   'Press R to summon or dismiss your mount.',
-  'Auto-hit (T) fights from where you stand. Roll (Space) through red telegraphs.',
+  'Auto-hit (T) fights from where you stand. Roll (Shift) through red telegraphs.',
   'Pets fight by your side and add to your Battle Rating.',
   'Enhance gear at Gorm the Blacksmith to raise your Battle Rating.',
   'Step out of red circles on the ground to avoid boss attacks!',

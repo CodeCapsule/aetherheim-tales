@@ -19,6 +19,7 @@ import { DZ } from './data-dz.js';
 import { MASTERY, MASTERY_MAX, masteryNeed, minMastery, FOG } from './progress.js';
 import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
+import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -65,6 +66,16 @@ export class UI {
       this.tip(b, () => `<b>${ITEMS[id].name}</b>${ITEMS[id].desc}<br><span class="ts">Hotkey ${key} · 3s cooldown</span>`);
       bar.appendChild(b); this.slots.push(b); b.dataset.potion = id;
     }
+    // tool belt above the skill bar: Axe, Pickaxe and Sickle (keys 8, 9, 0)
+    const belt = $('toolbelt'); belt.innerHTML = ''; this.toolSlots = {};
+    for (const [k, key] of [['axe', '8'], ['pick', '9'], ['sickle', '0']]) {
+      const K = TOOL_KINDS[k], b = h('button', 'slot tool'); b.setAttribute('aria-label', K.name);
+      b.innerHTML = `<span class="ic"></span><span class="key">${key}</span><span class="tr"></span>`;
+      b.addEventListener('click', () => g.useToolSlot(k));
+      this.tip(b, () => { const id = g.S.tools?.[k], it = id && ITEMS[id]; return it ? `<b>${esc(it.name)}</b>Gathers ${NODE_WORD[k]} up to tier ${it.tier + 1}.<br><span class="ts">Click or press ${key}: walk to the nearest one and start ${K.verb.toLowerCase()}</span>` : `<b>No ${K.name}</b>Your belt slot for ${NODE_WORD[k]} is empty. Gorm forges tools and Hilda sells them.`; });
+      belt.appendChild(b); this.toolSlots[k] = b;
+    }
+    this.refreshTools();
     $('btn-mount').onclick = () => g.toggleMount();
     $('btn-auto').onclick = () => g.toggleAuto();
     $('btn-auto').innerHTML = `${ico('auto')}<small>Auto</small>`;
@@ -105,7 +116,7 @@ export class UI {
         if (n === 'dungeon') { this.togglePanel('dungeons'); return; }
         if (n === 'war') { this.sel.guildTab = 'war'; this.togglePanel('guild'); return; }
         if (g.dg && (n === 'bounty' || n === 'teleport')) { this.toast('Not available inside a dungeon', 'warn'); return; }
-        if (n === 'bounty') { if (S.bounty) g.autoQuest('bounty'); else if (g.bountyUnlocked()) g.talkTo(g.npcById('elena')); else this.toast('Bounties unlock after "Swift as the Wind"', 'warn'); return; }
+        if (n === 'bounty') { if (S.bounty) g.autoQuest('bounty'); else if (g.bountyUnlocked()) g.talkTo(g.npcById('elena'), true); else this.toast('Bounties unlock after "Swift as the Wind"', 'warn'); return; }
         if (n === 'teleport') { g.talkTo(g.npcById('nix')); return; }
         if (n === 'farm') { this.sel.lifeTab = 'farm'; this.togglePanel('life'); return; }
         this.togglePanel(n);
@@ -226,6 +237,19 @@ export class UI {
     });
   }
   refreshSkillCD() {}
+  refreshTools() {
+    const g = this.g; if (!g || !this.toolSlots) return;
+    for (const [k, b] of Object.entries(this.toolSlots)) {
+      const id = g.S.tools?.[k], ic = b.querySelector('.ic'), key = id || 'none';
+      if (ic.dataset.k !== key) {
+        ic.dataset.k = key; ic.innerHTML = ico(id || toolId(k, 0));
+        b.querySelector('.tr').textContent = id ? ROMAN[ITEMS[id].tier + 1] : '';
+        b.style.setProperty('--tc', id ? TOOL_METAL[ITEMS[id].tier] : '#6a5a4a');
+      }
+      b.classList.toggle('empty', !id);
+      b.classList.toggle('on', g.gathering?.tool.kind === k);
+    }
+  }
   refreshMountBtn() {
     const g = this.g, S = g.S, b = $('btn-mount');
     const md = MOUNTS.find((m) => m.id === S.activeMount);
@@ -440,20 +464,19 @@ export class UI {
       const done = q.status === 'complete';
       const obj = g.questObjective(q);
       const it = h('div', 'qt-item', `<span class="qtag main">Main</span><span class="qn">${esc(q.def.name)}</span><div class="qo ${done ? 'done' : ''}">${linkify(obj)}</div>`);
-      it.title = 'Click for directions'; it.onclick = () => { g.sfx.play('click'); g.autoQuest('main'); };
-      it.title = 'Click to auto-path';
+      it.title = 'Click to auto-path to the quest'; it.onclick = () => { g.sfx.play('click'); g.autoQuest('main'); };
       list.appendChild(it);
     } else {
-      list.appendChild(h('div', 'qt-item', `<span class="qtag main">Main</span><span class="qn">Story complete</span><div class="qo">Your legend is told. Take bounties from <u>Captain Elena</u>.</div>`)).onclick = () => g.talkTo(g.npcById('elena'));
+      list.appendChild(h('div', 'qt-item', `<span class="qtag main">Main</span><span class="qn">Story complete</span><div class="qo">Your legend is told. Take bounties from <u>Captain Elena</u>.</div>`)).onclick = () => g.talkTo(g.npcById('elena'), true);
     }
     const B = S.bounty;
     if (B) {
       const obj = B.status === 'complete' ? 'Return to Captain Elena' : `Defeat ${MONSTERS[B.target].name} (${B.prog}/${B.count})`;
       const it = h('div', 'qt-item', `<span class="qtag bounty">Bounty</span><span class="qn">Daily Bounty</span><div class="qo ${B.status === 'complete' ? 'done' : ''}">${linkify(obj)}</div>`);
-      it.onclick = () => g.autoQuest('bounty');
+      it.title = 'Click to auto-path to the bounty'; it.onclick = () => { g.sfx.play('click'); g.autoQuest('bounty'); };
       list.appendChild(it);
     } else if (g.bountyUnlocked()) {
-      list.appendChild(h('div', 'qt-item', `<span class="qtag bounty">Bounty</span><div class="qo">Visit <u>Captain Elena</u> for a bounty</div>`)).onclick = () => g.talkTo(g.npcById('elena'));
+      list.appendChild(h('div', 'qt-item', `<span class="qtag bounty">Bounty</span><div class="qo">Visit <u>Captain Elena</u> for a bounty</div>`)).onclick = () => g.talkTo(g.npcById('elena'), true);
     }
     this.questExtras(list);
     if (this.panelName === 'quests') this.renderPanel();
@@ -968,7 +991,7 @@ export class UI {
       const cur = i === idx;
       const r = h('div', 'row');
       r.innerHTML = `<div class="ic">${ico(cur ? 'quests' : 'star')}</div><div class="tx"><b style="color:${cur ? '#ffe066' : 'var(--muted)'}">${esc(qd.name)}</b>${cur ? `${esc(qd.text)}<br><span style="color:#7aff7a">${esc(g.questObjective(q))}</span>` : 'Completed'}</div>`;
-      if (cur) { const b = h('button', 'btn small blue', 'Directions'); b.onclick = () => g.autoQuest('main'); r.appendChild(b); }
+      if (cur) { const b = h('button', 'btn small blue', 'Auto-path'); b.onclick = () => { this.closePanels(); g.autoQuest('main'); }; r.appendChild(b); }
       list.appendChild(r);
     });
     if (idx >= QUESTS.length) list.appendChild(h('div', 'row', '<div class="tx"><b>Your legend is complete!</b>The Spirits sing again. Keep conquering dungeons, world bosses and guild wars.</div>'));
@@ -1152,7 +1175,7 @@ export class UI {
     const del = h('button', 'btn gray', 'New Character'); del.onclick = () => this.modal('Start over?', 'This deletes your saved hero and returns to character creation.', [{ label: 'Delete & Restart', fn: () => { try { localStorage.removeItem('alfheim_tales_save_v1'); } catch { /* ignore */ } location.reload(); } }, { label: 'Cancel', cls: 'gray' }]);
     acts.appendChild(del);
     body.appendChild(acts);
-    body.appendChild(h('div', '', '<p style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:14px">Controls: click to move · click monsters to attack · drag to rotate camera · scroll or pinch to zoom · WASD to walk · 1–6 skills · Q/E potions · R mount · T auto battle · Space jump · Tab next target · F talk · Enter chat.</p>'));
+    body.appendChild(h('div', '', '<p style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:14px">Controls: click to move · click monsters to attack · drag to rotate camera · scroll or pinch to zoom · WASD to walk · 1–7 skills · Q/E potions · R mount · T auto battle · Shift dodge roll · Space jump · hold right mouse button to block (Guardians) · Tab next target · F talk · Enter chat.</p>'));
   }
 
   panel_mall(body) {

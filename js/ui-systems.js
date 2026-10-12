@@ -175,7 +175,7 @@ const P = {
         const b = h('button', 'btn small blue', 'Go');
         b.onclick = () => {
           if (d.ev === 'worldboss') { this.togglePanel('worldboss', true); return; }
-          if (d.ev === 'bounty') { this.closePanels(); if (S.bounty) g.autoQuest('bounty'); else g.talkTo(g.npcById('elena')); return; }
+          if (d.ev === 'bounty') { this.closePanels(); if (S.bounty) g.autoQuest('bounty'); else g.talkTo(g.npcById('elena'), true); return; }
           if (MISSION_GO[d.ev] === 'guild') this.sel.guildTab = d.ev.startsWith('war') ? 'war' : 'hall';
           this.togglePanel(MISSION_GO[d.ev], true);
         };

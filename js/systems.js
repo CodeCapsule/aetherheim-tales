@@ -366,7 +366,7 @@ const M = {
   },
   bagRoomFor(id) {
     const S = this.S;
-    if (S.bag.some((b) => b.id === id) || S.bag.length < this.bagMax()) return true;
+    if (S.bag.some((b) => b.id === id) || S.bag.length < this.bagMax() || (ITEMS[id]?.type === 'tool' && this.beltWants(id))) return true;
     this.ui.toast('Bag is full!', 'warn'); return false;
   },
   updateGuildLife() {

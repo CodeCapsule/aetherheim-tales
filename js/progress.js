@@ -20,7 +20,7 @@ export const MASTERY_MAX = 200;
 export const masteryNeed = (r) => Math.max(1, Math.round((3 + 0.9 * Math.pow(r, 1.5)) * Math.min(1, 0.25 + r / 16)));
 export const MASTERY = {
   weapon: { name: 'Weapon', how: 'Landing hits and skills with your weapon', tip: 'Fight enemies within 5 levels of you' },
-  defense: { name: 'Defense', how: 'Successful blocks, dodges and parries', tip: 'Roll through attacks (Space), block (Shift) or parry' },
+  defense: { name: 'Defense', how: 'Successful blocks, dodges and parries', tip: 'Roll through attacks (Shift), block (hold the right mouse button) or parry' },
   survival: { name: 'Survival', how: 'Exploring, gathering, crafting and cooking', tip: 'Explore new ground, gather, craft and cook' },
 };
 // level-gap penalty: monsters below your level give less XP

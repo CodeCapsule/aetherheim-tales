@@ -81,12 +81,14 @@ export function animateHumanoid(model, state, t, a = 0, speed = 1) {
     P.armL.rotation.set(-1.25, 0, -0.45); P.armR.rotation.set(-0.5, 0, -0.2);
     P.body.rotation.x = -0.08; P.body.position.y = -0.06;
     P.legL.rotation.x = -0.35; P.legR.rotation.x = 0.35;
-  } else if (state === 'roll') { // tuck and tumble forward
-    const k = Math.min(1, a);
-    P.body.rotation.x = k * Math.PI * 2; P.body.position.y = 0.55 * Math.sin(k * Math.PI) * 0.6 + 0.05;
-    const tuck = Math.sin(k * Math.PI);
-    P.legL.rotation.x = -1.6 * tuck; P.legR.rotation.x = -1.6 * tuck;
-    P.armL.rotation.x = -1.2 * tuck; P.armR.rotation.x = -1.2 * tuck;
+  } else if (state === 'roll') { // low dive: duck forward around the hips, tuck, spring back up (stays above the ground)
+    const k = Math.min(1, a), dive = ss(0, 0.28, k) * (1 - ss(0.68, 1, k));
+    const lean = 1.05 * dive, hip = 0.6; // pivot at the hips; a small hop and braced legs keep the boots out of the ground
+    P.body.rotation.x = lean;
+    P.body.position.y = hip - hip * Math.cos(lean) - 0.05 * dive + 0.4 * dive * (1 - dive); P.body.position.z = -hip * Math.sin(lean) + 0.18 * dive;
+    P.legL.rotation.x = -1.6 * dive; P.legR.rotation.x = -0.3 * dive;
+    P.armL.rotation.set(-0.9 * dive, 0, 0.35 * dive); P.armR.rotation.set(-0.9 * dive, 0, -0.35 * dive);
+    P.head.rotation.x = -0.55 * dive;
   } else if (state === 'chop' || state === 'mine' || state === 'harvest') {
     // gathering swings: wind up, strike at the node in front, recover (a = 0-1 through one swing)
     if (state === 'mine') { // two-handed overhead pickaxe blow

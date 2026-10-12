@@ -31,7 +31,7 @@ import { installNavigation, WALK_MAX } from './nav-world.js';
 import { installGear } from './gear.js';
 import { heroLook } from './models.js';
 import { rankMult } from './data-classes.js';
-import { installGather } from './gather.js';
+import { installGather, initToolBelt } from './gather.js';
 import { installTailor } from './tailor.js';
 import { installDangerZone, DZ_ZONE } from './dz.js';
 import { STARTER_TOOLS } from './data-crafting.js';
@@ -60,7 +60,7 @@ export const PET_TIER = [1, 2, 3, 5]; // pet rarity (Common, Rare, Special, Lege
 export function newSave({ name, cls, gender, hair, eye, app }) {
   return migrateSave({
     v: 2, name, cls, gender, hair, eye, app, level: 1, exp: 0, gold: 200, diamonds: 20,
-    bag: [{ id: 'hp_potion', qty: 5 }, { id: 'mp_potion', qty: 5 }, ...STARTER_TOOLS.map((id) => ({ id, qty: 1 }))], toolsGiven: true, equip: {}, pets: {}, activePet: null,
+    bag: [{ id: 'hp_potion', qty: 5 }, { id: 'mp_potion', qty: 5 }], tools: Object.fromEntries(STARTER_TOOLS.map((id) => [ITEMS[id].tool, id])), toolsGiven: true, equip: {}, pets: {}, activePet: null,
     sprites: [], activeSprite: null, mounts: [], activeMount: null, wings: false,
     quest: { id: 'q1', status: 'available', prog: 0 }, bounty: null, skills: {}, loadout: [null, null, null, null, null, null], ult: null, awaken: null,
     signin: { count: 0, last: '' }, gift: { idx: 0, t: 0 }, pos: null, kills: {}, title: 0, uid: 1,
@@ -92,6 +92,7 @@ export function migrateSave(S) {
   for (const b of S.bag || []) if (b.eq) normalizeItem(b.eq, S.cls);
   for (const k of Object.keys(S.equip || {})) if (S.equip[k]) normalizeItem(S.equip[k], S.cls);
   S.bag = (S.bag || []).filter((b) => b.eq || ITEMS[b.id]);
+  initToolBelt(S);
   initSystemsSave(S); initLifeSave(S); initEconomySave(S);
   if (!S.quest || (!S.quest.id && S.quest.status === 'done' && !S.storyDone)) S.quest = { id: 'q11', status: 'available', prog: 0 }; // Chapter I used to end here
   S.v = 3;
@@ -391,6 +392,7 @@ export class Game {
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); drag = null; return; }
       drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, moved: false };
+      if (e.button === 2 && this.S.cls === 'knight') { this.blockHold = true; this.startBlock(); } // hold the right mouse button to block
       document.activeElement && document.activeElement.blur && document.activeElement !== document.body && document.activeElement.blur();
     });
     cv.addEventListener('pointermove', (e) => {
@@ -413,14 +415,15 @@ export class Game {
     });
     const up = (e) => {
       ptrs.delete(e.pointerId);
+      if (e.button === 2) this.blockHold = false;
       if (drag && !drag.moved && drag.btn === 0 && ptrs.size === 0) this.onClick(e.clientX, e.clientY);
       if (ptrs.size === 0) drag = null;
     };
-    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); drag = null; });
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); drag = null; this.blockHold = false; });
     cv.addEventListener('wheel', (e) => { e.preventDefault(); this.cam.dist = THREE.MathUtils.clamp(this.cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 6, 30); }, { passive: false });
     window.addEventListener('keydown', (e) => this.onKey(e, true));
     window.addEventListener('keyup', (e) => this.onKey(e, false));
-    window.addEventListener('blur', () => { this.keys = {}; this.setStick(0, 0); });
+    window.addEventListener('blur', () => { this.keys = {}; this.blockHold = false; this.setStick(0, 0); });
   }
 
   // on-screen joystick: x right, y down (towards the camera), each -1..1; 0, 0 when released
@@ -441,15 +444,17 @@ export class Game {
     if (!down) return;
     if (this.player.dead && k !== 'escape') return;
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { this.player.path = []; this.autoPathing = false; this.pendingTalk = null; this.pendingPortal = null; this.pendingLife = null; this.ui.setAutoPath(false); if (k.startsWith('arrow')) e.preventDefault(); return; }
-    if (k >= '1' && k <= '7') { this.useSkill(+k); return; }
+    const dk = /^(?:Digit|Numpad)(\d)$/.exec(e.code || '')?.[1] ?? (k >= '0' && k <= '9' ? k : null); // the key itself, so Shift+1 still casts
+    if (dk >= '1' && dk <= '7') { this.useSkill(+dk); return; }
+    if (dk === '8' || dk === '9' || dk === '0') { this.useToolSlot({ 8: 'axe', 9: 'pick', 0: 'sickle' }[dk]); return; }
     switch (k) {
       case 'q': this.usePotion('hp_potion'); break;
       case 'e': this.usePotion('mp_potion'); break;
       case 'r': this.toggleMount(); break;
       case 't': this.toggleAuto(); break;
       case 'f': { const n = this.npcs.filter((x) => flat(x.pos, this.player.pos) < 6).sort((a, b) => flat(a.pos, this.player.pos) - flat(b.pos, this.player.pos))[0]; if (n) this.talkTo(n); break; }
-      case ' ': e.preventDefault(); this.roll(); break;
-      case 'shift': this.startBlock(); break;
+      case ' ': e.preventDefault(); this.jump(); break;
+      case 'shift': if (!e.repeat) this.roll(); break;
       case 'tab': e.preventDefault(); this.cycleTarget(); break;
       case 'enter': e.preventDefault(); this.ui.focusChat(); break;
       case 'escape': if (!this.ui.closeTop()) { this.setTarget(null); this.engage = false; } break;
@@ -531,11 +536,11 @@ export class Game {
     if (g) { this.engage = false; this.pendingSkill = null; this.pendingTalk = null; this.pendingPortal = null; this.pendingLife = null; this.pathTo(g.x, g.z, false); this.fx.clickMarker(g); }
   }
 
-  // click-to-move for what you can see; there is no auto-path across the map (find the way by landmarks)
-  pathTo(x, z, auto = true) {
+  // click-to-move reaches what you can see (WALK_MAX); quest auto-paths (far = true) go all the way, mounting up for long trips
+  pathTo(x, z, auto = true, far = false) {
     const p = this.player;
-    if (flat(p.pos, { x, z }) > WALK_MAX) { p.path = []; this.autoPathing = false; this.ui.setAutoPath(false); this.ui.toast(`Too far to walk there in one go: it lies ${this.directionsTo(x, z, 'it').replace(/^Head /, '')}`, 'warn'); return false; }
-    auto = false;
+    if (!far && flat(p.pos, { x, z }) > WALK_MAX) { p.path = []; this.autoPathing = false; this.ui.setAutoPath(false); this.ui.toast(`Too far to walk there in one go: it lies ${this.directionsTo(x, z, 'it').replace(/^Head /, '')}`, 'warn'); return false; }
+    if (!far) auto = false;
     p.path = this.map.findPath(p.pos.x, p.pos.z, x, z);
     this.autoPathing = auto && flat(p.pos, { x, z }) > 12;
     this.ui.setAutoPath(this.autoPathing);
@@ -568,8 +573,9 @@ export class Game {
 
   jump() {
     const p = this.player;
-    if (p.jumpY > 0.01 || p.dead) return;
+    if (p.jumpY > 0.01 || p.vy > 0 || p.dead || p.stun > 0 || this.rolling || this.blocking || this.casting) return;
     p.vy = 8.5;
+    this.sfx.play('swish');
   }
 
   // ============================================================== skills & combat
@@ -992,6 +998,7 @@ export class Game {
   }
   addItem(id, qty = 1) {
     const S = this.S, it = ITEMS[id];
+    if (it.type === 'tool' && this.beltWants(id)) { this.beltTool(id); if (--qty <= 0) { this.ui.refreshPanel(); return true; } }
     const ex = S.bag.find((b) => b.id === id);
     if (ex) ex.qty = Math.min(999, ex.qty + qty);
     else { if (S.bag.length >= this.bagMax()) { this.ui.toast('Bag is full!', 'warn'); return false; } S.bag.push({ id, qty }); }
@@ -1047,6 +1054,7 @@ export class Game {
       this.ui.modal('The egg hatched!', `A ${pd.species} named ${pd.name} wriggles out of the shell and looks up at you adoringly.`, [{ label: 'Summon it', fn: () => this.setPet(pd.id) }, { label: 'Later', cls: 'gray' }], false, this.petIcon(pd.id));
       return;
     }
+    if (it.type === 'tool') { this.equipTool(i); return; }
     if (it.type === 'food') { this.eatFood(b.id); return; }
     if (it.type === 'survey') { this.readSurvey(b.id); return; }
     if (it.type === 'sigil') { this.ui.toast('Bring the sigil to the Trial Warden in Sylvan Haven', 'good'); return; }
@@ -1192,18 +1200,18 @@ export class Game {
   npcById(id) { return this.npcs.find((n) => n.id === id); }
   npcName(id) { return NPCS.find((n) => n.id === id)?.name || id; }
 
-  goToPortal(h) {
+  goToPortal(h, far = false) {
     const p = this.player;
     this.engage = false; this.pendingTalk = null;
     if (flat(p.pos, h.pos) < 4) { p.path = []; this.pendingPortal = null; this.ui.togglePanel('dungeons', true, h.def.id); return; }
-    if (flat(p.pos, h.pos) > WALK_MAX) { this.giveDirections(h.pos.x, h.pos.z, `the entrance of ${h.def.name}`); return; }
-    this.pendingPortal = h; this.pathTo(h.pos.x, h.pos.z, false);
+    if (!far && flat(p.pos, h.pos) > WALK_MAX) { this.giveDirections(h.pos.x, h.pos.z, `the entrance of ${h.def.name}`); return; }
+    this.pendingPortal = h; this.pathTo(h.pos.x, h.pos.z, far, far);
   }
-  talkTo(n) {
+  talkTo(n, far = false) {
     const p = this.player;
     if (this.dg || this.war || this.trial) { this.ui.toast(this.war ? 'Finish the battle first' : this.trial ? 'Finish the trial first' : 'Leave the dungeon first', 'warn'); return; }
-    if (flat(p.pos, n.pos) > WALK_MAX) { this.pendingStation = null; this.giveDirections(n.pos.x, n.pos.z, `${n.data.name} the ${n.data.title}`); return; }
-    if (flat(p.pos, n.pos) > 4.5) { this.pendingTalk = n; this.pathTo(n.pos.x, n.pos.z, false); return; }
+    if (!far && flat(p.pos, n.pos) > WALK_MAX) { this.pendingStation = null; this.giveDirections(n.pos.x, n.pos.z, `${n.data.name} the ${n.data.title}`); return; }
+    if (flat(p.pos, n.pos) > 4.5) { this.pendingTalk = n; this.pathTo(n.pos.x, n.pos.z, far, far); return; }
     const sent = this.pendingTalk === n, st = this.pendingStation;
     this.pendingTalk = null; this.pendingStation = null; p.path = []; this.autoPathing = false; this.ui.setAutoPath(false);
     n.yaw = Math.atan2(p.pos.x - n.pos.x, p.pos.z - n.pos.z);
@@ -1395,15 +1403,20 @@ export class Game {
     this.gainExp(exp); this.ui.refreshWallet(); this.ui.refreshQuest(); this.ui.closeDialog(); this.save();
   }
 
-  // the quest tracker: spoken directions to the objective (there is no auto-path)
+  // the quest tracker's path finder: walks (and rides) you all the way to the quest giver, the monsters or the dungeon
   autoQuest(which = 'main') {
     const p = this.player; if (p.dead) return;
+    if (this.dg || this.war || this.trial) { this.ui.toast(this.war ? 'Finish the battle first' : this.trial ? 'Finish the trial first' : 'Leave the dungeon first', 'warn'); return; }
     const q = this.quest();
     if (which === 'main' && q?.def && q.status === 'available' && q.def.minLv > this.S.level) { this.ui.toast(`Reach Lv ${q.def.minLv} to continue the story: try bounties, dungeons and the zone for your level`, 'warn'); return; }
     if (which === 'main' && q?.def?.type === 'level' && q.status === 'active') { this.ui.toast(`Reach Lv ${q.def.count}: try bounties, dungeons and the zone for your level`, 'warn'); return; }
     const T = this.questTarget(which); if (!T) return;
-    if (T.npc && flat(p.pos, T.npc.pos) <= 4.5) { this.talkTo(T.npc); return; }
-    this.giveDirections(T.x, T.z, T.what);
+    this.engage = false; this.pendingSkill = null; this.pendingTalk = null; this.pendingPortal = null; this.pendingLife = null;
+    if (T.npc) { this.talkTo(T.npc, true); if (this.pendingTalk) this.ui.toast(`Auto-path: heading to ${T.what}`); return; }
+    if (T.portal) { this.goToPortal(T.portal, true); if (this.pendingPortal) this.ui.toast(`Auto-path: heading to ${T.what}`); return; }
+    if (flat(p.pos, T) < 14) { this.ui.toast(`You are at ${T.what}`); return; }
+    this.pathTo(T.x, T.z, true, true);
+    this.ui.toast(`Auto-path: heading to ${T.what}`);
   }
 
   teleport(i) {
@@ -2191,7 +2204,7 @@ export class Game {
       n.markChar = mark;
       if (mark) { n.marker.material.map = textTexture(mark, mark === '…' ? { color: '#c8d0e0', stroke: '#2a2a3a' } : {}); n.marker.material.needsUpdate = true; }
     }
-    n.marker.visible = !!mark && d < 10; // no quest markers to steer by: you see it once you have found them
+    n.marker.visible = !!mark && d < 120;
     n.marker.position.set(n.pos.x, n.pos.y + n.height * (n.data.look === 'brom' ? 1.12 : n.data.look === 'sylphie' ? 0.85 : 1) + 1.55 + Math.sin(this.time * 3) * 0.12, n.pos.z);
   }
 

@@ -346,6 +346,12 @@ button { font-family: inherit; }
 .slot.potion { width: 44px; height: 44px; font-size: 22px; }
 .side-btns { display: flex; gap: 8px; align-items: flex-end; }
 #hud-bar .side-btns { position: absolute; right: 0; bottom: calc(100% + 8px); }
+.toolbelt { display: flex; gap: 4px; padding: 4px 6px; border-radius: 10px; background: linear-gradient(180deg, rgba(40, 30, 20, .9), rgba(20, 14, 8, .9)); border: 2px solid var(--gold-d); box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+#hud-bar .toolbelt { position: absolute; left: 0; bottom: calc(100% + 8px); }
+.slot.tool { width: 42px; height: 42px; border-color: var(--tc, #8a6a3a); background: radial-gradient(circle at 40% 30%, #5a4632, #1e1610); }
+.slot.tool .tr { position: absolute; bottom: 0; right: 3px; font-family: var(--f-num); font-size: 10px; color: var(--tc, #fff); text-shadow: 0 0 2px #000, 0 1px 0 #000; z-index: 3; }
+.slot.tool.empty .ic { filter: grayscale(1) brightness(.5); }
+.slot.tool.on { box-shadow: 0 0 0 2px var(--gold), 0 0 12px rgba(255, 210, 120, .7); }
 .big-rbtn { width: 58px; height: 58px; border-radius: 50%; border: 3px solid var(--gold); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 22px; line-height: 1;
   background: radial-gradient(circle at 35% 30%, #5a7ae0, #1a2462); box-shadow: 0 0 0 2px #3a2008, 0 4px 10px rgba(0, 0, 0, .5); padding: 0; }
 .big-rbtn small { font-size: 10px; font-weight: 900; margin-top: 2px; }
@@ -1257,6 +1263,12 @@ button { font-family: inherit; }
 .dg-set > span { display: inline-block; margin-right: 10px; color: var(--dim); }
 .dg-set > span.got { color: #5aff9a; }
 .dg-set b { color: #9affc0; }
+/* tool belt on phones held upright: above the joystick (the skill bar runs under it), the open chat sits higher */
+@media (max-width: 640px) and (min-height: 501px) {
+  #hud-bar .toolbelt { bottom: 184px; }
+  .slot.tool { width: 38px; height: 38px; }
+  #hud-chat.open { bottom: 318px; }
+}
 </style>
 </head>
 <body>
@@ -1345,12 +1357,13 @@ button { font-family: inherit; }
 
     <div id="hud-cast" hidden><div class="cl stroke" id="cast-l"></div><div class="bar"><i id="cast-f"></i></div></div>
     <div id="hud-bar">
+      <div class="toolbelt" id="toolbelt"></div>
       <div class="skillbar" id="skillbar"></div>
       <div class="side-btns">
         <button class="big-rbtn" id="btn-mount" title="Mount (R)"><small>Mount</small></button>
         <button class="big-rbtn" id="btn-auto" title="Auto-hit (T)"><small>Auto</small></button>
-        <button class="big-rbtn" id="btn-roll" title="Dodge roll (Space)"><small>Roll</small></button>
-        <button class="big-rbtn" id="btn-block" title="Block (hold Shift)" hidden><small>Block</small></button>
+        <button class="big-rbtn" id="btn-roll" title="Dodge roll (Shift)"><small>Roll</small></button>
+        <button class="big-rbtn" id="btn-block" title="Block (hold the right mouse button)" hidden><small>Block</small></button>
       </div>
     </div>
     <div id="hud-menu"></div>

@@ -2,7 +2,8 @@
 // with its impacts (the node shakes and throws chips, sparks or leaves), and forging better tools at Gorm's.
 import * as THREE from 'three';
 import { ITEMS } from './data.js';
-import { TOOL_KINDS, TOOL_FOR_NODE, TOOL_TIERS, TOOL_METAL, TOOL_ITEMS, TOOL_RECIPES, STARTER_TOOLS, toolId } from './data-crafting.js';
+import { TOOL_KINDS, TOOL_FOR_NODE, TOOL_TIERS, TOOL_METAL, TOOL_ITEMS, TOOL_RECIPES, STARTER_TOOLS, NODE_WORD } from './data-crafting.js';
+import { GATHER, TIER_REQ } from './data-world.js';
 import { registerIcon } from './icons.js';
 import { toon } from './toon.js';
 
@@ -11,6 +12,23 @@ const SWING = { chop: 0.8, mine: 0.85, harvest: 0.7 };
 const IMPACT = { chop: 0.55, mine: 0.56, harvest: 0.5 };
 // how close the hero steps in to swing at each kind of node
 const REACH = { tree: 1.75, ore: 2.3, herb: 1.05 };
+const SLOT_RANGE = 60; // a belt slot walks you to the nearest node within this range (the click-to-move limit)
+
+// ---------------------------------------------------------------- the tool belt
+// One Axe, Pickaxe and Sickle ride in their own slots above the skill bar instead of the bag. Old saves move their best
+// tool of each kind out of the bag onto the belt; spares stay in the bag.
+export function initToolBelt(S) {
+  S.tools = { axe: null, pick: null, sickle: null, ...(S.tools || {}) };
+  for (const kind of Object.keys(TOOL_KINDS)) {
+    if (S.tools[kind]) continue;
+    let best = null;
+    for (const b of S.bag || []) { const it = ITEMS[b.id]; if (it?.type === 'tool' && it.tool === kind && (!best || it.tier > ITEMS[best.id].tier)) best = b; }
+    if (!best) continue;
+    S.tools[kind] = best.id;
+    if (--best.qty <= 0) S.bag.splice(S.bag.indexOf(best), 1);
+  }
+  return S;
+}
 
 // ---------------------------------------------------------------- icons (one per tool, tinted by metal)
 const INK = 'stroke="#24160f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
@@ -50,11 +68,47 @@ function toolModel(kind, tier) {
 }
 
 const G = {
-  // the best tool in the bag for a node kind ({ kind, tier, id }) or null
+  // the tool on your belt for a node kind ({ kind, tier, id }) or null
   bestTool(nodeKind) {
-    const kind = TOOL_FOR_NODE[nodeKind]; let best = -1;
-    for (const b of this.S.bag) { const it = ITEMS[b.id]; if (it?.type === 'tool' && it.tool === kind && it.tier > best) best = it.tier; }
-    return best < 0 ? null : { kind, tier: best, id: toolId(kind, best) };
+    const kind = TOOL_FOR_NODE[nodeKind], id = this.S.tools?.[kind];
+    return id ? { kind, tier: ITEMS[id].tier, id } : null;
+  },
+  // a new tool goes onto the belt when its slot is empty or holds a weaker one
+  beltWants(id) { const it = ITEMS[id], cur = this.S.tools[it.tool]; return !cur || ITEMS[cur].tier < it.tier; },
+  hasTool(id) { return this.S.tools[ITEMS[id].tool] === id || this.countItem(id) > 0; },
+  // put a tool on the belt; the one it replaces goes to the bag (or is sold if the bag is full)
+  beltTool(id) {
+    const S = this.S, kind = ITEMS[id].tool, old = S.tools[kind];
+    S.tools[kind] = id;
+    if (old) {
+      const ex = S.bag.find((b) => b.id === old);
+      if (ex) ex.qty++;
+      else if (S.bag.length < this.bagMax()) S.bag.push({ id: old, qty: 1 });
+      else { const gold = Math.round(ITEMS[old].price * 0.3); S.gold += gold; this.ui.toast(`Bag full: sold your old ${ITEMS[old].name} for ${gold} Gold`, 'warn'); this.ui.refreshWallet(); }
+    }
+    this.ui.refreshTools();
+  },
+  // use a tool from the bag: it swaps onto the belt
+  equipTool(i) {
+    const S = this.S, b = S.bag[i], it = b && ITEMS[b.id]; if (it?.type !== 'tool') return;
+    if (this.gathering) { this.ui.toast('Finish gathering first', 'warn'); return; }
+    if (S.tools[it.tool] === b.id) { this.ui.toast(`Your belt already holds a ${it.name}`, 'warn'); return; }
+    if (--b.qty <= 0) S.bag.splice(i, 1);
+    this.beltTool(b.id);
+    this.sfx.play('click'); this.ui.toast(`${it.name} is on your tool belt`, 'good');
+    this.ui.refreshPanel(); this.save();
+  },
+  // a belt slot (click or 8 / 9 / 0): walk to the nearest node this tool can work and gather it
+  useToolSlot(kind) {
+    const K = TOOL_KINDS[kind], id = this.S.tools[kind], p = this.player;
+    if (p.dead || this.casting) return;
+    if (!id) { this.ui.toast(`No ${K.name} on your belt: Gorm forges tools and Hilda sells them`, 'warn'); this.sfx.play('error'); return; }
+    if (this.dg || this.war || this.trial || !this.nodes) { this.ui.toast(`No ${NODE_WORD[kind]} here`, 'warn'); return; }
+    const tier = ITEMS[id].tier, lv = this.profLv(GATHER[K.node].prof), dist = (e) => Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+    const near = this.nodes.filter((e) => e.nkind === K.node && dist(e) <= SLOT_RANGE).sort((a, b) => dist(a) - dist(b));
+    const e = near.find((n) => n.ready && n.tier <= tier && lv >= TIER_REQ[n.tier]) || near[0];
+    if (!e) { this.ui.toast(`No ${NODE_WORD[kind]} within ${SLOT_RANGE} m: the Professions window (Z) lists where they grow`, 'warn'); return; }
+    this.lifeClick(e);
   },
   // why a node cannot be gathered with your tools ('' when it can)
   toolProblem(e) {
@@ -80,6 +134,7 @@ const G = {
     P.handR.add(model);
     this.gathering = { e, tool, anim, model, hidden, hit: false };
     p.state = anim; p.actT = p.actDur = SWING[anim];
+    this.ui.refreshTools();
   },
   stopGatherAnim() {
     const G2 = this.gathering; if (!G2) return;
@@ -87,6 +142,7 @@ const G = {
     for (const c of G2.hidden) c.visible = true;
     this.gathering = null;
     const p = this.player; if (p.state === G2.anim) { p.state = 'idle'; p.actT = 0; }
+    this.ui.refreshTools();
   },
   // every frame: keep swinging, land the hits, settle shaking nodes
   gatherTick(dt) {
@@ -125,26 +181,26 @@ const G = {
       this.sfx.play('rustle');
     }
   },
-  // starter tools for every hero (waits for a free bag slot if the bag is full)
+  // starter tools for every hero, straight onto the empty belt slots
   grantStarterTools() {
     const S = this.S;
     if (S.toolsGiven) return;
-    const missing = STARTER_TOOLS.filter((id) => !S.bag.some((b) => ITEMS[b.id]?.type === 'tool' && ITEMS[b.id].tool === ITEMS[id].tool));
-    if (S.bag.length + missing.length > this.bagMax()) return;
-    for (const id of missing) S.bag.push({ id, qty: 1 });
+    const missing = STARTER_TOOLS.filter((id) => !S.tools[ITEMS[id].tool]);
+    for (const id of missing) S.tools[ITEMS[id].tool] = id;
     S.toolsGiven = true;
-    if (missing.length) this.ui.chat('system', 'You now carry a <b>Copper Axe</b>, <b>Copper Pickaxe</b> and <b>Copper Sickle</b>: trees need an axe, ore a pickaxe and herbs a sickle. Gorm forges better tools for higher-tier nodes.');
+    if (missing.length) this.ui.chat('system', 'Your tool belt (above the skill bar) now holds a <b>Copper Axe</b>, <b>Copper Pickaxe</b> and <b>Copper Sickle</b>: trees need an axe, ore a pickaxe and herbs a sickle. Gorm forges better tools for higher-tier nodes.');
+    this.ui.refreshTools();
   },
   // Gorm forges a tool from the previous tier, ore and logs
   smithTool(rid) {
     const S = this.S, r = TOOL_RECIPES.find((x) => x.id === rid); if (!r) return;
     if (this.profLv('smithing') < r.lv) { this.ui.toast(`Requires Smithing Lv ${r.lv}`, 'warn'); return; }
-    if (r.from && !this.countItem(r.from)) { this.ui.toast(`Bring your ${ITEMS[r.from].name}: it is reforged into the new tool`, 'warn'); this.sfx.play('error'); return; }
+    if (r.from && !this.hasTool(r.from)) { this.ui.toast(`Bring your ${ITEMS[r.from].name}: it is reforged into the new tool`, 'warn'); this.sfx.play('error'); return; }
     const cost = { gold: r.gold, mats: r.mats };
     if (!this.canAfford(cost)) { this.ui.toast(this.missingText(cost), 'warn'); this.sfx.play('error'); return; }
-    if (!r.from && !this.countItem(r.tool) && S.bag.length >= this.bagMax()) { this.ui.toast('Bag is full!', 'warn'); return; }
+    if (!r.from && !this.bagRoomFor(r.tool)) return;
     this.pay(cost);
-    if (r.from) this.removeItem(r.from, 1);
+    if (r.from) { const k = ITEMS[r.from].tool; if (S.tools[k] === r.from) S.tools[k] = null; else this.removeItem(r.from, 1); } // the belt tool is reforged first
     this.addItem(r.tool, 1);
     this.addProfExp('smithing', r.exp); this.gainMastery('survival', 4);
     S.life.forged++; this.track('craft');

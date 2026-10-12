@@ -3,8 +3,8 @@ import { TIER_REQ } from './data-world.js';
 
 // ---------------------------------------------------------------- gathering tools
 // You need an Axe for trees, a Pickaxe for ore and a Sickle for herbs. A tool gathers nodes up to its own tier
-// (Copper: tier 1 nodes ... Starmetal: tier 5) and works faster on lower tiers. Tools live in the bag; the best one
-// is used automatically and shows in your hands while you gather.
+// (Copper: tier 1 nodes ... Starmetal: tier 5) and works faster on lower tiers. Each kind has its own slot on the tool
+// belt above the skill bar (outside the bag); the tool there is used and shows in your hands while you gather.
 export const TOOL_TIERS = ['Copper', 'Iron', 'Silver', 'Mithril', 'Starmetal'];
 export const TOOL_METAL = ['#d8884a', '#b8c0cc', '#eef3fb', '#7ae8ff', '#ffd84a'];
 export const TOOL_KINDS = {
@@ -14,12 +14,12 @@ export const TOOL_KINDS = {
 };
 export const TOOL_FOR_NODE = { tree: 'axe', ore: 'pick', herb: 'sickle' };
 export const toolId = (kind, tier) => `tool_${kind}_${tier}`;
-const NODE_WORD = { axe: 'trees', pick: 'ore veins', sickle: 'herbs' };
+export const NODE_WORD = { axe: 'trees', pick: 'ore veins', sickle: 'herbs' };
 export const TOOL_ITEMS = {};
 for (const [kind, K] of Object.entries(TOOL_KINDS)) TOOL_TIERS.forEach((metal, t) => {
   TOOL_ITEMS[toolId(kind, t)] = {
     name: `${metal} ${K.name}`, icon: toolId(kind, t), type: 'tool', tool: kind, tier: t, quality: t, stack: 1, price: [60, 450, 1800, 6000, 15000][t],
-    desc: `Gathering tool for ${NODE_WORD[kind]} up to tier ${t + 1}. Better tools work faster and find more. Kept in your bag; the best one is used automatically.`,
+    desc: `Gathering tool for ${NODE_WORD[kind]} up to tier ${t + 1}. Better tools work faster and find more. A better tool goes straight onto your tool belt; use a spare from the bag to swap it in.`,
   };
 });
 // Gorm forges each tier from the one before it, plus ore for the head and logs for the haft

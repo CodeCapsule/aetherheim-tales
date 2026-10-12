@@ -44,8 +44,8 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   per cleared trial; each skill has 10 ranks, and ranks above 5 need weapon mastery of 10 x the rank. Passives are
   always on. Your loadout holds 6 actives and the ultimate (keys 1-7). Respec is free in town once a day; switching
   paths costs a Trial Sigil.
-- **Action combat**: dodge roll (Space) with invulnerable frames, where the first 0.2 s is a perfect dodge; Guardians
-  block from the front (hold Shift; a just-in-time block stops the hit); parries; aimed skills that land at the cursor
+- **Action combat**: a low dodge roll (Shift) with invulnerable frames, where the first 0.2 s is a perfect dodge; Space
+  jumps; Guardians block from the front (hold the right mouse button; a just-in-time block stops the hit); parries; aimed skills that land at the cursor
   (or straight ahead); a stamina bar for rolls. Auto-hit (T) fights the nearest enemy from where you stand but never
   moves, dodges or picks a path, and it is off inside dungeons and trials.
 - **Earned levels**: the next level takes floor(500 x L^2.2) XP (about 57 million from 199 to 200). Killing the same
@@ -72,11 +72,12 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   clears on each server go on the Hall of Firsts.
 - **Cooking**: campfires in town, at every outpost and in the Hunger trial cook Raw Meat (from beasts), crops and herbs
   into skewers, bread, stew, pie, a feast and starberry soup: food heals over time and some dishes add a 2-minute bonus.
-- **Finding your way**: there is no auto-path and no quest beacon. The map fills in only where you have walked; every
-  zone has three or four tall landmarks (windmills, watchtowers, giant trees, statues, arches, crystal spires); quest
-  givers tell you the way in words ("Head east, a fair walk, into Breezy Meadow. Look for the Windmill Spire...") and
-  the journal in the Quest Log keeps their exact wording; the compass points north. Clicking walks you only to what you
-  can see. Waystones at every outpost wake when you reach them on foot and are the only fast travel. Hidden ruins, lore
+- **Finding your way**: the map fills in only where you have walked; every zone has three or four tall landmarks
+  (windmills, watchtowers, giant trees, statues, arches, crystal spires); quest givers also tell you the way in words
+  ("Head east, a fair walk, into Breezy Meadow. Look for the Windmill Spire...") and the journal in the Quest Log keeps
+  their exact wording; the compass points north. Clicking the ground walks you only to what you can see (60 m), but the
+  quest tracker's path finder walks (and rides) you all the way to the quest giver, the monsters or the dungeon, and quest
+  givers show their marker from afar. Waystones at every outpost wake when you reach them on foot and are the only fast travel. Hidden ruins, lore
   books and Survey Maps (copied by players with Survival mastery 20+, tradable, they reveal a zone) reward exploring.
   Repeated identical input over a long time flags the account for the Game Master to review.
 - **Main story**: six chapters and 58 quests from Lv 1 to Lv 200. Chapter I (The Restless Spirits) ends with the
@@ -84,7 +85,7 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   Ember Canyon and Frostpeak), IV (The Crystal Choir), V (Shadows Beneath the Roots) and VI (Starfall, ending in the
   Throne of Yggdrasil) follow the zones. Objectives include kills, quest-item collection, field bosses, dungeon clears
   and level gates (a quest waits until you reach its level, shown in the tracker). Chapter finales award titles, pets,
-  mounts and Unique or Legendary gear. Click the quest tracker for directions to the next step.
+  mounts and Unique or Legendary gear. Click the quest tracker (or Auto-path in the Quest Log) to auto-path to the next step.
 - **Pets, sprites, mounts and wings**: 27 collectible pets that fight beside you (up to Lv 60), 4 elemental sprites,
   13 mounts and fairy wings. New pets and mounts drop from the new monsters and bosses or are sold by Mimi and Brom.
 - **Pet abilities**: every pet lends you its own ability while summoned, and it grows each time you feed the pet.
@@ -210,8 +211,10 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 - **Gathering tools and animations**: chopping a tree needs an **Axe**, mining ore a **Pickaxe** and cutting herbs a
   **Sickle**. Tools come in five metals (Copper, Iron, Silver, Mithril, Starmetal); each one works on nodes up to its own
   tier and gathers faster and finds more on lower tiers. Every new hero starts with Copper tools, Hilda and the outposts
-  sell them, and Gorm forges each tier from the one before (Forge > Smithing > Gathering Tools). The best tool in your
-  bag is used automatically: your hero steps up, holds it and swings, the tree shakes and drops chips and leaves, the
+  sell them, and Gorm forges each tier from the one before (Forge > Smithing > Gathering Tools). Tools ride on a tool
+  belt above the skill bar (Axe, Pickaxe, Sickle; keys 8, 9, 0) instead of the bag: a better tool goes straight onto the
+  belt and the old one into the bag, and using a spare from the bag swaps it in. Clicking a belt slot walks you to the
+  nearest node that tool can work and starts gathering: your hero steps up, holds it and swings, the tree shakes and drops chips and leaves, the
   rock throws sparks and stone chips, and the herbs rustle, with matching sounds.
 - **Shops, auction and trading**: new NPCs in town run shops: Hilda (supplies, bag scrolls), Tilly (seeds), Vera
   (alchemy), Opal (gems), Coco (costumes), Elias (relics and Crimson Cores), plus pet and stable shops and a trader at
@@ -229,7 +232,7 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 - **Phones and tablets**: on small screens the HUD docks to a bar along the bottom (Events, Hero, Bag, Skills, Quests,
   Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
   dot marks a sheet with something waiting. The skill bar sits above the dock with Mount, Auto, Roll and Block above it, a joystick
-  in the bottom-left corner walks your hero (one thumb walks while the other turns the camera; tapping the ground still
+  in the bottom-left corner (with the tool belt above it) walks your hero (one thumb walks while the other turns the camera; tapping the ground still
   works), and the layout also works in landscape.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
 
@@ -240,7 +243,8 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 | Move / attack / talk | Click (or tap) the ground you can see, a monster or an NPC; WASD also moves |
 | Camera | Drag to rotate, scroll or pinch to zoom |
 | Skills | 1–6, ultimate 7 |
-| Dodge roll / block | Space / hold Shift (Guardians) |
+| Tool belt | 8 Axe, 9 Pickaxe, 0 Sickle (gather the nearest node) |
+| Dodge roll / jump / block | Shift / Space / hold the right mouse button (Guardians) |
 | Potions | Q (HP), E (MP) |
 | Mount / Auto-hit | R / T |
 | Panels | C character, B bag, K skills, P pets, U mounts, Z professions, L quests, M map, O settings |
@@ -273,7 +277,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
 | `js/data-sets.js` | Dungeon sets, Ancient sets and the 17 six-piece sets with their powers |
 | `js/data-pets.js` | Pet abilities and how they grow with pet level |
-| `js/data-crafting.js`, `js/gather.js` | Gathering tools (items, forging recipes, the tool in hand and the swing animations) |
+| `js/data-crafting.js`, `js/gather.js` | Gathering tools (items, forging recipes, the tool belt, the tool in hand and the swing animations) |
 | `js/tailor.js` | Tailoring: costume patterns, dyes and cloth drops |
 | `js/data-dz.js`, `js/dz.js` | Danger Zone: monsters, PvP between players, loot sacks and Ancient set powers |
 | `js/models-monsters.js`, `js/models-extra.js` | New monsters and bosses; new pets, mounts, gathering nodes and crops |
