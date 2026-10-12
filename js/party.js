@@ -257,9 +257,9 @@ const U = {
   },
   partyInvitePopup(inv) {
     let el = $('party-invite');
-    if (!inv) { if (el) el.hidden = true; clearInterval(this.inviteTick); return; }
+    if (!inv) { if (el) el.hidden = true; clearInterval(this.inviteTick); this.askStack(); return; }
     if (!el) { el = h('div', 'frame'); el.id = 'party-invite'; $('hud').appendChild(el); }
-    el.hidden = false;
+    el.hidden = false; this.askStack(); // stacks with any friend or trade request on screen
     el.innerHTML = `<div class="th">Party invitation</div><div class="tt"><b>${esc(inv.name)}</b> (Lv ${inv.level} ${esc(CLASSES[inv.cls]?.name || '')}) invites you to a party. Party members nearby share EXP from kills.</div><div class="ta"></div><div class="tf"><i></i></div>`;
     const yes = h('button', 'btn small green', 'Accept'), no = h('button', 'btn small gray', 'Decline');
     yes.onclick = () => this.g.partyAnswer(true); no.onclick = () => this.g.partyAnswer(false);

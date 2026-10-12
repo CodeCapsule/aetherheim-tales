@@ -93,6 +93,8 @@ const M = {
       .on('broadcast', { event: 'c' }, ({ payload }) => this.mpChat(payload))
       .on('broadcast', { event: 'p' }, ({ payload }) => this.partyMsg(payload))
       .on('broadcast', { event: 'z' }, ({ payload }) => this.dzMsg(payload))
+      .on('broadcast', { event: 't' }, ({ payload }) => this.tradeMsg(payload))
+      .on('broadcast', { event: 'f' }, ({ payload }) => this.socialMsg(payload))
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           const first = mp.status !== 'online';
@@ -128,6 +130,7 @@ const M = {
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
     this.partyUpdate(dt);
+    this.tradeUpdate(dt); this.socialUpdate();
     if (mp.status !== 'online' || !mp.channel) return;
     const p = this.player;
     // presence: only when what others see changes (look, level, zone, mount, pet)
@@ -179,13 +182,13 @@ const M = {
       info.id = key; seen.add(key);
       this.prestigeFromPeer && this.prestigeFromPeer(info);
       const old = mp.peers.get(key);
-      if (!old) { this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
+      if (!old) { if (!this.friendOnline(info)) this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
       mp.peers.set(key, { ...(old || {}), info, net: old?.net || { x: info.x, z: info.z, y: 0, s: 0, w: info.map === 'world' ? 1 : 0, t: performance.now() } });
       this.mpEnsure(key);
     }
     for (const key of [...mp.peers.keys()]) if (!seen.has(key)) {
       const pr = mp.peers.get(key); mp.peers.delete(key);
-      this.mpRemove(key); this.dzPeerGone(key);
+      this.mpRemove(key); this.dzPeerGone(key); this.tradePeerGone(key); this.socialPeerGone(key);
       this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
     }
     this.partySync();

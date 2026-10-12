@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { ITEMS, SLOTS } from './data.js';
 import { DZ, inDZ, DZ_DROP, PVP_DMG, dzLevel, ANCIENT_DROP } from './data-dz.js';
 import { ANCIENT_SETS, SETS } from './data-sets.js';
-import { RARITY, genSet, normalizeItem, EFFECTS } from './loot.js';
+import { RARITY, genSet, normalizeItem, EFFECTS, MINOR_PASSIVES, DUR_MAX } from './loot.js';
+import { SKILL_BY_ID } from './data-classes.js';
 import { MATERIALS } from './systems-data.js';
 import { mp } from './mp.js';
 import { toon, glowTexture } from './toon.js';
@@ -20,16 +21,20 @@ const DZ_FOG = new THREE.Color(0x6a1a1e);
 const PICK_R = 1.8;
 export const DZ_ZONE = { name: DZ.name, x: DZ.x, z: DZ.z, r: DZ.r, lv: 'Danger Zone · PvP', dz: true };
 
-// a piece of gear that came over the network: keep known fields, clamp numbers, cap strings
-function cleanEq(eq, cls) {
+// a piece of gear that came over the network (a loot sack, a trade, an inspect): keep known fields, clamp numbers, cap strings
+const own = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+export function cleanEq(eq, cls) {
   if (!eq || typeof eq !== 'object' || !SLOTS.includes(eq.slot)) return null;
   const nums = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).slice(0, 16).map(([k, v]) => [str(k, 16), num(v, -1e7, 1e7, 0)]));
   const out = {
-    uid: 0, slot: eq.slot, name: str(eq.name, 48) || 'Gear', quality: num(eq.quality, 0, 6, 0) | 0, lvl: num(eq.lvl, 1, 200, 1) | 0, stats: nums(eq.stats),
+    uid: 0, slot: eq.slot, name: str(eq.name, 48) || 'Gear', quality: num(eq.quality, 0, 7, 0) | 0, lvl: num(eq.lvl, 1, 200, 1) | 0, stats: nums(eq.stats),
     affixes: (Array.isArray(eq.affixes) ? eq.affixes : []).slice(0, 6).map((a) => ({ id: str(a?.id, 24), v: num(a?.v, -1e6, 1e6, 0) })),
-    effect: EFFECTS[eq.effect] ? eq.effect : null, named: eq.named ? str(eq.named, 32) : null, set: SETS[eq.set] ? eq.set : null,
+    effect: own(EFFECTS, eq.effect) ? eq.effect : null, named: eq.named ? str(eq.named, 32) : null, set: own(SETS, eq.set) ? eq.set : null,
     enh: num(eq.enh, 0, 15, 0) | 0, icon: str(eq.icon, 32), flavor: str(eq.flavor, 160), gems: (Array.isArray(eq.gems) ? eq.gems : []).slice(0, 5).map((x) => (x == null ? null : str(x, 32))), lock: false,
+    dur: num(eq.dur, 0, DUR_MAX, DUR_MAX) | 0, minor: own(MINOR_PASSIVES, eq.minor) ? eq.minor : null,
   };
+  if (own(SKILL_BY_ID, eq.awaken)) out.awaken = eq.awaken;
+  if (eq.bound) out.bound = true;
   if (eq.xs) out.xs = num(eq.xs, 0, 2, 0) | 0;
   return normalizeItem(out, cls);
 }

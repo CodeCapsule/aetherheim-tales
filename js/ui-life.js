@@ -423,10 +423,12 @@ const P = {
     if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
     body.appendChild(head);
     this.partyBlock(body);
+    this.friendsBlock(body);
     const L = h('div', 'list');
     const row = (info, me, key) => {
       const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.heroIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
         <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}${!me && g.partyHas(key) ? ' · <span class="good">Party</span>' : !me && info.party ? ' · <span class="muted">in a party</span>' : ''}</div>`);
+      if (!me) { const b = h('button', 'btn small', 'Menu'); b.onclick = () => { const e = g.rplayers.find((x) => x.peerId === key); if (e && !e.netHidden) { const rc = b.getBoundingClientRect(); this.playerMenu(e, rc.left - 180, rc.bottom + 30); } else this.toast(`${info.name} is in ${info.zone || 'another area'}`, 'warn'); }; r.appendChild(b); }
       if (!me && !g.partyHas(key) && !info.party) { const b = h('button', 'btn small green', 'Invite'); b.disabled = mp.status !== 'online'; b.onclick = () => g.partyInvite(key); r.appendChild(b); }
       if (!me) { const b = h('button', 'btn small blue', 'Where?'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war || !!g.trial; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
       L.appendChild(r);

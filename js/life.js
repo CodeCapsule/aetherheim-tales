@@ -190,7 +190,7 @@ const L = {
     const c = e.pos.clone(); c.y += e.height * 0.6;
     this.fx.emit(c, { count: 18, color: TIER_COLOR[e.tier], speed: 3, life: 0.8, size: 0.4, up: 3, gravity: -6, jitter: 0.8 });
     this.sfx.play('pickup');
-    S.life.gathered++; this.track('gather');
+    S.life.gathered++; this.track('gather'); this.guideEvent('gather_' + e.nkind);
     e.uses++;
     if (e.uses >= 3) {
       e.ready = false; e.respawnAt = this.time + 45 + e.tier * 12;
@@ -253,6 +253,7 @@ const L = {
     this.addProfExp('farming', C.exp * 0.25);
     const e = this.plots[i]; if (e) this.fx.emit(e.pos.clone().setY(e.pos.y + 0.6), { count: 14, color: 0x9ad85a, speed: 1.5, life: 0.7, size: 0.35, up: 2, jitter: 1.2 });
     this.sfx.play('pickup'); this.refreshPlots(); this.ui.refreshPanel(); this.save();
+    this.guideEvent('plant');
     return true;
   },
   plantAll(crop) {
@@ -292,7 +293,7 @@ const L = {
     S.farm[i] = null;
     this.addProfExp('farming', C.exp);
     this.gainMastery('survival', 2);
-    S.life.harvested++; this.track('harvest');
+    S.life.harvested++; this.track('harvest'); this.guideEvent('harvest');
     const e = this.plots[i]; if (e) this.fx.emit(e.pos.clone().setY(e.pos.y + 0.8), { count: 24, color: new THREE.Color(C.color).getHex(), speed: 3, life: 0.9, size: 0.45, up: 4, gravity: -8, jitter: 1.4 });
     this.sfx.play('coin'); this.refreshPlots(); this.ui.refreshPanel(); this.save();
     return true;
@@ -341,6 +342,7 @@ const L = {
     this.fx.buff(this.player, '#ffb04a');
     this.ui.lootPopup([eq], { title: master ? 'Masterwork!' : 'Smithed' });
     this.ui.refreshPanel(); this.save();
+    this.guideEvent('smith');
   },
 
   // ============================================================ relic collection & Red gear

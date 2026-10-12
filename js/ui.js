@@ -9,6 +9,9 @@ import { installSystemsUI } from './ui-systems.js';
 import { installLifeUI } from './ui-life.js';
 import { installTrialsUI } from './ui-trials.js';
 import { installPartyUI, partyMembers } from './party.js';
+import { installTradeUI } from './trade.js';
+import { installSocialUI } from './social.js';
+import { installGuideUI } from './guide.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
 import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
@@ -21,6 +24,7 @@ import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
 import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
 import { DAY_MIN, WEATHER_MIN } from './sky.js';
+import { UIZ, vw, vh } from './touchfit.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -81,6 +85,7 @@ export class UI {
     $('btn-auto').onclick = () => g.toggleAuto();
     $('btn-auto').innerHTML = `${ico('auto')}<small>Auto</small>`;
     $('btn-roll').innerHTML = `${ico('roll')}<small>Roll</small>`; $('btn-roll').onclick = () => g.roll();
+    $('btn-attack').innerHTML = ico(WEAPON_ICONS[S.cls] || 'w_sword'); $('btn-attack').onclick = () => g.attackNearest();
     const bb = $('btn-block'); bb.innerHTML = `${ico('block')}<small>Block</small>`; bb.hidden = S.cls !== 'knight';
     const hold = (on) => { g.blockHold = on; if (on) g.startBlock(); bb.classList.toggle('on', on); };
     bb.addEventListener('pointerdown', (e) => { e.preventDefault(); hold(true); });
@@ -105,6 +110,10 @@ export class UI {
       menu.appendChild(b); this.menuBtns[n] = b;
     }
     this.qaTogs = { menu: qaTog(menu, 'menu') };
+    // phones: the activities open from the menu grid (desktop shows them along the top)
+    const ev = h('button', 'mbtn ph', `<span class="ai">${ico('events')}</span><span class="al">Events</span>`); ev.title = 'Events and activities'; ev.setAttribute('aria-label', 'Events and activities');
+    ev.onclick = () => { g.sfx.play('click'); this.setSheet(this.sheet === 'acts' ? '' : 'acts'); };
+    menu.appendChild(ev); this.evBtn = ev;
     // activities (top right): Online, Missions, Dungeon and the World Boss timer stay out; the rest sit behind More
     const acts = $('hud-acts'); acts.innerHTML = ''; acts.className = 'qa';
     const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
@@ -152,7 +161,7 @@ export class UI {
       const r = stick.getBoundingClientRect(), R = r.width / 2;
       let dx = (e.clientX - r.left - R) / R, dy = (e.clientY - r.top - R) / R;
       const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
-      knob.style.transform = `translate(${dx * R * 0.6}px, ${dy * R * 0.6}px)`;
+      knob.style.transform = `translate(${dx * R * 0.6 / UIZ.k}px, ${dy * R * 0.6 / UIZ.k}px)`;
       if (m < 0.2) g.setStick(0, 0); else g.setStick(dx, dy);
     };
     const release = (e) => { if (e.pointerId !== sid) return; sid = null; stick.classList.remove('on'); knob.style.transform = ''; g.setStick(0, 0); };
@@ -262,8 +271,12 @@ export class UI {
   refreshTarget() {
     const g = this.g, t = g?.player?.target, el = $('hud-target');
     this.refreshPartyBtn(t);
+    $('hud').classList.toggle('has-target', !!t && !t.dead); // phones slide the quest tracker under the target frame
     if (!t || t.dead) { el.hidden = true; this.tgShown = null; return; }
     el.hidden = false;
+    el.classList.toggle('rp', t.kind === 'rp');
+    // another player's frame opens the player menu
+    if (!el.onclick) el.onclick = (ev) => { const tt = g.player.target; if (!tt || tt.kind !== 'rp' || ev.target.closest('button')) return; const r = el.getBoundingClientRect(); this.playerMenu(tt, r.left, r.bottom + 30); };
     if (this.tgShown !== t) {
       this.tgShown = t;
       el.classList.toggle('boss', !!(t.def0 && t.def0.boss));
@@ -295,6 +308,7 @@ export class UI {
   setSheet(name) {
     this.sheet = name; $('hud').dataset.sheet = name;
     for (const k of ['acts', 'menu']) this.dockBtns?.[k]?.classList.toggle('on', name === k);
+    this.evBtn?.classList.toggle('on', name === 'acts');
   }
   // expand or collapse a quick access menu (the More button)
   setQa(key, on) {
@@ -313,6 +327,7 @@ export class UI {
     const folded = (b) => getComputedStyle(b).display === 'none';
     for (const [k, list] of [['acts', this.acts], ['menu', this.menuBtns]]) this.qaTogs[k].classList.toggle('hot', !this.qa[k] && Object.values(list).some((b) => wants(b) && folded(b)));
     D.acts.classList.toggle('hot', Object.values(this.acts).some((b) => !b.hidden && (b.classList.contains('glow') || !!b.querySelector('.badge'))));
+    this.evBtn?.classList.toggle('hot', D.acts.classList.contains('hot'));
     D.menu.classList.toggle('hot', Object.values(this.menuBtns).some((b) => !b.classList.contains('indock') && !!b.querySelector('.dotn')));
     for (const n of DOCK_MENU) D[n].classList.toggle('hot', !!this.menuBtns[n]?.querySelector('.dotn'));
   }
@@ -487,6 +502,7 @@ export class UI {
     } else if (g.bountyUnlocked()) {
       list.appendChild(h('div', 'qt-item', `<span class="qtag bounty">Bounty</span><div class="qo">Visit <u>Captain Elena</u> for a bounty</div>`)).onclick = () => g.talkTo(g.npcById('elena'), true);
     }
+    this.guideTracker(list);
     this.questExtras(list);
     if (this.panelName === 'quests') this.renderPanel();
   }
@@ -626,6 +642,8 @@ export class UI {
   closeModal() { $('modal').hidden = true; }
   closeTop() {
     if (!$('modal').hidden && !this.modalPersistent) { this.closeModal(); return true; }
+    if (this.pmenuKey) { this.playerMenu(null); return true; }
+    if ($('inspect-win')) { this.inspectWin(null); return true; }
     if (!$('dialog').hidden) { this.closeDialog(); return true; }
     if (this.panel) { this.closePanels(); return true; }
     return false;
@@ -640,10 +658,10 @@ export class UI {
   }
   moveTip(e) {
     const tt = $('tooltip'); if (tt.hidden) return;
-    const w = tt.offsetWidth, hh = tt.offsetHeight;
-    let x = e.clientX + 14, y = e.clientY - hh - 10;
-    if (x + w > innerWidth - 8) x = e.clientX - w - 14;
-    if (y < 8) y = e.clientY + 18;
+    const w = tt.offsetWidth, hh = tt.offsetHeight, cx = e.clientX / UIZ.k, cy = e.clientY / UIZ.k; // layer px (touchfit.js)
+    let x = cx + 14, y = cy - hh - 10;
+    if (x + w > vw() - 8) x = cx - w - 14;
+    if (y < 8) y = cy + 18;
     tt.style.left = x + 'px'; tt.style.top = y + 'px';
   }
   skillTip(sk) {
@@ -671,14 +689,14 @@ export class UI {
       missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts' };
     const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520 };
     const p = h('div', 'panel frame');
-    p.style.width = `min(${widths[name]}px, calc(100vw - 24px))`;
+    p.style.width = `min(${widths[name]}px, calc(var(--lw, 1vw) * 100 - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
     p.querySelector('.x-close').onclick = () => this.closePanels();
     $('panels').appendChild(p);
     this.panel = p;
     this.renderPanel();
-    p.style.left = Math.max(12, (innerWidth - p.offsetWidth) / 2) + 'px';
-    p.style.top = Math.max(12, (innerHeight - p.offsetHeight) / 2 - 20) + 'px';
+    p.style.left = Math.max(12, (vw() - p.offsetWidth) / 2) + 'px';
+    p.style.top = Math.max(12, (vh() - p.offsetHeight) / 2 - 20) + 'px';
     this.dragify(p);
     this.g.sfx.play('open');
   }
@@ -692,8 +710,8 @@ export class UI {
   }
   dragify(p) {
     const t = p.querySelector('.ptitle'); let d = null;
-    t.addEventListener('pointerdown', (e) => { d = { x: e.clientX - p.offsetLeft, y: e.clientY - p.offsetTop }; t.setPointerCapture(e.pointerId); });
-    t.addEventListener('pointermove', (e) => { if (!d) return; p.style.left = Math.min(innerWidth - 60, Math.max(-p.offsetWidth + 80, e.clientX - d.x)) + 'px'; p.style.top = Math.min(innerHeight - 40, Math.max(0, e.clientY - d.y)) + 'px'; });
+    t.addEventListener('pointerdown', (e) => { d = { x: e.clientX / UIZ.k - p.offsetLeft, y: e.clientY / UIZ.k - p.offsetTop }; t.setPointerCapture(e.pointerId); });
+    t.addEventListener('pointermove', (e) => { if (!d) return; p.style.left = Math.min(vw() - 60, Math.max(-p.offsetWidth + 80, e.clientX / UIZ.k - d.x)) + 'px'; p.style.top = Math.min(vh() - 40, Math.max(0, e.clientY / UIZ.k - d.y)) + 'px'; });
     t.addEventListener('pointerup', () => { d = null; });
   }
   refreshPanel() { if (this.panel) this.renderPanel(); }
@@ -978,6 +996,7 @@ export class UI {
   }
 
   panel_quests(body) {
+    if (this.tabs(body, 'qTab', [['story', 'Story'], ['guide', 'Guide']]) === 'guide') { this.guidePanel(body); return; }
     const g = this.g, S = g.S, q = g.quest();
     const idx = q && q.def ? QUESTS.findIndex((x) => x.id === q.def.id) : QUESTS.length;
     const curCh = idx < QUESTS.length ? QUESTS[idx].ch || 1 : CHAPTERS.length;
@@ -1230,6 +1249,9 @@ installSystemsUI(UI);
 installLifeUI(UI);
 installTrialsUI(UI);
 installPartyUI(UI);
+installTradeUI(UI);
+installSocialUI(UI);
+installGuideUI(UI);
 
 // the dungeon's set: pieces you own and its bonuses
 function setBlock(dungeonId, S) {

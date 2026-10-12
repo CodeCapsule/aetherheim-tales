@@ -16,6 +16,7 @@ import { magicCircleTexture } from './toon.js';
 import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
 import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from './mp.js';
+import { fitTouch, UIZ } from './touchfit.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -37,6 +38,7 @@ function loadSave() {
 }
 
 async function init() {
+  fitTouch();
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
@@ -95,6 +97,7 @@ async function init() {
 }
 
 function onResize() {
+  fitTouch();
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   fx.setViewport(innerHeight);
@@ -278,7 +281,7 @@ function loop(now) {
     camera.lookAt(0, 14, -40);
   }
   world.update(dt, t);
-  fx.update(dt, renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+  fx.update(dt, renderer.domElement.clientWidth / UIZ.k, renderer.domElement.clientHeight / UIZ.k);
   renderer.render(scene, camera);
 }
 

@@ -1,5 +1,5 @@
-// Icons for the trial content: the ten Trial Sigils, campfire food, raw meat and the Trial Warden's role badge.
-// Same ink style as the hand-made set.
+// Icons for the trial content (the ten Trial Sigils, campfire food, raw meat, the Trial Warden's role badge), the weather
+// readout and the player menu (friends, inspect, party invite). Same ink style as the hand-made set.
 import { TRIALS, ROMAN_T } from '../data-trials.js';
 
 const INK = '#24160f';
@@ -48,3 +48,13 @@ TRIAL_ICONS.w_storm = svg(lg('wst-a', ['#c8d0e0', '#6a7890']), `<path d="${cloud
 TRIAL_ICONS.w_snow = svg('', `${[0, 60, 120].map((a) => `<path d="M32 8V56" stroke="${INK}" stroke-width="6" stroke-linecap="round" transform="rotate(${a} 32 32)"/><path d="M32 8V56M26 14L32 20L38 14M26 50L32 44L38 50" stroke="#bfe6ff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="rotate(${a} 32 32)"/>`).join('')}`);
 TRIAL_ICONS.w_petals = svg(rg('wpe-a', ['#ffffff', '#ffc8dc', '#f07aa8']), `${Array.from({ length: 5 }, (_, i) => `<ellipse cx="32" cy="18" rx="8" ry="12" fill="url(#wpe-a)" ${S(2)} transform="rotate(${i * 72} 32 32)"/>`).join('')}<circle cx="32" cy="32" r="5" fill="#ffd84a" ${S(1.6)}/>`);
 TRIAL_ICONS.w_leaves = svg(lg('wlv-a', ['#ffd04a', '#f08a2a', '#c84a1a']), `<path d="M32 6L37 18L48 14L44 26L56 30L44 36L48 48L36 42L32 54L28 42L16 48L20 36L8 30L20 26L16 14L27 18Z" fill="url(#wlv-a)" ${S(2.2)}/><path d="M32 22V60" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`);
+
+// social: friends, inspecting a player, inviting to a party
+const person = (x, y, s, fill) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-15 22C-15 9 -8 4 0 4C8 4 15 9 15 22Z" fill="${fill}" ${S(2.6 / s)}/><circle cx="0" cy="-6" r="9" fill="#ffe2c4" ${S(2.6 / s)}/><path d="M-9 -9C-6 -16 6 -16 9 -9C5 -11 -5 -11 -9 -9Z" fill="#7a4a24"/></g>`;
+const badge = (x, y, fill, plus) => `<circle cx="${x}" cy="${y}" r="10.5" fill="${fill}" ${S(2.4)}/><path d="M${x - 5.5} ${y}H${x + 5.5}${plus ? `M${x} ${y - 5.5}V${y + 5.5}` : ''}" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>`;
+const pals = lg('soc-b', ['#8ad0ff', '#3a7ad8']) + lg('soc-p', ['#ffc0dc', '#d8608a']) + lg('soc-g', ['#b8f0a0', '#3a9a4a']);
+TRIAL_ICONS.friend_add = svg(lg('fa-b', ['#8ad0ff', '#3a7ad8']), `${person(26, 30, 1, 'url(#fa-b)')}${badge(46, 46, '#3ac84a', true)}`);
+TRIAL_ICONS.friend_x = svg(lg('fx-b', ['#c8d0e0', '#7a8498']), `${person(26, 30, 1, 'url(#fx-b)')}${badge(46, 46, '#d8402a', false)}`);
+TRIAL_ICONS.friends = svg(pals, `${person(40, 28, 0.85, 'url(#soc-p)')}${person(24, 32, 1, 'url(#soc-b)')}<path d="M50 6C47 3 42 5 43 9C44 12 50 16 50 16C50 16 56 12 57 9C58 5 53 3 50 6Z" fill="#ff5a8a" ${S(2)}/>`);
+TRIAL_ICONS.party_add = svg(pals, `${person(40, 26, 0.82, 'url(#soc-g)')}${person(22, 30, 0.95, 'url(#soc-b)')}${badge(47, 47, '#f0a020', true)}`);
+TRIAL_ICONS.inspect = svg(rg('ins-g', ['#ffffff', '#bfe6ff', '#4a9ad8']), `<path d="M38 38L55 55" stroke="${INK}" stroke-width="11" stroke-linecap="round"/><path d="M38 38L55 55" stroke="#c88a3a" stroke-width="5.5" stroke-linecap="round"/><circle cx="26" cy="26" r="17" fill="#e8c070" ${S(3)}/><circle cx="26" cy="26" r="12.5" fill="url(#ins-g)" ${S(2.2)}/><path d="M18 22C19.5 17.5 23 15.5 27 15.5" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`);

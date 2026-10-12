@@ -43,6 +43,7 @@ const U = {
     if (Math.random() < chance) {
       eq.enh = target; eq.fs = 0;
       res = { ok: true, to: target };
+      this.guideEvent('enhance');
       this.sfx.play(target >= 10 ? 'legend' : 'level');
       this.fx.pillar(p.pos, ENH_COLOR(target), 1.4 + target / 10, 8 + target / 2, 0.9);
       this.fx.emit(at, { count: 30 + target * 4, color: ENH_COLOR(target), speed: 4, life: 1, size: 0.5, up: 4, jitter: 1 });
@@ -74,6 +75,7 @@ const U = {
     this.addMat(r.to, n, true);
     this.sfx.play('level'); this.fx.buff(this.player, '#c8a0ff');
     this.ui.toast(`Refined ${n} ${matName(r.to)}`, 'good'); this.ui.refreshPanel(); this.save();
+    this.guideEvent('refine');
   },
 
   // ============================================================ gems & soulstones

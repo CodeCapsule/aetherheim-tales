@@ -1042,6 +1042,138 @@ button { font-family: inherit; }
   #party-invite { width: calc(100% - 20px); top: 96px; }
 }
 
+/* ---------- requests, the player menu, inspect and friends ---------- */
+.ask-pop { position: absolute; left: 50%; top: calc(140px + var(--pop-i, 0) * 128px); transform: translateX(-50%); width: 320px; padding: 10px 12px 12px; font-size: 13px; z-index: 7; animation: toastIn .3s; }
+.ask-pop .th { font-family: var(--f-title); color: #ffd36b; font-size: 14px; margin-bottom: 4px; }
+.ask-pop.friend .th { color: #ff9ac0; }
+.ask-pop .tt { color: var(--muted); line-height: 1.45; }
+.ask-pop .tt b { color: var(--ink); }
+.ask-pop .ta { display: flex; gap: 8px; margin-top: 8px; }
+.ask-pop .tf { height: 4px; margin-top: 8px; border-radius: 2px; background: rgba(0, 0, 0, .5); overflow: hidden; }
+.ask-pop .tf i { display: block; height: 100%; width: 100%; background: #ffd36b; transition: width .25s linear; }
+.ask-pop.friend .tf i { background: #ff9ac0; }
+#party-invite { top: calc(140px + var(--pop-i, 0) * 128px); }
+#pmenu { position: absolute; z-index: 8; width: 214px; padding: 9px 9px 8px; font-size: 13px; animation: toastIn .18s; }
+#pmenu::before, #pmenu::after { display: none; }
+#pmenu .pmh { display: flex; align-items: center; gap: 8px; padding: 0 26px 7px 0; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 200, 120, .25); }
+#pmenu .pmp { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid #d8b070; flex: none; background: radial-gradient(circle at 40% 30%, #8a6a5a, #2a1a1a); }
+#pmenu .pmp img { width: 100%; height: 100%; object-fit: cover; }
+#pmenu .pmt { display: flex; flex-direction: column; min-width: 0; }
+#pmenu .pmt b { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pmenu .pmt small { color: var(--muted); font-size: 11px; }
+#pmenu .pmt .gd { color: #9ad0ff; }
+#pmenu .x-close { top: 4px; right: 4px; width: 24px; height: 24px; }
+#pmenu .pma { display: flex; flex-direction: column; gap: 3px; }
+#pmenu .pmb { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid transparent; color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+#pmenu .pmb:hover:not(:disabled) { background: rgba(255, 200, 120, .14); border-color: rgba(255, 200, 120, .4); }
+#pmenu .pmb .ico { width: 24px; height: 24px; flex: none; }
+#pmenu .pmb small { margin-left: auto; font-size: 10px; font-weight: 400; color: var(--muted); text-align: right; }
+#pmenu .pmb:disabled { opacity: .55; cursor: default; }
+#hud-target.rp { cursor: pointer; }
+#inspect-win { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: auto; z-index: 2; width: min(600px, calc(100% - 16px)); max-height: calc(100% - 24px); overflow: auto; padding: 14px 16px; }
+#inspect-win .iw-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 12px; padding-right: 34px; }
+#inspect-win .iw-h b { font-family: var(--f-title); font-size: 19px; color: var(--gold-l); }
+#inspect-win .iw-h small { color: var(--muted); font-size: 13px; }
+#inspect-win .iw-h em { font-style: normal; color: #ffcc4a; font-size: 12px; }
+#inspect-win .cell { cursor: default; }
+#inspect-win .acts-row { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.friends .lbl .ico { width: 18px; height: 18px; vertical-align: -4px; }
+.friends .fr-none { padding: 4px 2px 8px; font-size: 12px; }
+.friends .fr-dot { width: 10px; height: 10px; border-radius: 50%; background: #5a6070; flex: none; margin: 0 2px 0 6px; box-shadow: inset 0 1px 1px rgba(0, 0, 0, .5); }
+.friends .fr.on .fr-dot { background: #5ee05a; box-shadow: 0 0 6px #5ee05a; }
+.friends .fr:not(.on) .tx b { color: var(--muted); }
+/* ---------- the Crafter's Path guide (Quest Log › Guide) ---------- */
+.qtag.guide { background: #7a5ac8; }
+.guide-cur { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(122, 90, 200, .16); border: 1px solid rgba(180, 150, 255, .45); }
+.guide-cur .gc-top { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.guide-cur .gc-top .muted, .guide-cur .gc-top .good { margin-left: auto; font-size: 12px; }
+.guide-cur .gc-name { margin-top: 6px; font-family: var(--f-title); font-size: 17px; color: var(--gold-l); }
+.guide-cur .gc-goal { color: #7aff7a; font-weight: 800; font-size: 13px; }
+.guide-cur .gc-tip { margin-top: 4px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.guide-cur .gc-rw { margin-top: 4px; font-size: 12px; color: #ffd36b; }
+.guide-cur .acts-row { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.guide-sec { margin-bottom: 10px; padding: 8px 10px 10px; border-radius: 10px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(243, 199, 91, .25); }
+.guide-sec .gs-h { display: flex; align-items: center; gap: 10px; }
+.guide-sec .gs-ic { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); border: 2px solid #b8862a; }
+.guide-sec .gs-ic .ico { width: 28px; height: 28px; }
+.guide-sec .gs-h b { display: block; font-family: var(--f-title); font-size: 15px; color: var(--gold-l); }
+.guide-sec .gs-h small { color: var(--muted); font-size: 11.5px; }
+.guide-sec ol { margin: 8px 0 6px; padding-left: 20px; font-size: 12.5px; line-height: 1.5; color: var(--ink); }
+.guide-sec li { margin-bottom: 3px; }
+.guide-sec li::marker { color: var(--gold); font-weight: 900; }
+.guide-sec .gs-q { display: flex; flex-wrap: wrap; gap: 4px; }
+.guide-sec .gq { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; color: var(--dim); background: rgba(255, 255, 255, .05); border: 1px solid rgba(160, 185, 230, .2); }
+.guide-sec .gq.done { color: #9affb0; border-color: rgba(120, 230, 140, .45); }
+.guide-sec .gq.cur { color: #fff; background: rgba(122, 90, 200, .45); border-color: rgba(180, 150, 255, .7); }
+/* ---------- player trade window: a Bag-style panel ---------- */
+#trade-win { --ts: 40px; width: max-content; max-width: calc(100vw - 16px); z-index: 3; }
+#trade-win .ptitle small { font-family: var(--f-num); font-weight: 400; font-size: 13px; color: #cfe0ff; margin-left: 6px; letter-spacing: 0; }
+.trade2 .tw-banner { margin-bottom: 8px; padding: 6px 10px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 13px; color: var(--gold-l); background: rgba(120, 80, 20, .35); border: 1px solid rgba(243, 199, 91, .45); text-shadow: 0 1px 0 #3a2008; }
+.trade2 .tw-banner.ready { color: #c8ffc8; background: rgba(30, 110, 50, .35); border-color: rgba(120, 230, 140, .5); }
+.trade2 .tw-body { display: flex; gap: 10px; align-items: flex-start; }
+.trade2 .tw-armor { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 2px; }
+.trade2 .tw-lbl { width: var(--ts); text-align: center; font-size: 10px; font-weight: 900; line-height: 1.1; color: var(--muted); }
+.trade2 .tw-col { display: grid; gap: 4px; padding: 5px; border-radius: 8px; background: rgba(0, 0, 0, .38); border: 1px solid rgba(243, 199, 91, .3); box-shadow: inset 0 2px 8px rgba(0, 0, 0, .6); }
+.trade2 .tw-main { display: flex; flex-direction: column; min-width: 0; }
+.trade2 .tw-offers, .trade2 .tw-side { display: flex; flex-direction: column; min-width: 0; }
+.trade2 .tw-side { width: calc(var(--ts) * 9 + 54px); }
+.trade2 .tw-sec { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; min-height: 24px; }
+.trade2 .tw-who { font-weight: 900; font-size: 13px; color: var(--ink); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trade2 .tw-tag { font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; }
+.trade2 .tw-tag.edit { color: #ffe7a8; background: rgba(150, 110, 20, .55); border: 1px solid rgba(243, 199, 91, .5); }
+.trade2 .tw-tag.lock { color: #c8ffc8; background: rgba(30, 110, 50, .6); border: 1px solid rgba(120, 230, 140, .6); }
+.trade2 .tw-tag.conf { color: #d0e6ff; background: rgba(30, 80, 170, .6); border: 1px solid rgba(140, 190, 255, .6); }
+.trade2 .tw-gold { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+.trade2 .tw-gold b { font-family: var(--f-num); font-weight: 400; color: #fff; }
+.trade2 .tw-gold .ico { width: 18px; height: 18px; }
+.trade2 .tw-gold input { width: 104px; padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(243, 199, 91, .45); background: rgba(0, 0, 0, .45); color: #fff; font: 400 13px var(--f-num); }
+.trade2 .tw-gold input:disabled { color: var(--dim); border-color: rgba(120, 140, 180, .3); }
+.trade2 .tw-grid { display: grid; grid-template-columns: repeat(9, var(--ts)); grid-auto-rows: var(--ts); gap: 4px; padding: 6px; border-radius: 8px; background: rgba(0, 0, 0, .38); border: 1px solid rgba(243, 199, 91, .3); box-shadow: inset 0 2px 8px rgba(0, 0, 0, .6); }
+.trade2 .tw-grid.locked { border-color: rgba(120, 230, 140, .65); box-shadow: inset 0 2px 8px rgba(0, 0, 0, .6), 0 0 8px rgba(90, 220, 120, .35); }
+.trade2 .tw-inv { max-height: calc(var(--ts) * 3 + 20px); overflow-y: auto; overflow-x: hidden; padding-right: 12px; scrollbar-width: thin; }
+.trade2 .tw-inv.locked { border-color: rgba(243, 199, 91, .3); box-shadow: inset 0 2px 8px rgba(0, 0, 0, .6); opacity: .65; }
+.trade2 .cell { width: var(--ts); height: var(--ts); border-width: 1px; border-radius: 5px; background: radial-gradient(circle at 45% 35%, #2a3550, #0c1224); }
+.trade2 .cell.empty { opacity: 1; cursor: default; border-color: rgba(120, 140, 180, .22); background: rgba(10, 16, 30, .75); }
+.trade2 .cell.worn, .trade2 .locked .cell { cursor: default; }
+.trade2 .cell.no { opacity: .4; cursor: not-allowed; }
+.trade2 .cell .ghost { width: 80%; height: 80%; }
+.trade2 .tw-none { grid-column: 1 / -1; padding: 8px; font-size: 12px; }
+.trade2 .tw-move { margin: 0 0 0 auto; gap: 3px; }
+.trade2 .tw-move button { padding: 2px 9px; font-size: 11.5px; }
+.trade2 .tw-log { height: 58px; overflow-y: auto; margin-top: 8px; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(243, 199, 91, .25); font-size: 12px; color: var(--muted); }
+.trade2 .tw-log p { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
+.trade2 .tw-log b { color: var(--gold-l); }
+.trade2 .tw-log p.me b { color: #9ad0ff; }
+.trade2 .tw-log .tw-hint { color: var(--dim); }
+.trade2 .tw-say { margin-top: 5px; width: 100%; box-sizing: border-box; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(243, 199, 91, .4); background: rgba(0, 0, 0, .45); color: var(--ink); font: inherit; font-size: 13px; }
+.trade2 .tw-say:focus { outline: none; border-color: var(--gold); }
+.trade2 .tw-acts { display: flex; gap: 6px; margin-top: 8px; }
+.trade2 .tw-acts .btn { flex: 1; padding: 7px 8px; font-size: 13px; }
+.trade2 .bag-foot { margin-top: 8px; }
+@media (max-width: 900px), (max-height: 500px) {
+  #trade-win { --ts: min(36px, calc((100vw - 120px) / 10)); padding-left: 10px; padding-right: 10px; }
+  .trade2 .tw-banner { padding: 5px 8px; margin-bottom: 4px; font-size: 12px; }
+  .trade2 .tw-log { height: 44px; }
+  .ask-pop { width: calc(100% - 20px); top: calc(96px + var(--pop-i, 0) * 124px); }
+  #party-invite { top: calc(96px + var(--pop-i, 0) * 124px); }
+  #inspect-win .char-wrap { grid-template-columns: 52px 1fr 52px; }
+  #inspect-win .char-wrap .stats-col { grid-column: 1 / -1; }
+}
+/* narrow phones: no room for the (read only) armor column */
+@media (max-width: 520px) {
+  #trade-win { --ts: min(36px, calc((100vw - 100px) / 9)); }
+  .trade2 .tw-armor { display: none; }
+}
+/* landscape phones: the offers and your inventory side by side */
+@media (max-height: 500px) and (min-width: 600px) {
+  #trade-win { --ts: min(32px, calc((100vw - 190px) / 19)); }
+  .trade2 .tw-main { flex-direction: row; gap: 12px; }
+  .trade2 .tw-inv { max-height: calc(var(--ts) * 2 + 16px); }
+  .trade2 .tw-log { height: 36px; }
+  .trade2 .tw-acts { margin-top: 6px; }
+  .trade2 .bag-foot { display: none; }
+}
+
 /* ---- phones and small screens: everything docks to the bottom bar; activities and the rest of the menu open as sheets ---- */
 #hud-dock { display: none; }
 @keyframes sheetUp { from { transform: translateY(14px); opacity: 0; } }
@@ -1277,30 +1409,34 @@ button { font-family: inherit; }
    menu buttons to their right and the EXP strip underneath. Phones and short screens keep the docked layout above. ---- */
 #hud-dockbar { display: contents; }
 @media (min-width: 901px) and (min-height: 501px) {
-  #hud-dockbar { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: grid; grid-template-columns: auto auto; grid-template-areas: "bar menu" "exp exp"; align-items: end; column-gap: 16px; row-gap: 5px;
-    width: max-content; max-width: calc(100% - 12px); box-sizing: border-box; padding: 7px 14px 5px; border-radius: 16px 16px 0 0; z-index: 3;
+  /* layout: skills and potions in one leather tray, mount/auto/roll/block and the tool belt as pills above it,
+     the menu as an icon grid under the minimap */
+  #hud-dockbar { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: grid; grid-template-columns: auto; grid-template-areas: "bar" "exp"; align-items: end; row-gap: 5px;
+    width: max-content; max-width: calc(100% - 12px); box-sizing: border-box; padding: 7px 10px 5px; border-radius: 14px 14px 0 0; z-index: 3;
     background: linear-gradient(180deg, rgba(64, 44, 24, .97), rgba(30, 20, 10, .97) 50%, rgba(14, 9, 5, .98)); border: 2px solid #b8862a; border-bottom: 0;
     box-shadow: inset 0 1px 0 rgba(255, 230, 160, .35), inset 0 0 0 1px rgba(0, 0, 0, .55), 0 -4px 18px rgba(0, 0, 0, .45); }
   #hud-dockbar::before { content: ''; position: absolute; left: 14px; right: 14px; top: 3px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 220, 140, .5), transparent); pointer-events: none; }
-  #hud-bar { position: static; transform: none; grid-area: bar; display: grid; grid-template-columns: auto auto 1fr; grid-template-areas: "acts tools ." "skills skills skills"; align-items: end; justify-items: start; gap: 5px 10px; }
-  #hud-bar .side-btns { position: static; grid-area: acts; display: flex; gap: 4px; }
-  #hud-bar .big-rbtn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #8a6a3a; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5); background: radial-gradient(circle at 40% 30%, #3a4a7a, #121a3a); }
+  #hud-bar { position: static; transform: none; grid-area: bar; display: block; }
+  #hud-bar .side-btns, #hud-bar .toolbelt { position: absolute; bottom: calc(100% + 6px); display: flex; gap: 5px; padding: 4px 6px; background: linear-gradient(180deg, rgba(64, 44, 24, .96), rgba(22, 14, 7, .97)); border: 2px solid #b8862a; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .3), 0 4px 12px rgba(0, 0, 0, .45); }
+  #hud-bar .side-btns { left: 0; right: auto; border-radius: 24px; }
+  #hud-bar .toolbelt { right: 0; left: auto; border-radius: 12px; }
+  #hud-bar .big-rbtn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #5aa89a; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5); background: radial-gradient(circle at 40% 30%, #2a5a5a, #0e2626); }
   #hud-bar .big-rbtn small { display: none; }
-  #hud-bar .big-rbtn .ico, #hud-bar .big-rbtn .ico.mnt { width: 26px; height: 26px; }
+  #hud-bar .big-rbtn .ico, #hud-bar .big-rbtn .ico.mnt { width: 24px; height: 24px; }
   #hud-bar .big-rbtn:hover { border-color: var(--gold); }
   #hud-bar .big-rbtn.on { border-color: var(--gold); box-shadow: 0 0 8px rgba(255, 210, 120, .7), inset 0 0 0 1px rgba(0, 0, 0, .5); }
-  #hud-bar .toolbelt { position: static; grid-area: tools; padding: 0; gap: 4px; background: none; border: 0; box-shadow: none; }
   #hud-bar .slot.tool { width: 34px; height: 34px; }
   #hud-bar .slot.tool .key { font-size: 10px; }
-  #hud-dockbar .skillbar { grid-area: skills; padding: 5px 6px; border-radius: 10px; background: rgba(0, 0, 0, .38); border: 1px solid rgba(184, 134, 42, .6); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .65); }
-  #hud-menu { position: static; grid-area: menu; display: flex; align-items: flex-end; gap: 2px; padding: 0 0 2px; background: none; border: 0; border-radius: 0; box-shadow: none; }
+  #hud-dockbar .skillbar { position: static; transform: none; grid-area: skills; padding: 5px 6px; border-radius: 10px; background: rgba(0, 0, 0, .38); border: 1px solid rgba(184, 134, 42, .6); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .65); }
+  #hud-menu { position: absolute; top: 236px; right: 10px; bottom: auto; left: auto; width: 172px; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 4px; justify-items: center; padding: 8px 6px; border-radius: 14px; z-index: 3;
+    background: linear-gradient(180deg, rgba(64, 44, 24, .95), rgba(20, 13, 7, .96)); border: 2px solid #b8862a; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .3), 0 6px 16px rgba(0, 0, 0, .45); }
   #hud-menu .x, #hud-menu .x2 { display: flex; order: 0; }
-  #hud-menu .qa-tog { display: none; }
-  #hud-menu .mbtn { width: 54px; }
-  #hud-menu .ai { width: 42px; height: 42px; border: 2px solid #b8862a; background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); box-shadow: inset 0 2px 0 rgba(255, 230, 160, .25), 0 2px 5px rgba(0, 0, 0, .6); }
-  #hud-menu .ai .ico { width: 30px; height: 30px; }
-  #hud-menu .al { font-size: 10.5px; color: #f6ead0; }
-  #hud-menu .k { background: #3a2a14; border-color: #b8862a; color: #ffe7a8; }
+  #hud-menu .qa-tog, #hud-menu .al { display: none; }
+  #hud-menu .mbtn { width: 36px; }
+  #hud-menu .ai { width: 36px; height: 36px; border: 2px solid #b8862a; background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); box-shadow: inset 0 2px 0 rgba(255, 230, 160, .25), 0 2px 5px rgba(0, 0, 0, .6); }
+  #hud-menu .ai .ico { width: 26px; height: 26px; }
+  #hud-menu .k { right: -5px; bottom: -5px; background: #3a2a14; border-color: #b8862a; color: #ffe7a8; }
+  #hud-quest { top: 388px; max-height: calc(100% - 540px); min-height: 0; overflow-y: auto; }
   #hud-exp { position: relative; grid-area: exp; left: auto; right: auto; height: 14px; border: 1px solid #8a6a2a; border-radius: 7px; overflow: hidden; }
   #hud-exp span { line-height: 12px; font-size: 10.5px; }
   #hud-chat { bottom: 138px; }
@@ -1317,21 +1453,90 @@ button { font-family: inherit; }
   #hud-acts .ai, #hud-menu .ai { background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); border: 2px solid #b8862a; }
 }
 @media (min-width: 901px) and (max-width: 1150px) and (min-height: 501px) {
-  #hud-dockbar { column-gap: 10px; padding: 6px 10px 5px; }
+  #hud-dockbar { padding: 6px 8px 5px; }
   #hud-dockbar .slot { width: 44px; height: 44px; font-size: 22px; }
   #hud-dockbar .slot.potion { width: 38px; height: 38px; }
   #hud-dockbar .slot.tool, #hud-bar .big-rbtn { width: 32px; height: 32px; }
-  #hud-menu .mbtn { width: 46px; }
-  #hud-menu .ai { width: 36px; height: 36px; }
-  #hud-menu .ai .ico { width: 26px; height: 26px; }
-  #hud-menu .al { font-size: 9.5px; }
 }
 @media (min-width: 901px) and (max-width: 1010px) and (min-height: 501px) {
   #hud-dockbar .slot { width: 40px; height: 40px; font-size: 20px; }
   #hud-dockbar .slot.potion { width: 34px; height: 34px; }
   #hud-dockbar .skillbar { gap: 3px; }
-  #hud-menu .mbtn { width: 41px; }
-  #hud-menu .al { font-size: 9px; }
+}
+
+/* ---- phones and tablets: MOBA-style controls. The joystick walks (left); Attack and the skills sit in an arc on the
+   right with the potions above; Mount, Auto, Roll and Block and the tool belt sit above the joystick; the menu is the
+   same icon grid as on computers, under the minimap, with Events for the activities. ---- */
+#btn-attack, #hud-menu .mbtn.ph { display: none; }
+html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #tooltip, html.uiz #banner, html.uiz #world-ui, html.uiz .screen { zoom: var(--uiz); }
+@media (max-width: 900px), (max-height: 500px) {
+  #hud #hud-dock { display: none; }
+  #hud #hud-bar { position: absolute; inset: 0; transform: none; display: block; pointer-events: none; }
+  #hud #hud-bar > *, #hud #skillbar > * { pointer-events: auto; }
+  #hud #skillbar { display: contents; }
+  #hud #skillbar .slot { position: absolute; width: 46px; height: 46px; border-radius: 50%; border-width: 2px; font-size: 20px; box-shadow: 0 3px 8px rgba(0, 0, 0, .5); }
+  #hud #skillbar .slot .key { top: auto; bottom: -1px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+  #hud #skillbar .slot.potion { width: 40px; height: 40px; }
+  #hud #skillbar .slot.potion .key { display: none; }
+  #hud #skillbar .slot.potion .cnt { right: 50%; transform: translateX(50%); bottom: -1px; }
+  #hud #skillbar .slot:nth-child(1) { right: 119px; bottom: 37px; }
+  #hud #skillbar .slot:nth-child(2) { right: 94px; bottom: 98px; }
+  #hud #skillbar .slot:nth-child(3) { right: 33px; bottom: 123px; }
+  #hud #skillbar .slot:nth-child(4) { right: 181px; bottom: 37px; }
+  #hud #skillbar .slot:nth-child(5) { right: 161px; bottom: 111px; }
+  #hud #skillbar .slot:nth-child(6) { right: 107px; bottom: 165px; }
+  #hud #skillbar .slot:nth-child(7) { right: 33px; bottom: 185px; }
+  #hud #skillbar .slot:nth-child(8) { right: 36px; bottom: 245px; }
+  #hud #skillbar .slot:nth-child(9) { right: 111px; bottom: 225px; }
+  #hud #btn-attack { display: grid; place-items: center; position: absolute; right: 20px; bottom: 24px; width: 72px; height: 72px; border: 3px solid var(--gold); background: radial-gradient(circle at 38% 30%, #ff9a6a, #c8341a 58%, #6a1408); box-shadow: 0 0 0 2px #3a2008, 0 6px 14px rgba(0, 0, 0, .55); }
+  #hud #btn-attack .ico { width: 42px; height: 42px; }
+  #hud #btn-attack:active { transform: scale(.94); }
+  #hud #hud-bar .side-btns { position: absolute; left: 16px; right: auto; bottom: 162px; display: flex; flex-direction: row; gap: 8px; padding: 0; background: none; border: 0; box-shadow: none; }
+  #hud #hud-bar .big-rbtn { width: 40px; height: 40px; border-width: 2px; font-size: 16px; }
+  #hud #hud-bar .big-rbtn small { display: none; }
+  #hud #hud-bar .big-rbtn .ico, #hud #hud-bar .big-rbtn .ico.mnt { width: 26px; height: 26px; }
+  #hud #hud-bar .toolbelt { position: absolute; left: 16px; right: auto; bottom: 210px; padding: 3px 5px; gap: 5px; }
+  #hud #hud-bar .slot.tool { width: 36px; height: 36px; }
+  #hud #hud-stick { left: 16px; bottom: 24px; width: 110px; height: 110px; }
+  #hud #hud-stick .knob { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+  #hud #chat-toggle { display: grid !important; left: 16px; bottom: 258px; width: 36px; height: 36px; }
+  #hud #hud-chat.open { display: block; top: auto; left: 8px; right: auto; bottom: 302px; transform: none; width: min(300px, calc(100% - 16px)); min-width: 0; z-index: 5; }
+  #hud #hud-chat.open .chat-log { height: auto; max-height: 26vh; min-height: 60px; }
+  #hud #hud-exp { left: 0; right: 0; bottom: 0; height: 6px; border: 0; border-radius: 0; }
+  #hud #hud-exp span, #hud #hud-exp .ticks { display: none; }
+  #hud #hud-target { top: 332px; bottom: auto; left: auto; right: 8px; transform: scale(.68); transform-origin: top right; }
+  #hud #hud-wb { transform: scale(.68); transform-origin: top left; }
+  #hud #hud-cast { bottom: 300px; }
+  #hud #hud-map { transform: scale(.72); transform-origin: top right; }
+  #hud #hud-menu { display: grid; position: absolute; top: 176px; right: 8px; bottom: auto; left: auto; width: 176px; max-height: none; overflow: visible; box-sizing: border-box; grid-template-columns: repeat(4, 1fr); gap: 8px 4px; justify-items: center; padding: 6px; border-radius: 14px; animation: none; z-index: 3;
+    background: linear-gradient(180deg, rgba(64, 44, 24, .95), rgba(20, 13, 7, .96)); border: 2px solid #b8862a; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .3), 0 6px 16px rgba(0, 0, 0, .45); }
+  #hud #hud-menu .mbtn, #hud #hud-menu .mbtn.ph { display: flex; width: 38px; order: 0; }
+  #hud #hud-menu .qa-tog, #hud #hud-menu .al, #hud #hud-menu .k { display: none; }
+  #hud #hud-menu .ai { width: 38px; height: 38px; border: 2px solid #b8862a; background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); }
+  #hud #hud-menu .ai .ico { width: 27px; height: 27px; }
+  #hud #hud-menu .mbtn.on .ai { border-color: var(--gold-l); box-shadow: 0 0 10px rgba(243, 199, 91, .6); }
+  #hud #hud-menu .mbtn.hot .ai::after { content: ''; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: #ff4a5a; box-shadow: 0 0 0 2px #1a120a, 0 0 8px #ff4a5a; }
+  #hud #hud-acts { top: 176px; bottom: auto; left: 8px; right: 192px; max-height: calc(100% - 430px); box-sizing: border-box; }
+  #hud #hud-quest { top: 332px; right: 8px; width: 176px; max-height: calc(100% - 332px - 295px); min-height: 0; overflow-y: auto; }
+  #hud.has-target #hud-quest { top: 382px; max-height: calc(100% - 382px - 295px); }
+}
+/* landscape phones: the menu grid runs beside the minimap, the quest tracker sits on the left, the small buttons beside the joystick */
+@media (max-height: 500px) {
+  #hud #hud-map { transform: scale(.62); }
+  #hud #hud-menu { top: 8px; right: 124px; width: 268px; grid-template-columns: repeat(6, 1fr); }
+  #hud #hud-acts { top: 116px; right: 124px; left: auto; width: 268px; max-height: calc(100% - 128px); box-sizing: border-box; }
+  #hud #hud-quest, #hud.has-target #hud-quest { top: calc(124px + var(--party-h, 0px) * .78); left: 8px; right: auto; width: 196px; max-height: calc(100% - 124px - var(--party-h, 0px) * .78 - 150px); }
+  #hud #hud-stick { width: 100px; height: 100px; bottom: 20px; }
+  #hud #hud-bar .side-btns { left: 132px; bottom: 16px; }
+  #hud #hud-bar .toolbelt { left: 132px; bottom: 64px; }
+  #hud #chat-toggle { left: 132px; bottom: 112px; }
+  #hud #hud-chat.open { left: 180px; bottom: 112px; max-height: none; }
+  #hud #hud-chat.open .chat-log { max-height: calc(100vh - 240px); }
+  #hud #skillbar .slot:nth-child(8) { right: 246px; bottom: 40px; }
+  #hud #skillbar .slot:nth-child(9) { right: 229px; bottom: 110px; }
+  #hud #hud-target { top: 158px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%) scale(.78); transform-origin: top center; }
+  #hud #hud-wb { transform: translateX(-50%) scale(.72); transform-origin: top center; }
+  #hud #hud-cast { bottom: 120px; }
 }
 </style>
 </head>
@@ -1430,10 +1635,11 @@ button { font-family: inherit; }
         <button class="big-rbtn" id="btn-roll" title="Dodge roll (Shift)"><small>Roll</small></button>
         <button class="big-rbtn" id="btn-block" title="Block (hold the right mouse button)" hidden><small>Block</small></button>
       </div>
+      <button class="big-rbtn" id="btn-attack" title="Attack the nearest enemy" aria-label="Attack"></button>
     </div>
-    <div id="hud-menu"></div>
     <div id="hud-exp"><i id="exp-f"></i><div class="ticks"></div><span id="exp-t"></span></div>
     </div>
+    <div id="hud-menu"></div>
     <div id="hud-dock"></div>
     <div id="hud-stick" aria-label="Move"><div class="knob"></div></div>
     <div id="toasts"></div>

@@ -17,6 +17,10 @@ import { installUpgrade, stoneFor } from './upgrade.js';
 import { installLive, liveBoost } from './live.js';
 import { installMp } from './mp.js';
 import { installParty } from './party.js';
+import { installTrade } from './trade.js';
+import { installSocial, cleanFriends } from './social.js';
+import { installGuide, initGuideSave } from './guide.js';
+import { UIZ } from './touchfit.js';
 import { installSky } from './sky.js';
 import { buildExtraMonster, EXTRA_MONSTER_MODELS } from './models-monsters.js';
 import { buildExtraPet, buildExtraMount, EXTRA_PET_MODELS, EXTRA_MOUNT_MODELS } from './models-extra.js';
@@ -95,6 +99,8 @@ export function migrateSave(S) {
   S.bag = (S.bag || []).filter((b) => b.eq || ITEMS[b.id]);
   initToolBelt(S);
   initSystemsSave(S); initLifeSave(S); initEconomySave(S);
+  S.friends = cleanFriends(S.friends);
+  initGuideSave(S);
   if (!S.quest || (!S.quest.id && S.quest.status === 'done' && !S.storyDone)) S.quest = { id: 'q11', status: 'available', prog: 0 }; // Chapter I used to end here
   S.v = 3;
   return S;
@@ -158,6 +164,7 @@ export class Game {
     this.ui.bind(this);
     this.ui.refreshAll();
     this.initLive();
+    this.tradeInit();
     this.mpStart();
     this.ui.chat('system', 'Welcome to <b>Carlyle</b>! Click the quest in the tracker on the right to auto-path to your goal.');
     this.ui.chat('system', 'Controls: click to move or attack · drag to turn the camera · scroll to zoom · 1–7 skills · Shift dodge roll · Space jump · R mount · T auto battle.');
@@ -532,10 +539,11 @@ export class Game {
   onClick(x, y) {
     if (this.player.dead) return;
     const h = this.pick(x, y);
+    if (this.ui.pmenuKey) this.ui.playerMenu(null);
     if (h) {
       if (h.kind === 'monster') { this.setTarget(h); this.engage = true; this.player.path = []; this.pendingTalk = null; this.autoPathing = false; this.ui.setAutoPath(false); return; }
       if (h.kind === 'npc') { this.talkTo(h); return; }
-      if (h.kind === 'rp') { this.setTarget(h); if (this.pvpFoe(h)) { this.engage = true; this.player.path = []; this.pendingTalk = null; } return; }
+      if (h.kind === 'rp') { this.setTarget(h); if (this.pvpFoe(h)) { this.engage = true; this.player.path = []; this.pendingTalk = null; } else this.ui.playerMenu(h, x, y); return; }
       if (h.kind === 'dzbag') { this.engage = false; this.pendingTalk = null; this.pathTo(h.pos.x, h.pos.z, false); return; }
       if (h.kind === 'loot' || h.kind === 'chest' || h.kind === 'exit') { this.engage = false; this.pendingTalk = null; this.pathTo(h.pos.x, h.pos.z, false); return; }
       if (h.kind === 'portal') { this.goToPortal(h); return; }
@@ -559,6 +567,18 @@ export class Game {
   setTarget(t) {
     this.player.target = t;
     this.ui.refreshTarget && this.ui.refreshTarget();
+  }
+  // the phone Attack button: hit the current enemy, or the nearest one
+  attackNearest() {
+    const p = this.player; if (p.dead) return;
+    let t = p.target;
+    if (!t || t.dead || !(t.kind === 'monster' || (t.kind === 'rp' && this.pvpFoe(t)))) {
+      t = this.nearestEnemy(30);
+      if (!t) for (const e of this.rplayers || []) if (!e.dead && !e.netHidden && this.pvpFoe(e) && flat(e.pos, p.pos) < 30 && (!t || flat(e.pos, p.pos) < flat(t.pos, p.pos))) t = e;
+    }
+    if (!t) { this.ui.toast('No enemy nearby', 'warn'); return; }
+    this.setTarget(t); this.engage = true; p.path = []; this.pendingTalk = null; this.pendingLife = null;
+    this.autoPathing = false; this.ui.setAutoPath(false);
   }
   cycleTarget() {
     const p = this.player;
@@ -1522,6 +1542,9 @@ export class Game {
   heroIcon(b) {
     return this.portraits.snap('hero-' + b.name, () => buildHumanoid(b.look), { w: 96, h: 96, look: [0, 1.5, 0], from: [0.45, 1.62, 2.3], fov: 32 });
   }
+  heroFullIcon(name, look) {
+    return this.portraits.snap('herofull-' + name, () => { const m = buildHumanoid(look); m.rotation.y = 0.35; return m; }, { w: 190, h: 250, look: [0, 1.08, 0], from: [0, 1.25, 5.4], fov: 30 });
+  }
   petIcon(id) {
     const pd = PETS.find((x) => x.id === id);
     const small = EVENT_PET_MODELS.has(pd.model), mid = EXTRA_PET_MODELS.has(pd.model);
@@ -2268,7 +2291,7 @@ export class Game {
   }
 
   updatePlates() {
-    const w = this.renderer.domElement.clientWidth, h = this.renderer.domElement.clientHeight;
+    const w = this.renderer.domElement.clientWidth / UIZ.k, h = this.renderer.domElement.clientHeight / UIZ.k; // #world-ui may be zoomed (touchfit.js)
     const v = new THREE.Vector3();
     const range = { npc: 80, portal: 90, loot: 40, node: 42, plot: 45, rp: 100, soul: 160 };
     for (const e of [...this.ents, ...this.loots, ...this.portals, ...(this.lifeEnts || []), ...(this.dzBags || []), ...(this.soulEnt ? [this.soulEnt] : []), ...(this.trial ? this.trial.ents.filter((e) => e.np) : [])]) {
@@ -2336,6 +2359,9 @@ installUpgrade(Game);
 installLive(Game);
 installMp(Game);
 installParty(Game);
+installTrade(Game);
+installSocial(Game);
+installGuide(Game);
 installSky(Game);
 installCombat(Game);
 installCombatWorld(Game);
