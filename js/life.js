@@ -8,7 +8,8 @@ import {
   COSTUMES, RELICS, RELIC_SETS, redCost, COLLECTION_BONUS, MAX_LEVEL,
 } from './data-world.js';
 import { MATERIALS } from './systems-data.js';
-import { classLook } from './models.js';
+import { heroLook, buildHumanoid } from './models.js';
+import { cleanApp } from './models-hero.js';
 import { buildNode, buildCrop } from './models-extra.js';
 import { RARITY, genRed } from './loot.js';
 import { registerIcon } from './icons.js';
@@ -37,10 +38,12 @@ for (const c of COSTUMES) registerIcon(c.id, costumeIcon(c.id, c.slot, c.c1, c.c
 export function lookFor(S) {
   let o = { wings: !!S.wings, ...(S.wingColor ? { wingColor: S.wingColor } : {}) };
   const out = costumeById(S.costume?.outfit), head = costumeById(S.costume?.head), back = costumeById(S.costume?.back);
-  if (out) o = { ...o, armor: false, robe: false, cape: null, scarf: false, apron: false, hood: null, ...out.look };
-  if (head) o = { ...o, hat: 'none', hood: null, catEars: false, ears: true, hatColor: undefined, ...head.look };
+  // a costume outfit replaces the class outfit pieces (the weapon stays)
+  if (out) o = { ...o, armor: false, robe: false, cape: null, scarf: false, apron: false, hood: null, tabard: false, pelt: false, bareArms: false, kilt: false, gauntlets: false, pauldrons: false, strap: false, pouch: false, runes: false, mask: false, ...out.look };
+  if (head) o = { ...o, hat: 'none', hood: null, mask: false, hatColor: undefined, ...head.look };
   if (back) o = { ...o, ...back.look };
-  return classLook(S.cls, S.gender, S.hair, S.eye, o);
+  const app = S.app || { race: 'sylvan', body: S.gender === 'm' ? 'a' : 'b', hair: S.hair, eye: S.eye };
+  return heroLook(S.cls, app, o);
 }
 
 export function initLifeSave(S) {
@@ -149,6 +152,10 @@ const L = {
     this.pathTo(e.pos.x, e.pos.z, flat(p.pos, e.pos) > 12);
   },
   lifeAct(e) {
+    if (e.kind === 'campfire') { this.openCooking(); return; }
+    if (e.kind === 'forage') { this.forage(e); return; }
+    if (e.kind === 'lore') { this.readLore(e); return; }
+    if (e.kind === 'waystone') { this.useWaystone(e); return; }
     if (e.kind === 'node') this.gatherNode(e);
     else this.plotAct(e.idx);
   },
@@ -179,6 +186,7 @@ const L = {
     else if (e.nkind === 'tree' && bonus < 0.05) { this.addItem('fertilizer', 1); this.lootMsg('Fertilizer', RARITY[1].color); }
     if (bonus > 0.985) { this.addMat('spirit_shard', 1, true); this.lootMsg('Spirit Shard', RARITY[3].color); }
     this.addProfExp(G.prof, 10 + e.tier * 14 + Math.max(0, 6 - (lv - TIER_REQ[e.tier]) / 5));
+    this.gainMastery('survival', 3 + e.tier * 1.5); // rarer nodes teach more
     const c = e.pos.clone(); c.y += e.height * 0.6;
     this.fx.emit(c, { count: 18, color: TIER_COLOR[e.tier], speed: 3, life: 0.8, size: 0.4, up: 3, gravity: -6, jitter: 0.8 });
     this.sfx.play('pickup');
@@ -283,6 +291,7 @@ const L = {
     if (Math.random() < 0.35) { this.addItem('seed_' + st.crop, 1); }
     S.farm[i] = null;
     this.addProfExp('farming', C.exp);
+    this.gainMastery('survival', 2);
     S.life.harvested++; this.track('harvest');
     const e = this.plots[i]; if (e) this.fx.emit(e.pos.clone().setY(e.pos.y + 0.8), { count: 24, color: new THREE.Color(C.color).getHex(), speed: 3, life: 0.9, size: 0.45, up: 4, gravity: -8, jitter: 1.4 });
     this.sfx.play('coin'); this.refreshPlots(); this.ui.refreshPanel(); this.save();
@@ -302,7 +311,7 @@ const L = {
       if (!this.bagRoomFor(r.out)) break;
       this.takeIns(r.ins);
       this.addItem(r.out, r.qty); made++;
-      this.addProfExp('alchemy', r.exp);
+      this.addProfExp('alchemy', r.exp); this.gainMastery('survival', 4);
     }
     if (!made) { this.ui.toast('Missing ingredients', 'warn'); this.sfx.play('error'); return; }
     this.S.life.brewed += made; this.track('craft', made);
@@ -317,7 +326,7 @@ const L = {
     if (r.core) { if (!this.bagRoomFor('crimson_core')) return; }
     else if (S.bag.length >= this.bagMax()) { this.ui.toast('Bag is full!', 'warn'); return; }
     this.pay(cost);
-    this.addProfExp('smithing', r.exp);
+    this.addProfExp('smithing', r.exp); this.gainMastery('survival', 5);
     S.life.forged++; this.track('craft');
     if (r.core) {
       this.addItem('crimson_core', 1);
@@ -374,7 +383,7 @@ const L = {
     this.addEquip(eq);
     S.life.red++; this.track('craft');
     this.unlockTitle('Crimson Smith');
-    this.addProfExp('smithing', 400);
+    this.addProfExp('smithing', 400); this.gainMastery('survival', 12);
     this.ui.banner('RED ITEM!', eq.name, 'loot6');
     this.logEvent('red', `Forged ${eq.name}`, true);
     this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} forged the Red item <span class="it" style="color:${RARITY[6].color}">[${esc(eq.name)}]</span>!`);
@@ -428,7 +437,7 @@ const L = {
     }
     if (id === 'bag_scroll') { this.expandBag(true); return true; }
     if (id === 'teleport_scroll') {
-      if (this.dg || this.war) { this.ui.toast('Cannot teleport from here', 'warn'); return true; }
+      if (this.dg || this.war || this.trial) { this.ui.toast('Cannot teleport from here', 'warn'); return true; }
       this.removeItem(id, 1); this.ui.closePanels();
       this.castBar('Homeward Scroll', 1.2, () => {
         const p = this.player; this.fx.pillar(p.pos, 0x7ad8ff, 1.6, 10, 0.8);
@@ -484,6 +493,21 @@ const L = {
   },
   // Costume pieces replace the look of the class outfit / headwear / back; stats never change.
   playerLook() { return lookFor(this.S); },
+  // appearance changes: the first each calendar month is free, then gold
+  lookCost() { const m = new Date().toISOString().slice(0, 7); return this.S.lookMonth === m ? 2000 + 100 * this.S.level : 0; },
+  lookPreview(app) { return this.portraits.snap(null, () => buildHumanoid(lookFor({ ...this.S, app })), { w: 190, h: 250, look: [0, 1.08, 0], from: [0, 1.25, 4.2], fov: 32 }); },
+  saveLook(app) {
+    const S = this.S, cost = this.lookCost(), clean = cleanApp(app);
+    if (!clean) return false;
+    if (cost && S.gold < cost) { this.ui.toast('Not enough Gold', 'warn'); this.sfx.play('error'); return false; }
+    S.gold -= cost; S.app = clean; S.lookMonth = new Date().toISOString().slice(0, 7);
+    S.gender = clean.body === 'a' ? 'm' : 'f'; S.hair = clean.hair; S.eye = clean.eye;
+    this.sfx.voice = clean.voice ?? 0.5;
+    this.rebuildPlayerModel && this.rebuildPlayerModel();
+    this.recalc(); this.ui.refreshWallet(); this.ui.refreshPanel(); this.save();
+    this.ui.toast('New look saved', 'good'); this.fx.buff(this.player, '#ff9ad0');
+    return true;
+  },
 };
 
 export function installLife(Game) { Object.assign(Game.prototype, L); }

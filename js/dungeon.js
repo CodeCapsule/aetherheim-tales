@@ -202,7 +202,7 @@ export class Dungeon {
     this.buildFloors();
     this.buildWalls();
     this.buildDecor();
-    this.buildBossRoom();
+    if (!def.plain) this.buildBossRoom();
     this.buildBarriers();
     if (def.arena) this.buildArenaBases();
     this.finishBatches();

@@ -1,6 +1,7 @@
 // Procedural chibi models: players, NPCs, monsters, pets, mounts and sprites. Forward is +Z, feet at y=0.
 import * as THREE from 'three';
-import { glow, mesh, outline, faceTexture, critterFace, facePatch, wingTexture, glowTexture } from './toon.js';
+import { glow, mesh, outline, critterFace, facePatch, glowTexture } from './toon.js';
+import { buildHero, buildWings } from './models-hero.js';
 
 const gcache = new Map();
 function G(key, fn) { if (!gcache.has(key)) gcache.set(key, fn()); return gcache.get(key); }
@@ -20,239 +21,11 @@ function part(geo, color, x, y, z, { sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz 
 }
 const DS = { side: THREE.DoubleSide };
 
-// ---------------------------------------------------------------- Humanoid
+// ---------------------------------------------------------------- Humanoid (built in models-hero.js)
 export const HAIR_COLORS = ['#f2d27a', '#ff9ec7', '#7fd0ff', '#b48cff', '#5a3a2a', '#f5f5f5', '#ff6a4a', '#2a2a3a'];
 export const EYE_COLORS = ['#3a6fd8', '#2fae6a', '#c0462e', '#8a4ad8', '#d89a2a'];
 
-export function buildHumanoid(o = {}) {
-  const gender = o.gender || 'f';
-  const skin = o.skin ?? 0xffe2cf;
-  const hair = new THREE.Color(o.hair || '#f2d27a').getHex();
-  const out = o.outfit || { main: 0xffffff, accent: 0x3f8cff, trim: 0xf0c24a, skirt: 0xdfe8ff };
-  const root = new THREE.Group();
-  const body = new THREE.Group(); root.add(body);
-  const P = { root, body };
-
-  // legs
-  for (const s of [-1, 1]) {
-    const leg = new THREE.Group(); leg.position.set(0.14 * s, 0.52, 0); body.add(leg);
-    leg.add(part(cap(0.105, 0.24), o.pants ?? out.skirt, 0, -0.2, 0));
-    leg.add(part(sph(0.14), o.boots ?? 0x5a3a2a, 0, -0.44, 0.04, { sx: 1, sy: 0.72, sz: 1.35 }));
-    if (s < 0) P.legR = leg; else P.legL = leg;
-  }
-  // torso
-  body.add(part(cyl(0.22, 0.3, 0.46), out.main, 0, 0.8, 0));
-  if (o.robe) {
-    body.add(part(cyl(0.3, 0.5, 0.56, 18), out.skirt, 0, 0.4, 0));
-  } else if (gender === 'f' || o.skirt) {
-    body.add(part(cyl(0.28, 0.44, 0.3, 18), out.skirt, 0, 0.6, 0));
-  }
-  body.add(part(tor(0.265, 0.04), out.trim, 0, 0.6, 0, { rx: Math.PI / 2, ow: 0.015 }));
-  body.add(part(sph(0.09), out.accent, 0, 0.92, 0.2, { sz: 0.5, ow: 0.015 }));
-  if (o.apron) body.add(part(box(0.38, 0.5, 0.04), 0xffffff, 0, 0.62, 0.3, { rx: -0.25 }));
-  if (o.armor) {
-    body.add(part(sph(0.25), out.main, 0, 0.84, 0.06, { sx: 1.05, sy: 0.9, sz: 0.85, ow: 0.02 }));
-    for (const s of [-1, 1]) body.add(part(sph(0.17, 14, 8), out.main, 0.31 * s, 1.0, 0, { sy: 0.7, ow: 0.02 }));
-  }
-
-  // arms
-  for (const s of [-1, 1]) {
-    const arm = new THREE.Group(); arm.position.set(0.31 * s, 0.98, 0); body.add(arm);
-    arm.add(part(cap(0.08, 0.2), out.main, 0, -0.16, 0));
-    const hand = new THREE.Group(); hand.position.set(0, -0.36, 0.02); arm.add(hand);
-    hand.add(part(sph(0.085), skin, 0, 0, 0, { ow: 0.015 }));
-    if (s < 0) { P.armR = arm; P.handR = hand; } else { P.armL = arm; P.handL = hand; }
-  }
-
-  // head
-  const head = new THREE.Group(); head.position.set(0, 1.02, 0); body.add(head); P.head = head;
-  head.add(part(cyl(0.07, 0.08, 0.1), skin, 0, 0.02, 0, { ow: 0 }));
-  const H = 0.5, hy = 0.46;
-  head.add(part(sph(H, 24, 18), skin, 0, hy, 0, { ow: 0.03 }));
-  const face = facePatch(H * 1.006, faceTexture({ eye: o.eye || '#3a6fd8', gender, mood: o.mood || 'normal', brow: o.brow || '#5a3a2a' }));
-  face.position.y = hy; head.add(face);
-  // elf ears
-  if (o.ears !== false) {
-    for (const s of [-1, 1]) {
-      head.add(part(cone(0.07, 0.3, 6), skin, 0.5 * s, hy + 0.02, 0.03, { rz: -s * 1.25, rx: -0.3, ow: 0.015 }));
-    }
-  }
-  // hair
-  const hm = { opts: DS, ow: 0.022 };
-  if (o.hood) {
-    head.add(part(G('hood', () => new THREE.SphereGeometry(0.6, 20, 14, 0, Math.PI * 2, 0, 1.9)), o.hood, 0, hy + 0.04, -0.06, { ...hm, rx: -0.45 }));
-  } else {
-    head.add(part(G('hcap', () => new THREE.SphereGeometry(0.54, 22, 14, 0, Math.PI * 2, 0, 1.25)), hair, 0, hy + 0.03, -0.02, hm));
-    head.add(part(G('hback', () => new THREE.SphereGeometry(0.545, 20, 14, Math.PI, Math.PI, 0, 2.25)), hair, 0, hy, -0.01, hm));
-    // bangs
-    for (let i = -3; i <= 3; i++) {
-      const a = i * 0.27;
-      head.add(part(sph(1, 10, 8), hair, Math.sin(a) * 0.42, hy + 0.33 - Math.abs(i) * 0.03, Math.cos(a) * 0.37,
-        { sx: 0.12, sy: 0.2, sz: 0.09, rz: -a * 0.5, rx: 0.3, ow: 0.012 }));
-    }
-    for (const s of [-1, 1]) head.add(part(sph(1, 10, 8), hair, 0.44 * s, hy - 0.08, 0.12, { sx: 0.1, sy: 0.32, sz: 0.11, rz: s * 0.1, ow: 0.012 }));
-    const style = o.hairStyle || (gender === 'f' ? 'long' : 'spiky');
-    if (style === 'long') {
-      head.add(part(sph(1, 14, 12), hair, 0, hy - 0.32, -0.3, { sx: 0.42, sy: 0.62, sz: 0.22, rx: 0.15, ow: 0.02 }));
-    } else if (style === 'twin') {
-      for (const s of [-1, 1]) {
-        head.add(part(sph(1, 12, 10), hair, 0.58 * s, hy - 0.2, -0.12, { sx: 0.16, sy: 0.48, sz: 0.16, rz: s * 0.28, ow: 0.018 }));
-        head.add(part(sph(0.07), out.accent, 0.5 * s, hy + 0.18, -0.12, { ow: 0.012 }));
-      }
-    } else if (style === 'spiky') {
-      const spikes = [[0, 0.95, -0.1, -0.6, 0], [0.25, 0.85, -0.2, -0.9, -0.5], [-0.25, 0.85, -0.2, -0.9, 0.5], [0, 0.7, -0.45, -1.6, 0], [0.3, 0.6, -0.38, -1.5, -0.6], [-0.3, 0.6, -0.38, -1.5, 0.6]];
-      for (const [x, y, z, rx, rz] of spikes) head.add(part(cone(0.14, 0.42, 8), hair, x, hy + y - 0.46, z, { rx, rz, ow: 0.018 }));
-    } else if (style === 'bob') {
-      head.add(part(sph(1, 14, 12), hair, 0, hy - 0.12, -0.12, { sx: 0.58, sy: 0.42, sz: 0.5, ow: 0.02 }));
-    }
-    // ahoge
-    head.add(part(tor(0.1, 0.022, 6, 10, Math.PI * 1.2), hair, 0.02, hy + 0.58, 0.05, { ry: Math.PI / 2, rz: 0.4, ow: 0 }));
-  }
-  if (o.beard) head.add(part(sph(1, 12, 10), o.beard, 0, hy - 0.42, 0.26, { sx: 0.3, sy: 0.38, sz: 0.2, ow: 0.02 }));
-  if (o.catEars) for (const s of [-1, 1]) {
-    head.add(part(cone(0.13, 0.26, 4), hair, 0.3 * s, hy + 0.48, -0.02, { rz: -s * 0.35, ow: 0.018 }));
-    head.add(part(cone(0.07, 0.16, 4), 0xffb0c8, 0.3 * s, hy + 0.46, 0.04, { rz: -s * 0.35, ow: 0 }));
-  }
-
-  // headgear
-  const hat = o.hat || 'none';
-  if (hat === 'witch') {
-    const hg = new THREE.Group(); hg.position.set(0, hy + 0.36, -0.04); hg.rotation.x = -0.2; head.add(hg);
-    hg.add(part(cyl(0.72, 0.72, 0.04, 28), o.hatColor ?? 0x2b2340, 0, 0, 0, { ow: 0.02 }));
-    hg.add(part(cone(0.36, 0.8, 18), o.hatColor ?? 0x2b2340, 0, 0.42, 0, { ow: 0.02 }));
-    hg.add(part(cyl(0.37, 0.37, 0.1, 18), out.accent, 0, 0.07, 0, { ow: 0.012 }));
-    const tip = part(cone(0.12, 0.35, 10), o.hatColor ?? 0x2b2340, 0.06, 0.9, -0.06, { rz: -0.7, rx: -0.3, ow: 0.015 });
-    hg.add(tip);
-  } else if (hat === 'circlet') {
-    head.add(part(tor(0.49, 0.03), out.trim, 0, hy + 0.2, 0, { rx: Math.PI / 2 - 0.25, ow: 0.01 }));
-    const gem = new THREE.Mesh(G('gem', () => new THREE.OctahedronGeometry(0.07)), glow(0x5fd0ff));
-    gem.position.set(0, hy + 0.28, 0.48); head.add(gem);
-  } else if (hat === 'cowboy') {
-    head.add(part(cyl(0.7, 0.7, 0.05, 24), o.hatColor ?? 0x7a4a2a, 0, hy + 0.42, 0, { ow: 0.02 }));
-    head.add(part(cyl(0.36, 0.42, 0.34, 18), o.hatColor ?? 0x7a4a2a, 0, hy + 0.6, 0, { ow: 0.02 }));
-    head.add(part(cyl(0.425, 0.425, 0.08, 18), 0xd04a3a, 0, hy + 0.47, 0, { ow: 0 }));
-  } else if (hat === 'scarf') {
-    head.add(part(sph(1, 14, 10), out.accent, 0, hy + 0.36, -0.02, { sx: 0.56, sy: 0.22, sz: 0.56, ow: 0.015 }));
-  } else if (hat === 'helm') {
-    head.add(part(G('helm', () => new THREE.SphereGeometry(0.56, 20, 12, 0, Math.PI * 2, 0, 1.3)), out.main, 0, hy + 0.03, -0.02, { ow: 0.02, opts: DS }));
-    head.add(part(box(0.06, 0.25, 0.5), out.accent, 0, hy + 0.58, -0.05, { ow: 0.012 }));
-  }
-
-  // scarf (assassin)
-  if (o.scarf) {
-    body.add(part(tor(0.2, 0.07), out.accent, 0, 1.0, 0, { rx: Math.PI / 2, ow: 0.015 }));
-    const tail = new THREE.Group(); tail.position.set(0.12, 1.0, -0.18); body.add(tail); P.scarf = tail;
-    tail.add(part(box(0.14, 0.55, 0.03), out.accent, 0, -0.26, 0, { ow: 0.012 }));
-  }
-  // cape
-  if (o.cape) {
-    const capeG = new THREE.Group(); capeG.position.set(0, 1.0, -0.2); body.add(capeG); P.cape = capeG;
-    const cgeo = G('cape', () => { const g = new THREE.PlaneGeometry(0.66, 0.92, 2, 4); g.translate(0, -0.46, 0); return g; });
-    const cm = mesh(cgeo, o.cape, { outlineW: 0.012, opts: DS });
-    capeG.add(cm);
-  }
-
-  // weapon
-  if (o.weapon) attachWeapon(P, o.weapon, out);
-
-  // fairy wings (hidden until earned)
-  P.wings = buildWings(o.wingColor || '#9fe8ff');
-  P.wings.position.set(0, 0.95, -0.22); P.wings.visible = !!o.wings; body.add(P.wings);
-
-  root.userData.parts = P;
-  root.userData.height = 2.1;
-  if (o.scale) root.scale.setScalar(o.scale);
-  return root;
-}
-
-function attachWeapon(P, kind, out) {
-  const w = new THREE.Group();
-  if (kind === 'sword') {
-    w.add(part(box(0.09, 0.82, 0.03), 0xe8eef8, 0, 0.55, 0, { ow: 0.015 }));
-    w.add(part(cone(0.045, 0.14, 4), 0xe8eef8, 0, 1.02, 0, { ow: 0.012 }));
-    w.add(part(box(0.32, 0.06, 0.08), out.trim, 0, 0.13, 0, { ow: 0.012 }));
-    w.add(part(cyl(0.035, 0.035, 0.2, 8), 0x5a3a2a, 0, 0, 0, { ow: 0.01 }));
-    w.add(part(sph(0.05), out.accent, 0, -0.1, 0, { ow: 0.01 }));
-    w.rotation.x = Math.PI / 2 - 0.25;
-    P.handR.add(w);
-    const sh = new THREE.Group();
-    sh.add(part(cyl(0.3, 0.3, 0.06, 20), out.accent, 0, 0, 0, { rz: Math.PI / 2, ow: 0.02 }));
-    sh.add(part(cyl(0.32, 0.32, 0.03, 20), out.trim, -0.02, 0, 0, { rz: Math.PI / 2, ow: 0 }));
-    sh.add(part(sph(0.08), out.trim, 0.05, 0, 0, { ow: 0.01 }));
-    sh.position.set(0.1, 0.02, 0.05);
-    P.handL.add(sh);
-  } else if (kind === 'daggers') {
-    for (const h of [P.handR, P.handL]) {
-      const d = new THREE.Group();
-      d.add(part(box(0.06, 0.42, 0.02), 0xd8f0ff, 0, 0.28, 0, { ow: 0.012 }));
-      d.add(part(cone(0.03, 0.1, 4), 0xd8f0ff, 0, 0.53, 0, { ow: 0.01 }));
-      d.add(part(box(0.18, 0.04, 0.05), out.accent, 0, 0.07, 0, { ow: 0.01 }));
-      d.add(part(cyl(0.03, 0.03, 0.14, 6), 0x2a2030, 0, 0, 0, { ow: 0.01 }));
-      d.rotation.x = Math.PI / 2 - 0.1;
-      h.add(d);
-    }
-  } else if (kind === 'staff') {
-    w.add(part(cyl(0.035, 0.04, 1.5, 8), 0x7a4a2a, 0, 0.3, 0, { ow: 0.014 }));
-    w.add(part(tor(0.13, 0.03, 6, 14, Math.PI * 1.5), out.trim, 0, 1.12, 0, { rz: Math.PI * 0.25, ow: 0.01 }));
-    const orb = new THREE.Mesh(sph(0.1), glow(0xff8a3a)); orb.position.y = 1.12; w.add(orb);
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xff7a2a, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.scale.setScalar(0.6); halo.position.y = 1.12; w.add(halo);
-    w.rotation.x = 0.1;
-    P.handR.add(w);
-  } else if (kind === 'scepter') {
-    w.add(part(cyl(0.03, 0.035, 0.8, 8), out.trim, 0, 0.25, 0, { ow: 0.012 }));
-    const gem = new THREE.Mesh(G('gemL', () => new THREE.OctahedronGeometry(0.12)), glow(0x6fd8ff)); gem.position.y = 0.76; gem.scale.y = 1.5; w.add(gem);
-    for (const s of [-1, 1]) w.add(part(sph(1, 8, 6), 0xffffff, 0.12 * s, 0.66, 0, { sx: 0.12, sy: 0.05, sz: 0.04, rz: s * 0.5, ow: 0.008 }));
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x6fd8ff, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.scale.setScalar(0.5); halo.position.y = 0.76; w.add(halo);
-    w.rotation.x = Math.PI / 2 - 0.5;
-    P.handR.add(w);
-  } else if (kind === 'spear') {
-    w.add(part(cyl(0.03, 0.03, 2.0, 8), 0x8a5a3a, 0, 0.5, 0, { ow: 0.012 }));
-    w.add(part(cone(0.08, 0.32, 4), 0xe8eef8, 0, 1.6, 0, { ow: 0.012 }));
-    w.add(part(sph(0.06), 0xd04a3a, 0, 1.4, 0, { ow: 0.01 }));
-    P.handR.add(w);
-  } else if (kind === 'hammer') {
-    w.add(part(cyl(0.035, 0.035, 0.7, 8), 0x7a4a2a, 0, 0.25, 0, { ow: 0.012 }));
-    w.add(part(box(0.36, 0.22, 0.22), 0x8a8f9a, 0, 0.62, 0, { ow: 0.015 }));
-    w.rotation.x = 0.3;
-    P.handR.add(w);
-  } else if (kind === 'oldstaff') {
-    w.add(part(cyl(0.04, 0.05, 1.8, 8), 0x6a4a2a, 0, 0.4, 0, { ow: 0.014 }));
-    w.add(part(sph(0.14, 10, 8), 0x5aa84a, 0.05, 1.32, 0, { sx: 1.2, sy: 0.8, ow: 0.012 }));
-    P.handR.add(w);
-  } else if (kind === 'orb') {
-    const orb = new THREE.Mesh(sph(0.14), glow(0xc07aff)); orb.position.set(0, 0.25, 0.15);
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xb06aff, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.scale.setScalar(0.8); orb.add(halo);
-    P.handR.add(orb); P.orb = orb;
-  }
-  P.weapon = w;
-}
-
-function buildWings(color = '#9fe8ff', size = 1) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ map: wingTexture(color), transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.9 });
-  const geo = G('wingplane', () => { const p = new THREE.PlaneGeometry(1, 1); p.translate(0.5, 0.5, 0); return p; });
-  const make = (s, upper) => {
-    const pivot = new THREE.Group();
-    const m = new THREE.Mesh(geo, mat);
-    m.scale.set(upper ? 0.9 * size : 0.6 * size, upper ? 0.9 * size : 0.55 * size, 1);
-    if (!upper) { m.rotation.z = -Math.PI / 2 - 0.2; }
-    m.raycast = () => {};
-    pivot.add(m);
-    pivot.scale.x = s;
-    pivot.rotation.y = s * 0.5;
-    return pivot;
-  };
-  g.userData.pairs = [];
-  for (const s of [1, -1]) {
-    const up = make(s, true), lo = make(s, false);
-    g.add(up); g.add(lo);
-    g.userData.pairs.push({ s, up, lo });
-  }
-  return g;
-}
+export function buildHumanoid(o = {}) { return buildHero(o); }
 
 function animateWings(w, t, fast = 1) {
   if (!w || !w.visible) return;
@@ -262,12 +35,16 @@ function animateWings(w, t, fast = 1) {
   }
 }
 
-// state: idle | run | attack | cast | ride | dead ; a = 0..1 progress for one-shot actions
+const _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
+// state: idle | run | attack | heavy | shoot | cast | block | roll | ride | dead | chop | mine | harvest
+// a = 0..1 progress for one-shot actions
 export function animateHumanoid(model, state, t, a = 0, speed = 1) {
   const P = model.userData.parts; if (!P) return;
   const reset = (g) => g && g.rotation.set(0, 0, 0);
   [P.legL, P.legR, P.armL, P.armR].forEach(reset);
   P.body.position.set(0, 0, 0); P.body.rotation.set(0, 0, 0); P.head.rotation.set(0, 0, 0);
+  const ss = (e0, e1, x) => { const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return u * u * (3 - 2 * u); };
+  if (P.bow && state !== 'shoot') P.bow.quaternion.identity();
   if (state === 'run') {
     const ph = t * 11 * speed;
     P.legL.rotation.x = Math.sin(ph) * 0.85; P.legR.rotation.x = -Math.sin(ph) * 0.85;
@@ -287,9 +64,31 @@ export function animateHumanoid(model, state, t, a = 0, speed = 1) {
     P.body.rotation.y = -0.35 * k;
     P.body.rotation.x = 0.15 * k;
     P.legL.rotation.x = -0.3 * k; P.legR.rotation.x = 0.3 * k;
+  } else if (state === 'heavy') { // two-handed overhead chop (greataxe)
+    const up = ss(0, 0.4, a) * (1 - ss(0.4, 0.55, a)), down = ss(0.4, 0.55, a) * (1 - ss(0.75, 1, a));
+    const ax = -0.6 - 2.3 * up + 0.5 * down;
+    P.armR.rotation.set(ax, 0, 0.3); P.armL.rotation.set(ax, 0, -0.3);
+    P.body.rotation.x = -0.2 * up + 0.45 * down; P.body.position.y = -0.08 * down;
+    P.legL.rotation.x = -0.45 * down; P.legR.rotation.x = 0.3 * down;
+  } else if (state === 'shoot') { // draw the bow string back, then loose
+    const draw = ss(0, 0.55, a) * (1 - ss(0.75, 1, a)), aim = Math.min(1, a / 0.2) * (1 - ss(0.8, 1, a));
+    P.body.rotation.y = -0.65 * aim;
+    P.armL.rotation.set(-1.5 * aim, 0, 0.65 * aim);
+    P.armR.rotation.set(-1.5 * aim, 0, (0.65 + 0.62 * draw) * aim);
+    P.head.rotation.y = 0.55 * aim;
+    if (P.bow) { P.armL.updateMatrix(); P.bow.quaternion.copy(P.armL.quaternion).invert().multiply(_q.setFromAxisAngle(_up, 0.65 * aim)); }
+  } else if (state === 'block') { // shield up, braced
+    P.armL.rotation.set(-1.25, 0, -0.45); P.armR.rotation.set(-0.5, 0, -0.2);
+    P.body.rotation.x = -0.08; P.body.position.y = -0.06;
+    P.legL.rotation.x = -0.35; P.legR.rotation.x = 0.35;
+  } else if (state === 'roll') { // tuck and tumble forward
+    const k = Math.min(1, a);
+    P.body.rotation.x = k * Math.PI * 2; P.body.position.y = 0.55 * Math.sin(k * Math.PI) * 0.6 + 0.05;
+    const tuck = Math.sin(k * Math.PI);
+    P.legL.rotation.x = -1.6 * tuck; P.legR.rotation.x = -1.6 * tuck;
+    P.armL.rotation.x = -1.2 * tuck; P.armR.rotation.x = -1.2 * tuck;
   } else if (state === 'chop' || state === 'mine' || state === 'harvest') {
     // gathering swings: wind up, strike at the node in front, recover (a = 0-1 through one swing)
-    const ss = (e0, e1, x) => { const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return u * u * (3 - 2 * u); };
     if (state === 'mine') { // two-handed overhead pickaxe blow
       const up = ss(0, 0.45, a) * (1 - ss(0.45, 0.58, a)), down = ss(0.45, 0.58, a) * (1 - ss(0.72, 1, a));
       const ax = -0.7 - 2.1 * up + 0.35 * down;
@@ -329,46 +128,64 @@ export function animateHumanoid(model, state, t, a = 0, speed = 1) {
   }
   if (P.cape) P.cape.rotation.x = 0.12 + (state === 'run' ? 0.5 + Math.sin(t * 14) * 0.08 : Math.sin(t * 2) * 0.04);
   if (P.scarf) P.scarf.rotation.x = (state === 'run' ? 1.1 : 0.2) + Math.sin(t * 12) * 0.12;
+  if (P.tail) P.tail.rotation.z = Math.sin(t * (state === 'run' ? 9 : 2.4)) * (state === 'run' ? 0.35 : 0.18);
   if (P.wings) animateWings(P.wings, t, state === 'run' ? 1.6 : 1);
   if (P.orb) P.orb.position.y = 0.25 + Math.sin(t * 3) * 0.05;
 }
 
 // ---------------------------------------------------------------- Looks
+// Class outfits. Ids stay the same for the four original classes (saves, items and icons use them).
+export const CLASS_KITS = {
+  knight: { outfit: { main: 0xc8d0dc, accent: 0x2f5fb8, trim: 0xe8b64a, skirt: 0x3a4a6e }, armor: true, tabard: true, gauntlets: true, hat: 'helm', hatColor: 0xc8d0dc, plume: 0xd8403a, weapon: 'sword', boots: 0x5a6070, pants: 0x3a4a6e, emblem: 0xf0d060, hair: 'short' },
+  berserker: { outfit: { main: 0x8a5a38, accent: 0xa83228, trim: 0xc8a060, skirt: 0x6a4a30 }, bareArms: true, pelt: true, kilt: true, bracers: true, strap: true, hat: 'pelt', hatColor: 0x6a4a32, weapon: 'greataxe', boots: 0x5a3a26, pants: 0x5a3a26, hair: 'messy' },
+  assassin: { outfit: { main: 0x3a3550, accent: 0x55d6a8, trim: 0x9aa0b8, skirt: 0x2a2638 }, hood: 0x2e2a44, mask: true, maskColor: 0x2e2a44, bracers: true, pouch: true, strap: true, strapColor: 0x2a2030, scarf: true, weapon: 'daggers', boots: 0x2a2030, pants: 0x2a2638, hair: 'bob' },
+  ranger: { outfit: { main: 0x4a7a3a, accent: 0x8a5a2a, trim: 0xd8c08a, skirt: 0x4a3a2a }, hat: 'feather', hatColor: 0x5a7a3a, featherColor: 0xd84a3a, cape: 0x3a6a34, quiver: true, bracers: true, strap: true, pouch: true, weapon: 'bow', boots: 0x5a3a26, pants: 0x5a4a32, hair: 'ponytail' },
+  mage: { outfit: { main: 0x5a3a9a, accent: 0xff8a3a, trim: 0xf0c24a, skirt: 0x46307a }, robe: true, hat: 'witch', hatColor: 0x4a2e86, weapon: 'staff', orbColor: 0xff8a3a, boots: 0x3a2a40, pouch: true, hair: 'long' },
+  priest: { outfit: { main: 0xf4f6ff, accent: 0x3f8cff, trim: 0xf0c24a, skirt: 0xe4ecff }, robe: true, hat: 'circlet', cape: 0x8fc4ff, weapon: 'scepter', boots: 0xe8e0d0, beltColor: 0xc8a050, hair: 'long' },
+  summoner: { outfit: { main: 0x3e6a3c, accent: 0x9ad86a, trim: 0xb08a4a, skirt: 0x2e4a2c }, robe: true, hat: 'antlers', hatColor: 0x3a6a3a, strap: true, weapon: 'tome', boots: 0x4a3a26, hair: 'braid' },
+  spellblade: { outfit: { main: 0x2a3a5a, accent: 0x5ad8ff, trim: 0xd8dee8, skirt: 0x1a2a44 }, pauldrons: true, runes: true, bracers: true, cape: 0x2a3a6a, weapon: 'runesword', boots: 0x2a2a38, pants: 0x1a2a44, hair: 'spiky' },
+};
+
+// A hero's look: class outfit + appearance (race, body, face, hair...) + extras (wings, costume pieces).
+export function heroLook(cls, app = {}, extra = {}) {
+  const K = CLASS_KITS[cls] || CLASS_KITS.knight;
+  const { hair: defHair, ...kit } = K;
+  const look = { ...kit, ...app, hairStyle: app.hairStyle || defHair, ...extra };
+  if (app.helm === false && ['helm', 'pelt', 'antlers', 'witch', 'feather', 'circlet'].includes(look.hat) && !extra.hat) look.hat = 'none';
+  if (app.helm === false && look.hood && !extra.hood) look.hood = null;
+  return look;
+}
+
+// Older call shape (class, gender, hair, eye, extras), used for random heroes and townsfolk.
 export function classLook(cls, gender, hair, eye, extra = {}) {
-  const C = {
-    knight: { outfit: { main: 0xcdd6e8, accent: 0x2f5fb8, trim: 0xe8b64a, skirt: 0x34446e }, weapon: 'sword', armor: true, cape: 0x2f5fb8, hat: 'none', boots: 0x5a6070 },
-    assassin: { outfit: { main: 0x3b2f5c, accent: 0x3fcf98, trim: 0xb0b8d0, skirt: 0x2a2140 }, weapon: 'daggers', scarf: true, hat: 'none', boots: 0x2a2030 },
-    mage: { outfit: { main: 0xc2373b, accent: 0xffd36b, trim: 0xffd36b, skirt: 0x8e2230 }, weapon: 'staff', hat: 'witch', robe: true, cape: 0x6a1f2a, boots: 0x3a2030 },
-    priest: { outfit: { main: 0xf4f6ff, accent: 0x3f8cff, trim: 0xf0c24a, skirt: 0xe4ecff }, weapon: 'scepter', hat: 'circlet', robe: true, cape: 0x8fc4ff, boots: 0xe8e0d0 },
-  }[cls];
-  return { gender, hair, eye, ...C, hairStyle: gender === 'f' ? (cls === 'assassin' ? 'bob' : cls === 'priest' ? 'long' : cls === 'mage' ? 'twin' : 'long') : (cls === 'mage' || cls === 'priest' ? 'bob' : 'spiky'), ...extra };
+  return heroLook(cls, { body: gender === 'm' ? 'a' : 'b', hair, eye, race: extra.race || 'human', skin: extra.skin }, extra);
 }
 
 export function npcLook(look) {
   switch (look) {
-    case 'elder': return { gender: 'm', hair: '#f4f4f4', eye: '#5a7a4a', mood: 'closed', robe: true, outfit: { main: 0x4a8a4a, accent: 0xe8d8a0, trim: 0xd8b04a, skirt: 0x3a6a3a }, beard: 0xf4f4f4, weapon: 'oldstaff', hairStyle: 'bob', brow: '#e0e0e0' };
-    case 'mimi': return { gender: 'f', hair: '#ff9ec7', eye: '#d89a2a', hairStyle: 'twin', catEars: true, ears: false, outfit: { main: 0xffffff, accent: 0xff7aa8, trim: 0xff7aa8, skirt: 0xffb6d2 } };
-    case 'brom': return { gender: 'm', hair: '#6a3a1a', eye: '#3a5a2a', hat: 'cowboy', hairStyle: 'bob', outfit: { main: 0x5a8a3a, accent: 0xc87a3a, trim: 0x7a4a2a, skirt: 0x6a4a2a }, scale: 1.12 };
-    case 'lyla': return { gender: 'f', hair: '#ff8a3a', eye: '#2fae6a', hairStyle: 'long', apron: true, hat: 'scarf', outfit: { main: 0x3a9a6a, accent: 0xf0d050, trim: 0xa0602a, skirt: 0x2a7a5a } };
-    case 'gorm': return { gender: 'm', hair: '#d04a2a', eye: '#3a3a6a', beard: 0xd04a2a, hairStyle: 'spiky', weapon: 'hammer', outfit: { main: 0x7a5a3a, accent: 0x9a9aa8, trim: 0x3a2a1a, skirt: 0x4a3a2a }, scale: 0.92, apron: true };
-    case 'elena': return { gender: 'f', hair: '#f2d27a', eye: '#3a6fd8', hairStyle: 'long', armor: true, weapon: 'spear', cape: 0xc0303a, outfit: { main: 0xd8dee8, accent: 0xc0303a, trim: 0xe8b64a, skirt: 0x8a2030 } };
-    case 'sylphie': return { gender: 'f', hair: '#7ef0a8', eye: '#2fae6a', hairStyle: 'long', wings: true, wingColor: '#b8ffd8', outfit: { main: 0xf0fff4, accent: 0x5ad88a, trim: 0xffe07a, skirt: 0xc8ffe0 }, scale: 0.85 };
-    case 'nix': return { gender: 'm', hair: '#b48cff', eye: '#8a4ad8', robe: true, hood: 0x4a2a7a, weapon: 'orb', outfit: { main: 0x5a3a8a, accent: 0xd8b0ff, trim: 0xe8c86a, skirt: 0x3a2a5a } };
-    case 'mira': return { gender: 'f', hair: '#4a3a8a', eye: '#d89a2a', hairStyle: 'bob', hat: 'circlet', apron: true, outfit: { main: 0x2a6a8a, accent: 0xf0c050, trim: 0xe8b64a, skirt: 0x1a4a6a } };
-    case 'aldric': return { gender: 'm', hair: '#3a3a4a', eye: '#3a6fd8', hairStyle: 'spiky', armor: true, cape: 0x2a5ab8, weapon: 'spear', outfit: { main: 0xc8d0e0, accent: 0x2a5ab8, trim: 0xe8b64a, skirt: 0x2a3a6a }, scale: 1.06 };
-    case 'host': return { gender: 'f', hair: '#ff7a2a', eye: '#7a3ad8', hairStyle: 'twin', hat: 'witch', hatColor: 0x4a2a6a, outfit: { main: 0xff8a2a, accent: 0x7a3ad8, trim: 0x2a1a3a, skirt: 0x5a2a7a } };
-    case 'tilly': return { gender: 'f', hair: '#e8a040', eye: '#3a8a3a', hairStyle: 'twin', hat: 'cowboy', hatColor: 0xe8c860, apron: true, outfit: { main: 0x6ab04a, accent: 0xf0e0a0, trim: 0x8a5a2a, skirt: 0x4a7ad8 } };
-    case 'vera': return { gender: 'f', hair: '#6a3aa8', eye: '#3ac8a0', hairStyle: 'long', robe: true, hood: 0x3a6a5a, outfit: { main: 0x2a8a7a, accent: 0xc8f0a0, trim: 0xe8c86a, skirt: 0x1a5a50 } };
-    case 'coco': return { gender: 'f', hair: '#ff6ab8', eye: '#7a3ad8', hairStyle: 'bob', hat: 'circlet', scarf: true, outfit: { main: 0xfff0f8, accent: 0xff6ab8, trim: 0xffd84a, skirt: 0xff9ad0 } };
-    case 'opal': return { gender: 'f', hair: '#e8f0ff', eye: '#4a8aff', hairStyle: 'long', hat: 'circlet', outfit: { main: 0x4a5ad8, accent: 0x5fd0ff, trim: 0xe8e0ff, skirt: 0x2a3a9a } };
-    case 'hilda': return { gender: 'f', hair: '#c84a2a', eye: '#3a5a8a', hairStyle: 'long', armor: true, hat: 'scarf', outfit: { main: 0x9a7a4a, accent: 0x3a7ad8, trim: 0xe8c86a, skirt: 0x5a4a2a }, scale: 1.05 };
-    case 'grimsby': return { gender: 'm', hair: '#8a8a9a', eye: '#3a3a5a', hairStyle: 'bob', beard: 0x9a9aaa, hat: 'cowboy', hatColor: 0x2a2a3a, weapon: 'hammer', outfit: { main: 0x5a2a3a, accent: 0xf0c050, trim: 0x2a1a1a, skirt: 0x3a1a2a }, scale: 0.95 };
-    case 'elias': return { gender: 'm', hair: '#3a2a1a', eye: '#c84a3a', hairStyle: 'spiky', robe: true, cape: 0x8a1a2a, weapon: 'orb', outfit: { main: 0x2a2a3a, accent: 0xff3b3b, trim: 0xe8c86a, skirt: 0x1a1a2a } };
-    case 'trader': return { gender: 'm', hair: '#7a4a2a', eye: '#3a6a3a', hairStyle: 'bob', hood: 0x7a5a3a, weapon: 'spear', outfit: { main: 0x8a6a3a, accent: 0x3a8a5a, trim: 0xd8b070, skirt: 0x5a4a2a } };
+    case 'thalia': return { body: 'b', race: 'draken', skin: '#c8a890', hair: '#f0f0f8', eye: '#ffb030', hairStyle: 'braid', armor: true, gauntlets: true, pauldrons: true, weapon: 'spear', cape: 0x5a2a8a, hat: 'circlet', outfit: { main: 0x3a3a5a, accent: 0xe8c070, trim: 0xffd84a, skirt: 0x2a2a40 }, scale: 1.08, face: 'long' };
+    case 'elder': return { body: 'a', race: 'sylvan', skin: '#eec0a0', hair: '#f4f4f4', eye: '#5a7a4a', mood: 'closed', robe: true, outfit: { main: 0x4a8a4a, accent: 0xe8d8a0, trim: 0xd8b04a, skirt: 0x3a6a3a }, beardStyle: 'full', beard: 0xf4f4f4, weapon: 'oldstaff', hairStyle: 'long', brow: '#e0e0e0', face: 'long' };
+    case 'mimi': return { body: 'b', race: 'beastkin', beast: 'cat', skin: '#f7dcc8', hair: '#ff9ec7', eye: '#d89a2a', hairStyle: 'twin', apron: true, outfit: { main: 0xffffff, accent: 0xff7aa8, trim: 0xff7aa8, skirt: 0xffb6d2 }, skirt: true };
+    case 'brom': return { body: 'a', race: 'human', skin: '#bd8460', hair: '#6a3a1a', eye: '#3a5a2a', hat: 'cowboy', hatColor: 0x7a4a2a, hairStyle: 'short', beardStyle: 'goatee', outfit: { main: 0x5a8a3a, accent: 0xc87a3a, trim: 0x7a4a2a, skirt: 0x6a4a2a }, strap: true, scale: 1.1, build: 0.9 };
+    case 'lyla': return { body: 'b', race: 'human', skin: '#eec0a0', hair: '#d0783a', eye: '#2fae6a', hairStyle: 'braid', apron: true, hat: 'scarf', outfit: { main: 0x3a9a6a, accent: 0xf0d050, trim: 0xa0602a, skirt: 0x2a7a5a }, skirt: true, makeup: 'rouge' };
+    case 'gorm': return { body: 'a', race: 'human', skin: '#dba07c', hair: '#c84a2a', eye: '#3a3a6a', beardStyle: 'braided', beard: 0xc84a2a, hairStyle: 'mohawk', weapon: 'hammer', outfit: { main: 0x7a5a3a, accent: 0x9a9aa8, trim: 0x3a2a1a, skirt: 0x4a3a2a }, scale: 0.9, build: 1, apron: true, apronColor: 0x5a3a22, bareArms: true, bracers: true, face: 'square' };
+    case 'elena': return { body: 'b', race: 'human', skin: '#f7dcc8', hair: '#f2d27a', eye: '#3a6fd8', hairStyle: 'ponytail', armor: true, gauntlets: true, weapon: 'spear', cape: 0xc0303a, outfit: { main: 0xd8dee8, accent: 0xc0303a, trim: 0xe8b64a, skirt: 0x8a2030 } };
+    case 'sylphie': return { body: 'b', race: 'sylvan', skin: '#e2ecd8', hair: '#7ef0a8', eye: '#2fae6a', hairStyle: 'long', wings: true, wingColor: '#b8ffd8', tattoo: 'dots', outfit: { main: 0xf0fff4, accent: 0x5ad88a, trim: 0xffe07a, skirt: 0xc8ffe0 }, skirt: true, scale: 0.85 };
+    case 'nix': return { body: 'a', race: 'draken', skin: '#a9aab6', hair: '#b48cff', eye: '#8a4ad8', robe: true, hood: 0x4a2a7a, weapon: 'orb', outfit: { main: 0x5a3a8a, accent: 0xd8b0ff, trim: 0xe8c86a, skirt: 0x3a2a5a } };
+    case 'mira': return { body: 'b', race: 'human', skin: '#94603f', hair: '#2a2a3a', eye: '#d89a2a', hairStyle: 'bob', hat: 'circlet', apron: true, outfit: { main: 0x2a6a8a, accent: 0xf0c050, trim: 0xe8b64a, skirt: 0x1a4a6a }, skirt: true, makeup: 'lips' };
+    case 'aldric': return { body: 'a', race: 'human', skin: '#dba07c', hair: '#3a3a4a', eye: '#3a6fd8', hairStyle: 'short', beardStyle: 'full', beard: 0x3a3a4a, armor: true, tabard: true, cape: 0x2a5ab8, weapon: 'spear', outfit: { main: 0xc8d0e0, accent: 0x2a5ab8, trim: 0xe8b64a, skirt: 0x2a3a6a }, scale: 1.06, face: 'square', scar: 'eye' };
+    case 'host': return { body: 'b', race: 'beastkin', beast: 'fox', skin: '#f7dcc8', hair: '#ff7a2a', eye: '#7a3ad8', hairStyle: 'twin', hat: 'witch', hatColor: 0x4a2a6a, outfit: { main: 0xff8a2a, accent: 0x7a3ad8, trim: 0x2a1a3a, skirt: 0x5a2a7a }, skirt: true };
+    case 'tilly': return { body: 'b', race: 'human', skin: '#eec0a0', hair: '#e8a040', eye: '#3a8a3a', hairStyle: 'twin', hat: 'cowboy', hatColor: 0xe8c860, apron: true, outfit: { main: 0x6ab04a, accent: 0xf0e0a0, trim: 0x8a5a2a, skirt: 0x4a7ad8 }, skirt: true, tattoo: 'none' };
+    case 'vera': return { body: 'b', race: 'sylvan', skin: '#f4e6da', hair: '#6a3aa8', eye: '#3ac8a0', hairStyle: 'long', robe: true, hood: 0x3a6a5a, tattoo: 'runes', outfit: { main: 0x2a8a7a, accent: 0xc8f0a0, trim: 0xe8c86a, skirt: 0x1a5a50 } };
+    case 'coco': return { body: 'b', race: 'beastkin', beast: 'fox', skin: '#f7dcc8', hair: '#ff6ab8', eye: '#7a3ad8', hairStyle: 'bob', hat: 'circlet', scarf: true, outfit: { main: 0xfff0f8, accent: 0xff6ab8, trim: 0xffd84a, skirt: 0xff9ad0 }, skirt: true, makeup: 'rouge' };
+    case 'opal': return { body: 'b', race: 'sylvan', skin: '#d2dcf0', hair: '#e8f0ff', eye: '#4a8aff', hairStyle: 'long', hat: 'circlet', tattoo: 'spirals', outfit: { main: 0x4a5ad8, accent: 0x5fd0ff, trim: 0xe8e0ff, skirt: 0x2a3a9a }, robe: true };
+    case 'hilda': return { body: 'b', race: 'human', skin: '#dba07c', hair: '#c84a2a', eye: '#3a5a8a', hairStyle: 'braid', armor: true, hat: 'scarf', outfit: { main: 0x9a7a4a, accent: 0x3a7ad8, trim: 0xe8c86a, skirt: 0x5a4a2a }, scale: 1.05, build: 0.85, pouch: true };
+    case 'grimsby': return { body: 'a', race: 'human', skin: '#eec0a0', hair: '#8a8a9a', eye: '#3a3a5a', hairStyle: 'short', beardStyle: 'mustache', beard: 0x9a9aaa, hat: 'cowboy', hatColor: 0x2a2a3a, weapon: 'hammer', outfit: { main: 0x5a2a3a, accent: 0xf0c050, trim: 0x2a1a1a, skirt: 0x3a1a2a }, scale: 0.95, face: 'round' };
+    case 'elias': return { body: 'a', race: 'draken', skin: '#c9785c', hair: '#3a2a1a', eye: '#c84a3a', hairStyle: 'spiky', robe: true, cape: 0x8a1a2a, weapon: 'orb', outfit: { main: 0x2a2a3a, accent: 0xff3b3b, trim: 0xe8c86a, skirt: 0x1a1a2a } };
+    case 'trader': return { body: 'a', race: 'human', skin: '#bd8460', hair: '#7a4a2a', eye: '#3a6a3a', hairStyle: 'short', beardStyle: 'stubble', hood: 0x7a5a3a, weapon: 'spear', pouch: true, strap: true, outfit: { main: 0x8a6a3a, accent: 0x3a8a5a, trim: 0xd8b070, skirt: 0x5a4a2a } };
   }
   return {};
 }
-
 // ---------------------------------------------------------------- Creatures
 function withFace(parent, r, texOpts, y = 0, opts) {
   const f = facePatch(r * 1.008, critterFace(texOpts), opts);

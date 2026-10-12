@@ -34,7 +34,7 @@ const T = {
     const r = DYES.find((x) => x.id === id); if (!r) return;
     const cost = { gold: r.gold * n, mats: Object.fromEntries(Object.entries(r.mats).map(([k, v]) => [k, v * n])) };
     if (!this.canAfford(cost)) { this.ui.toast(this.missingText(cost), 'warn'); this.sfx.play('error'); return; }
-    this.pay(cost); this.addMat(id, n, true);
+    this.pay(cost); this.addMat(id, n, true); this.gainMastery('survival', 2 * n);
     this.sfx.play('pickup'); this.ui.toast(`Mixed ${MATERIALS[id].name} x${n}`, 'good');
     this.ui.refreshPanel(); this.save();
   },
@@ -44,7 +44,7 @@ const T = {
     const r = costumeRecipe(c), cost = { gold: r.gold, mats: r.mats };
     if (!this.canAfford(cost)) { this.ui.toast(this.missingText(cost), 'warn'); this.sfx.play('error'); return; }
     this.pay(cost);
-    S.life.tailored = (S.life.tailored || 0) + 1;
+    S.life.tailored = (S.life.tailored || 0) + 1; this.gainMastery('survival', 10);
     this.gainCostume(cid);
     this.sfx.play('legend'); this.fx.buff(this.player, '#ffb8e8');
     this.ui.chat('system', `You sewed <b>[${esc(c.name)}]</b> at Coco's.`);

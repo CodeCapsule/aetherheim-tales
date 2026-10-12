@@ -7,8 +7,9 @@ import { mp } from './mp.js';
 import { CLASSES } from './data.js';
 import { curveStats, MAX_LEVEL } from './data-world.js';
 import { lookFor } from './life.js';
+import { expScale, gapMult } from './progress.js';
 
-const PARTY_MAX = 4;
+const PARTY_MAX = 5;
 const PARTY_RANGE = 60; // members this close to a kill (world units, open world only) share its EXP
 const PARTY_BONUS = 0.1; // +10% total EXP per extra member nearby
 const INVITE_SECS = 30;
@@ -158,30 +159,38 @@ const G = {
   // ------------------------------------------------------------ shared EXP
   // called for each of our kills: returns the EXP we keep and queues the share for party members nearby
   partyShareExp(m, base) {
-    if (!mp.party.id || this.dg || this.war || mp.status !== 'online') return base;
-    let near = 0;
+    if (!mp.party.id || this.dg || this.war || this.trial || mp.status !== 'online') return base;
+    let near = 0, mentor = false;
     for (const x of partyMembers()) {
       if (x.me) continue;
       const n = x.pr.net;
-      if (x.pr.info.map === 'world' && n.w && Math.hypot(n.x - m.pos.x, n.z - m.pos.z) <= PARTY_RANGE) near++;
+      if (x.pr.info.map === 'world' && n.w && Math.hypot(n.x - m.pos.x, n.z - m.pos.z) <= PARTY_RANGE) { near++; if (x.pr.info.level >= this.S.level + 10) mentor = true; }
     }
     if (!near) return base;
-    const share = base * (1 + PARTY_BONUS * near) / (near + 1);
+    const pool = base * (1 + PARTY_BONUS * near), share = pool / (near + 1);
+    // grouped with a mentor (10+ levels above): the lower player keeps the full XP of their own kills
     const lv = m.level | 0;
     this.partyXp.set(lv, (this.partyXp.get(lv) || 0) + share);
     this.partyXpAt = { x: Math.round(m.pos.x), z: Math.round(m.pos.z) };
-    return share;
+    return mentor ? Math.max(base, share) : share;
+  },
+  // party members in the open world near you (for the mentor rule)
+  partyMembersNear() {
+    if (!mp.party.id || this.dg || mp.status !== 'online') return [];
+    const p = this.player.pos;
+    return partyMembers().filter((x) => !x.me && x.pr.info.map === 'world' && x.pr.net.w && Math.hypot(x.pr.net.x - p.x, x.pr.net.z - p.z) <= PARTY_RANGE).map((x) => ({ level: x.pr.info.level, name: x.pr.info.name, dawn: x.pr.info.dawn }));
   },
   partyGetExp(m) {
-    if (!mp.party.id || m.party !== mp.party.id || this.dg || this.war || this.player.dead) return;
+    if (!mp.party.id || m.party !== mp.party.id || this.dg || this.war || this.trial || this.player.dead) return;
     const x = num(m.x, -5200, 5200, 1e9), z = num(m.z, -5200, 5200, 1e9);
     if (Math.hypot(this.player.pos.x - x, this.player.pos.z - z) > PARTY_RANGE + 15) return;
     let total = 0;
     for (const row of Array.isArray(m.xp) ? m.xp.slice(0, 24) : []) {
       if (!Array.isArray(row)) continue;
       const lv = num(row[0], 1, MAX_LEVEL + 3, 1) | 0;
-      total += this.personalExp(num(row[1], 0, curveStats(lv).exp * 400, 0), lv);
+      total += this.personalExp(num(row[1], 0, curveStats(lv).exp * 400 * expScale(lv), 0), lv) * gapMult(this.S.level, lv);
     }
+    total = Math.round(total);
     if (total <= 0) return;
     const p = this.player;
     this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.6), `+${fmt(total)} Party EXP`, 'exp pexp');

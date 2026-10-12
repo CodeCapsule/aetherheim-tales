@@ -57,7 +57,7 @@ function playerStatus(g) {
     red: S.life?.red || 0, pets: Object.keys(S.pets || {}).length, mounts: (S.mounts || []).length, costumes: (S.costumes || []).length,
     bag: [S.bag.length, g.bagMax ? g.bagMax() : 48], auction: { won: S.auc?.won || 0, sold: S.auc?.sold || 0 },
     device: matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop', version: LIVE_VERSION,
-    firstSeen: S.stats?.firstSeen || Date.now(), lastSeen: Date.now(), events: (g.liveEvents || []).slice(0, 25), errors: live.errors.slice(0, 10),
+    flags: S.flags || null, firstSeen: S.stats?.firstSeen || Date.now(), lastSeen: Date.now(), events: (g.liveEvents || []).slice(0, 25), errors: live.errors.slice(0, 10),
   };
 }
 

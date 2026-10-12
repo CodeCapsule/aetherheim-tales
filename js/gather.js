@@ -146,7 +146,7 @@ const G = {
     this.pay(cost);
     if (r.from) this.removeItem(r.from, 1);
     this.addItem(r.tool, 1);
-    this.addProfExp('smithing', r.exp);
+    this.addProfExp('smithing', r.exp); this.gainMastery('survival', 4);
     S.life.forged++; this.track('craft');
     this.sfx.play('level'); this.fx.buff(this.player, TOOL_METAL[ITEMS[r.tool].tier]);
     this.ui.toast(`Forged a ${ITEMS[r.tool].name}!`, 'good');

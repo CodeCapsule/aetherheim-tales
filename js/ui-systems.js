@@ -391,8 +391,26 @@ const P = {
     // Gorm runs the forge; Opal's Gem Workshop is the same window with only the Gems tab
     const gems = this.station?.npc === 'opal';
     if (gems) this.sel.fgTab = 'gems'; else if (this.sel.fgTab === 'gems') this.sel.fgTab = 'enhance';
-    const tab = this.tabs(body, 'fgTab', gems ? [['gems', 'Gems']] : [['enhance', 'Enhance'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['salvage', 'Salvage']]);
+    const tab = this.tabs(body, 'fgTab', gems ? [['gems', 'Gems']] : [['enhance', 'Enhance'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['salvage', 'Salvage'], ['repair', 'Repair']]);
     if (tab === 'enhance') this.forgeEnhance(body);
+    else if (tab === 'repair') {
+      // durability: worn gear loses 10% each time you fall; broken gear gives no stats
+      const list = g.repairList();
+      body.appendChild(h('div', 'note', 'Gear loses durability each time you fall and gives no stats once broken. Red and Ancient gear also need rare materials to mend.'));
+      const L = h('div', 'list');
+      for (const s of SLOTS) {
+        const eq = S.equip[s]; if (!eq) continue;
+        const d = eq.dur ?? 100;
+        L.appendChild(h('div', 'row slim', `<div class="ic q${eq.quality}">${ico(eq.icon)}</div><div class="tx"><b style="color:${RARITY[eq.quality].color}">${esc(eq.name)}</b>${d === 0 ? '<span class="bad">Broken</span>' : `Durability ${d}/100`}</div>`));
+      }
+      if (!L.children.length) L.appendChild(h('div', 'muted', 'You are not wearing any gear.'));
+      body.appendChild(L);
+      const c = g.repairTotal();
+      const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px';
+      acts.appendChild(h('span', 'needs', list.length ? this.costLine(c) : '<span class="muted">Everything is in good repair.</span>'));
+      const b = h('button', 'btn green', 'Repair All'); b.disabled = !list.length || !g.canAfford(c); b.onclick = () => g.repairAll(); acts.appendChild(b);
+      body.appendChild(acts);
+    }
     else if (tab === 'craft') {
       const L = h('div', 'list');
       for (const r of RECIPES) {

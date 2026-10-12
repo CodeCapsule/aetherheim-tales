@@ -26,22 +26,65 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   (110-140), Shadow Fen (140-170), Starfall Plateau (170-200) and the Yggdrasil Gate (190-200). Each has its own biome,
   about five new monster types, elites, a field boss and an outpost camp with a merchant and a teleport point. The level
   cap is 200, and monster HP grows faster than their damage, so high-level monsters take far longer to kill.
-- **4 classes, each tied to one of the four elements**: Knight (Earth), Assassin (Wind), Mage (Fire) and Priest (Water). Each class has 6 skills and a dual talent.
-- **Skill trees and passive skills**: every class has its own tree with three branches (Knight: Bulwark, Warlord,
-  Crusader; Assassin: Shadow, Venom, Tempest; Mage: Pyromancy, Arcane, Cataclysm; Priest: Holy, Tide, Blessing) of 24
-  nodes in five tiers. You earn a skill point every level up to Lv 50 and one every 4 levels after that (86 at Lv 200).
-  Nodes raise stats (Max HP, Attack, Defense, Crit, cooldowns, healing, lifesteal, regeneration), empower one active
-  skill, or are **passive skills** that work on their own in combat: last-stand damage reduction, thorns, cleave,
-  heals on kill, stuns, openers and executes, poison and burn procs, dodge, double strikes, chain lightning, mana on
-  kill. Each branch ends in a capstone (for example Unbreakable, Death Mark, Meteor Shower, Avatar of Water). Deeper
-  tiers open after 5/10/20/30 points in the branch. The Skills window has Skills and Skill Tree tabs and lists your
-  active and passive skills; a reset refunds every point for 200 Gold per level.
+- **Heroes in a chunky toy style**: players and townsfolk are built from rounded, soft-shaded blocks (big heads, short
+  bodies, bright gear), like the KayKit Adventurers pack. Every class wears its own kit: helm, tabard, sword and shield
+  for the Guardian, a fur hood and greataxe for the Berserker, hood, mask and twin daggers for the Shadowblade, a
+  feathered hat, quiver and longbow for the Ranger, a witch hat and staff for the Elementalist, a circlet, scepter and
+  orb for the Tideweaver, an antlered hood and tome for the Summoner, and glowing runes and a runesword for the
+  Spellblade. Your appearance (and any costume) is shared with other players.
+- **Four races, eight classes**: Human (+5% XP from quests), Sylvan (tall elves with glowing tattoos, +5% Survival
+  mastery), Draken (horns and scales, +5% Max HP) and Beastkin (wolf, fox or cat ears and tail, +5% move speed). Any
+  race can play any class: Guardian (tank), Berserker (melee), Shadowblade (assassin), Ranger (ranged), Elementalist
+  (mage), Tideweaver (healer), Summoner (controller) and Spellblade (hybrid).
+- **Character creation**: sliders for face shape and width, eyes, nose, build and height, voice, hair style and color,
+  beards, makeup, scars and tattoos, with no gender or race lock. Save up to six presets and share them as codes. The
+  Wardrobe re-customizes your hero: free once a month, then for gold.
+- **Skills**: every class has 15 core skills (10 active, 5 passive) learned from Lv 1 to 90, and two awakening paths
+  from Lv 100 with a new skill every 10 levels up to an ultimate at Lv 200. You get one skill point per level and three
+  per cleared trial; each skill has 10 ranks, and ranks above 5 need weapon mastery of 10 x the rank. Passives are
+  always on. Your loadout holds 6 actives and the ultimate (keys 1-7). Respec is free in town once a day; switching
+  paths costs a Trial Sigil.
+- **Action combat**: dodge roll (Space) with invulnerable frames, where the first 0.2 s is a perfect dodge; Guardians
+  block from the front (hold Shift; a just-in-time block stops the hit); parries; aimed skills that land at the cursor
+  (or straight ahead); a stamina bar for rolls. Auto-hit (T) fights the nearest enemy from where you stand but never
+  moves, dodges or picks a path, and it is off inside dungeons and trials.
+- **Earned levels**: the next level takes floor(500 x L^2.2) XP (about 57 million from 199 to 200). Killing the same
+  monster type over and over pays 5% less each time (down to 10%, recovering while you hunt elsewhere); monsters 3-5
+  levels below you give 60%, 6-9 levels 20% and 10+ nothing. First visits pay discovery XP: a new zone 2% of a level, a
+  hidden ruin 8%, a lore book 3%, a rare or elite first kill 10%, a waystone 5%. Dying drops 5% of the level as a soul
+  marker you can walk back to within 10 minutes (it never costs a level). Parties of 2-5 get +10% per extra member, and
+  a lower-level member grouped with someone 10+ levels above keeps the full XP of their own kills. Time offline banks
+  rested XP (1% of a level per hour, up to half a level).
+- **Masteries**: Weapon (hits and skills with your weapon type), Defense (blocks, dodges and parries; a perfect dodge
+  counts three times) and Survival (exploring, gathering, crafting, cooking) run from 1 to 200. A full XP bar waits
+  until all three reach the bracket minimum (10, 30, 50 ... 190). They only grow against enemies within 5 levels, and
+  auto-hit kills in the open world give half. The Hero window always shows XP left, mastery gaps and the next trial.
+- **Breakthrough trials**: a wall stands at Lv 20, 40, 60 ... 180, with the Final Ascension at 200. At Thalia the Trial
+  Warden (Sylvan Haven) you craft a Trial Sigil from your bracket's ore, wood, herbs and spirit dust. Each trial is a
+  solo fight where every hero of your class has the same stats, so only skill counts: I The Gate Warden (a duel against
+  telegraphed attacks), II Lost Road (reach a shrine across a valley in 15 minutes with no map, only spoken directions
+  and landmarks), III Twin Blades (two foes who take turns; interrupt Rising Fury), IV Hunger (survive 20 minutes with
+  no potions, cooking meat and foraged food at a campfire), V The Mirror (your own class and loadout), VI Ashen
+  Labyrinth (a maze that shifts, fire vents, a hidden exit), VII Stormcaller (the pattern changes every third of its
+  health), VIII Gauntlet (five bosses, no healing between), IX The Silent Keeper (no visual tells, only a rumble, a
+  chime and a hiss; captions in Settings) and the Final Ascension (all of it at once). A failed attempt keeps your XP
+  and mastery and uses the sigil. A clear grants a title, an aura other players see and 3 skill points, and the first
+  clears on each server go on the Hall of Firsts.
+- **Cooking**: campfires in town, at every outpost and in the Hunger trial cook Raw Meat (from beasts), crops and herbs
+  into skewers, bread, stew, pie, a feast and starberry soup: food heals over time and some dishes add a 2-minute bonus.
+- **Finding your way**: there is no auto-path and no quest beacon. The map fills in only where you have walked; every
+  zone has three or four tall landmarks (windmills, watchtowers, giant trees, statues, arches, crystal spires); quest
+  givers tell you the way in words ("Head east, a fair walk, into Breezy Meadow. Look for the Windmill Spire...") and
+  the journal in the Quest Log keeps their exact wording; the compass points north. Clicking walks you only to what you
+  can see. Waystones at every outpost wake when you reach them on foot and are the only fast travel. Hidden ruins, lore
+  books and Survey Maps (copied by players with Survival mastery 20+, tradable, they reveal a zone) reward exploring.
+  Repeated identical input over a long time flags the account for the Game Master to review.
 - **Main story**: six chapters and 58 quests from Lv 1 to Lv 200. Chapter I (The Restless Spirits) ends with the
   Treant King Yggr; Chapter II (The Withering Bloom, Sunpetal Plains and Whispering Marsh), III (Embers of the Old War,
   Ember Canyon and Frostpeak), IV (The Crystal Choir), V (Shadows Beneath the Roots) and VI (Starfall, ending in the
   Throne of Yggdrasil) follow the zones. Objectives include kills, quest-item collection, field bosses, dungeon clears
   and level gates (a quest waits until you reach its level, shown in the tracker). Chapter finales award titles, pets,
-  mounts and Unique or Legendary gear. The quest tracker auto-paths to the next step, including dungeon entrances.
+  mounts and Unique or Legendary gear. Click the quest tracker for directions to the next step.
 - **Pets, sprites, mounts and wings**: 27 collectible pets that fight beside you (up to Lv 60), 4 elemental sprites,
   13 mounts and fairy wings. New pets and mounts drop from the new monsters and bosses or are sold by Mimi and Brom.
 - **Pet abilities**: every pet lends you its own ability while summoned, and it grows each time you feed the pet.
@@ -68,8 +111,8 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   Inside, players can attack each other (party members excepted; hits between players deal 40% of their monster
   damage). Whoever falls drops 10% of their gold and up to 3 unlocked bag items in a loot sack on the spot; the first
   player to reach it takes everything, and the owner can run back within 5 minutes to reclaim it. Monsters inside are
-  highly lethal (always a few levels above you, twice the attack, more HP) and drop **Ancient set** pieces, a new
-  orange-red tier above the dungeon sets: Bloodmoon (kills heal and boost Attack), Dreadforge (less damage taken,
+  highly lethal (always a few levels above you, twice the attack, more HP) and drop pieces of the four **Ancient sets**
+  (their tier follows the monster's level; true Ancient-tier pieces drop from Lv 180, one per account per season): Bloodmoon (kills heal and boost Attack), Dreadforge (less damage taken,
   stuns attackers), Voidwalker (void rifts every 8s) and Kingslayer (+30% damage to players, elites and bosses). The
   Bloodmoon Tyrant guards the center. The sky turns red while you are inside and enemy players get red nameplates.
 - **Dungeon sets**: each dungeon's chest can hold a piece of its own four-piece set (always on the first clear, then
@@ -80,18 +123,30 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   craft, upgrade, salvage, smithing, Crimson Forge), Opal the Gemcutter (Gem Workshop), Vera the Alchemist (alchemy),
   Mira the Market Merchant (Market and Auction House), Grimsby the Auctioneer, Aldric the Guild Master (guilds and guild
   wars) and Coco the Costume Tailor (Wardrobe). Their old hotkeys and mission buttons walk you to the NPC and open the
-  window when you arrive; walking away closes it. The World Map lists them under Town services with a Go button.
+  window when you are close; from farther away they tell you where to find the keeper. The World Map lists them
+  under Town services.
 - **NPC role icons**: every NPC has an icon before their name (an anvil for Gorm, a gem for Opal, a potion stand for
   Vera, a paw for Mimi...). The same icons mark them on the minimap, and the World Map's **Sylvan Haven** tab shows the
-  whole town with each keeper's icon and name: tap one to walk over and talk.
+  whole town with each keeper's icon and name.
 - **Relic collections and Red gear**: every dungeon hides four collection relics (crown, seal, idol and tome) dropped by
   its monsters and chest. Completing a set gives a permanent Attack and HP bonus. Four relics of one dungeon, a Crimson
   Core, Star Essence and gold forge a **Red** item at the Crimson Forge: the new top rarity, with four affixes, a
   legendary power and three gem sockets.
-- **Loot**: gear drops on the ground with a light beam in its rarity color across six tiers: Common, Uncommon, Rare,
-  Special, Unique and Legendary. Rare and better items roll bonus affixes (lifesteal, crit damage, cooldowns, thorns and
-  more). Unique and Legendary items are named and carry a special power, such as chain lightning, meteor strikes every
-  6th hit, phoenix rebirth or a healing nova. Loot auto-collects (toggle in Settings).
+- **Eight item tiers**: Common (white, x1.0), Uncommon (green, x1.2, a bonus stat), Rare (blue, x1.5, two, Lv 20+),
+  Special (purple, x1.9, two plus a small passive, Lv 40+), Unique (orange, x2.4, a named power, Lv 60+), Legendary
+  (gold, x3.0, Lv 100+), Red (crimson, x3.8, awakens one of your skills, Lv 140+) and Ancient (bronze glow, x5.0, your
+  name engraved, one per account per season, Lv 180+). World drops follow 60 / 25 / 10 / 3.5 / 1.2 / 0.25%, and no tier
+  drops below its level. Wearing an item needs weapon mastery equal to its tier's level. Legendary and up are
+  account-bound and glow around you for every player to see. Gear loses durability each time you fall (Gorm repairs
+  it; Red and Ancient need rare materials). Items can climb one tier at the Forge (Red never becomes Ancient).
+- **Six-piece sets** (helmet, armor, gloves, boots, necklace, ring; bonuses at 2, 4 and 6 pieces): Wayfarer's Garb,
+  Ironbound Guard, Shadowstep, Emberheart, Tidewarden, Crown of the Fallen King, Bloodsworn Pact and Relics of the First
+  Dawn, plus the beast sets Minotaur, Griffin, Basilisk, Hydra, Kraken, Cerberus, Phoenix, Fenrir and Jörmungandr. They
+  drop from field elites, world bosses, dungeon chests, hidden ruins and trials. Battle Rating is level x 100 + gear x
+  tier multiplier + average mastery x 50, and it is only a guide: content gates use level, mastery and trials.
+- **Loot**: gear drops on the ground with a light beam in its rarity color. Unique and Legendary items are named and
+  carry a special power, such as chain lightning, meteor strikes every 6th hit, phoenix rebirth or a healing nova. Loot
+  auto-collects (toggle in Settings).
 - **Daily and weekly missions**: a fresh set of daily missions every day and weekly missions every Monday (00:00 UTC),
   tracked automatically. Missions cover kills, dungeons, crafting, trading, donations, world bosses and guild wars. Claimed
   missions fill an activity bar with treasure chests (daily 20/40/60/80/100, weekly 150/300/450/600).
@@ -133,13 +188,13 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   one click below.
 - **Play together (real time)**: on the website, everyone who picks the same server on the title screen shares one
   world. You see each other walk, ride and wear costumes, your chat reaches everyone on the server, and the **Online**
-  panel lists who is on with a Go to button that teleports you next to a friend. Monsters, loot and progress stay
+  panel lists who is on and tells you where they are. Monsters, loot and progress stay
   separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
   Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
   key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
-- **Parties**: click another player and press **Invite** (or use the Online panel) to team up, up to 4 players.
+- **Parties**: click another player and press **Invite** (or use the Online panel) to team up, up to 5 players.
   Party members within 60 m of a kill share its EXP: the kill's EXP is split between everyone nearby, plus 10% per extra
-  member, and each member's own level penalty and EXP boosts apply to their share. The party frame under your wallet
+  member, and each member's own level gap and EXP boosts apply to their share. The party frame under your wallet
   shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
   the earliest member leads and can remove players, and reloading the page keeps you in your party.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
@@ -165,15 +220,15 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 - **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. Your equipped gear is shown inside
   the Bag window, next to the slots (tap a piece to see it or take it off), with the selected item's details below it.
   **Sell All** sells everything up to a chosen rarity in one go; locked gear is always kept.
-- **MMO systems**: Battle Rating, bag, skill upgrades, auto battle, auto potions, titles, daily sign-in, online gifts,
-  a gold/diamond mall, world and guild chat, minimap and world map.
+- **MMO systems**: Battle Rating, bag, auto-hit, auto potions, titles, daily sign-in, online gifts, a gold/diamond mall
+  (no XP or progress for sale), world and guild chat, minimap and world map.
 - **Quick access menus**: activities sit in a slim panel at the top right (Online, Missions, Dungeon, the World Boss
   timer) and the character menu in a compact panel at the bottom right (Hero, Bag, Skills, Pets, Gathering, Quests,
   Map). **More** expands each panel to the rest and collapses again when you pick something or click away; a red dot
   on More means something inside is waiting.
 - **Phones and tablets**: on small screens the HUD docks to a bar along the bottom (Events, Hero, Bag, Skills, Quests,
   Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
-  dot marks a sheet with something waiting. The skill bar sits above the dock with Auto and Mount beside it, a joystick
+  dot marks a sheet with something waiting. The skill bar sits above the dock with Mount, Auto, Roll and Block above it, a joystick
   in the bottom-left corner walks your hero (one thumb walks while the other turns the camera; tapping the ground still
   works), and the layout also works in landscape.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
@@ -182,14 +237,15 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
 
 | Action | Input |
 | --- | --- |
-| Move / attack / talk | Click (or tap) the ground, a monster or an NPC; WASD also moves |
+| Move / attack / talk | Click (or tap) the ground you can see, a monster or an NPC; WASD also moves |
 | Camera | Drag to rotate, scroll or pinch to zoom |
-| Skills | 1–6 |
+| Skills | 1–6, ultimate 7 |
+| Dodge roll / block | Space / hold Shift (Guardians) |
 | Potions | Q (HP), E (MP) |
-| Mount / Auto battle | R / T |
+| Mount / Auto-hit | R / T |
 | Panels | C character, B bag, K skills, P pets, U mounts, Z professions, L quests, M map, O settings |
 | Live systems | H missions, X codex, J season pass; Y forge, N market, G guild and V wardrobe walk you to their NPC |
-| Other | Space jump, Tab next target, F talk, Enter chat, Esc close |
+| Other | Tab next target, F talk, Enter chat, Esc close |
 
 Progress saves to the browser's local storage. Daily and weekly resets, world boss times and seasons follow the real clock (UTC).
 The only other players in the world are real ones on your server (see Play together). Guildmates, guild war rivals,
@@ -199,7 +255,13 @@ market buyers and auction bids are simulated, so those systems also work solo.
 
 | File | Purpose |
 | --- | --- |
-| `js/data.js` | Classes, skills, monsters, pets, mounts, quests and other tables |
+| `js/data.js` | Monsters, pets, mounts, quests and other tables |
+| `js/data-classes.js`, `js/combat.js`, `js/combat-world.js` | Races, the eight classes and their skills; the skill book, loadout, rolls, blocks, parries and every skill's effect |
+| `js/models-hero.js`, `js/customizer.js` | Toy-style heroes and the character customizer (sliders, presets, share codes) |
+| `js/progress.js` | XP curve, masteries, trial walls, diminishing returns, discovery XP, soul markers, rested XP, explored-map grid, Battle Rating |
+| `js/data-trials.js`, `js/trials.js`, `js/ui-trials.js` | Breakthrough trials, sigils, cooking, auras and the Hall of Firsts |
+| `js/data-nav.js`, `js/nav-world.js` | Landmarks, waystones, spoken directions and journal, hidden ruins, lore books, survey maps, fair-play check |
+| `js/gear.js` | Mastery lock, durability and repairs, binding, gear glow, Ancient items, six-piece set powers and drops |
 | `js/data-world.js` | Expanded world content: outer zones, Lv 16-200 monsters, dungeons 4-11, relics, professions, crops, recipes, costumes, shops |
 | `js/life.js` | Gathering nodes, farming, alchemy, smithing, elixirs, costumes, relic collection and Red gear |
 | `js/economy.js` | Bag expansion, Sell All, NPC shops and the Auction House |
@@ -209,9 +271,8 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
-| `js/data-sets.js` | Dungeon sets: pieces, two-piece stats and four-piece powers |
+| `js/data-sets.js` | Dungeon sets, Ancient sets and the 17 six-piece sets with their powers |
 | `js/data-pets.js` | Pet abilities and how they grow with pet level |
-| `js/data-skills.js`, `js/skilltree.js` | Class skill trees: nodes, skill points, and the passive effects in combat |
 | `js/data-crafting.js`, `js/gather.js` | Gathering tools (items, forging recipes, the tool in hand and the swing animations) |
 | `js/tailor.js` | Tailoring: costume patterns, dyes and cloth drops |
 | `js/data-dz.js`, `js/dz.js` | Danger Zone: monsters, PvP between players, loot sacks and Ancient set powers |
@@ -224,7 +285,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/systems.js` | Missions, guilds, guild wars, world bosses, materials, crafting, market, gear upgrades, codex, festivals, season pass and leaderboards |
 | `js/systems-data.js` | Tables for the systems above (missions, recipes, guilds, market goods, festivals, season rewards) |
 | `js/models-event.js` | World bosses, festival monsters and pets, guild war crystals |
-| `js/loot.js` | Rarity tiers, affixes, named Unique/Legendary items and loot rolls |
+| `js/loot.js` | The eight rarity tiers, affixes, named Unique/Legendary items, set pieces and loot rolls |
 | `js/dungeon.js` | Dungeon and guild-war arena environments, rune seals, chests, exit portals and overworld entrances |
 | `js/models-dungeon.js` | Dungeon monsters and bosses |
 | `js/nav.js` | Walkability grid and A* pathfinding shared by the world and dungeons |

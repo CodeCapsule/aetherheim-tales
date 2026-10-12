@@ -19,6 +19,7 @@ import { buildEventMonster } from './models-event.js';
 import { glowTexture, toon, outlineMaterial } from './toon.js';
 import { curveStats, MAX_LEVEL } from './data-world.js';
 import { randomGemType, stoneFor } from './upgrade.js';
+import { xpNext } from './progress.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
@@ -391,7 +392,7 @@ const M = {
     const S = this.S, p = this.player, G = S.guild;
     if (!G) { this.ui.toast('Join a guild to fight in Guild Wars', 'warn'); return false; }
     if (S.level < WAR.lv) { this.ui.toast(`Guild Wars unlock at Lv ${WAR.lv}`, 'warn'); return false; }
-    if (this.dg || this.war || p.dead) { this.ui.toast('Not available right now', 'warn'); return false; }
+    if (this.dg || this.war || this.trial || p.dead) { this.ui.toast('Not available right now', 'warn'); return false; }
     if (this.warEntriesLeft() <= 0) { this.ui.toast('No Guild War entries left today', 'warn'); return false; }
     G.warUsed++;
     const opp = pick(GUILD_LIST.filter((g) => g.name !== G.name));
@@ -618,7 +619,7 @@ const M = {
     if (G) { G.contribTotal += r.contrib; this.addGuildExp(win ? 120 : 50, true); if (win) G.wins++; else G.losses++; }
     if (win) { this.track('warWin'); S.season.warWins++; this.addSeasonExp(SEASON_EXP.warWin); if (G && G.wins >= 10) this.unlockTitle('Warlord'); }
     this.addSeasonExp(SEASON_EXP.war);
-    this.gainExp(Math.round(needExpL(L) * (win ? 0.12 : 0.06)));
+    this.gainExp(Math.round(xpNext(L) * (win ? 0.06 : 0.03)));
     this.sfx.play(win ? 'level' : 'error');
     this.ui.banner(win ? 'VICTORY!' : 'DEFEAT', `${S.guild?.name || 'You'} ${W.score.us} : ${W.score.them} ${W.opp.name}`, win ? 'clear' : 'boss');
     const why = reason === 'crystal' ? (win ? 'You shattered their Spirit Crystal!' : 'Your Spirit Crystal fell...') : 'Time ran out: the healthier crystal wins.';
@@ -713,18 +714,10 @@ const M = {
     this.ui.refreshQuest(); this.save();
   },
   goToWorldBoss() {
-    if (this.dg || this.war) { this.ui.toast('Leave the instance first', 'warn'); return; }
-    const s = WORLD_BOSS.site, p = this.player;
+    if (this.dg || this.war || this.trial) { this.ui.toast('Leave the instance first', 'warn'); return; }
+    const s = WORLD_BOSS.site;
     this.ui.closePanels();
-    if (flat(p.pos, s) > 60) {
-      this.castBar(`Teleporting to the ${WORLD_BOSS.name}`, 1.4, () => {
-        const [x, z] = this.world.nearestFree(s.x - 10, s.z + 12);
-        this.fx.pillar(p.pos, 0x7ad8ff, 1.6, 10, 0.8);
-        p.pos.set(x, this.world.heightAt(x, z), z); p.path = []; this.cam.target.copy(p.pos);
-        if (this.pet) this.pet.pos.set(x - 1.5, p.pos.y, z - 1);
-        this.fx.pillar(p.pos, 0x7ad8ff, 1.6, 10, 1.0); this.sfx.play('cast');
-      });
-    } else this.pathTo(s.x - 6, s.z + 8, true);
+    this.giveDirections(s.x, s.z, `the ${WORLD_BOSS.name}`, null, false);
   },
 
   // ============================================================ crafting, salvage, gems, gear progression
@@ -798,10 +791,14 @@ const M = {
   ascend(ref) {
     const eq = this.refItem(ref), S = this.S; if (!eq) return;
     if (eq.set) { this.ui.toast('Set pieces cannot be ascended', 'warn'); return; }
-    const A = ASCEND[eq.quality]; if (!A) { this.ui.toast('Already Legendary', 'warn'); return; }
+    const A = ASCEND[eq.quality]; if (!A) { this.ui.toast(eq.quality >= 6 ? 'Red cannot be crafted into Ancient' : 'Already Legendary', 'warn'); return; }
+    // an item climbs one tier at most, and only to a tier its level allows
+    if (eq.climbed) { this.ui.toast('This item has already climbed a tier', 'warn'); return; }
+    if (RARITY[eq.quality + 1].min > eq.lvl) { this.ui.toast(`${RARITY[eq.quality + 1].name} needs an item of Lv ${RARITY[eq.quality + 1].min}+ (re-temper it first)`, 'warn'); return; }
     if (!this.pay({ gold: A.gold, mats: A.mats })) return;
     const before = eq.name;
     ascendItem(eq, S.cls);
+    eq.climbed = true; if (eq.quality >= 5) eq.bound = true;
     if (eq.named) this.registerNamed(eq);
     if (eq.quality >= 4) {
       this.ui.banner(eq.quality === 5 ? 'LEGENDARY!' : 'UNIQUE!', eq.name, 'loot' + eq.quality);
@@ -1111,7 +1108,6 @@ const M = {
   },
 };
 
-function needExpL(l) { return Math.floor(70 * Math.pow(l, 1.6) + 30); }
 
 export function installSystems(Game) { Object.assign(Game.prototype, M); }
 export { GEMS, GEM_LV };

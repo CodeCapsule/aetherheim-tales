@@ -14,6 +14,7 @@ import { ico } from './icons.js';
 import { mp, mpEnabled, SERVERS, serverName } from './mp.js';
 import { TOOL_KINDS, TOOL_RECIPES, TOOL_TIERS, TOOL_FOR_NODE, DYES, costumeRecipe } from './data-crafting.js';
 import { CLASSES } from './data.js';
+import { buildCustomizer } from './customizer.js';
 
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
@@ -218,10 +219,34 @@ const P = {
   },
 
   // ------------------------------------------------------------ wardrobe
+  // re-customize the hero: free once a month, later changes cost gold (never diamonds)
+  changeLook(body) {
+    const g = this.g, S = g.S;
+    if (!this.lookDraft) this.lookDraft = { cls: S.cls, app: { ...S.app } };
+    const st = this.lookDraft;
+    const cost = g.lookCost();
+    const head = h('div', 'sk-head', `<span class="muted">${cost ? `Your free change this month is used: another one costs <b>${fmt(cost)}</b> Gold.` : 'Your free appearance change for this month is available.'} Race and body can change too; class cannot.</span>`);
+    body.appendChild(head);
+    const wrap = h('div', 'wd-wrap');
+    const pv = h('div', 'wd-prev');
+    const img = new Image(); img.alt = ''; pv.appendChild(img);
+    const redraw = () => { img.src = g.lookPreview(st.app); };
+    redraw();
+    wrap.appendChild(pv);
+    const cz = h('div', 'wd-cz'); wrap.appendChild(cz);
+    body.appendChild(wrap);
+    buildCustomizer(cz, st, () => redraw(), { showClass: false, sfx: g.sfx });
+    const acts = h('div', 'acts');
+    const save = h('button', 'btn green', cost ? `Save look · ${fmt(cost)} Gold` : 'Save look (free)');
+    save.onclick = () => { if (g.saveLook(st.app)) this.lookDraft = null; };
+    const reset = h('button', 'btn gray', 'Undo changes'); reset.onclick = () => { this.lookDraft = null; this.renderPanel(); };
+    acts.appendChild(save); acts.appendChild(reset); body.appendChild(acts);
+  },
   panel_wardrobe(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'wdTab', [['outfit', 'Outfits'], ['head', 'Headwear'], ['back', 'Wings'], ['tailor', 'Tailoring']]);
+    const tab = this.tabs(body, 'wdTab', [['outfit', 'Outfits'], ['head', 'Headwear'], ['back', 'Wings'], ['tailor', 'Tailoring'], ['look', 'Change Look']]);
     if (tab === 'tailor') { this.tailoring(body); return; }
+    if (tab === 'look') { this.changeLook(body); return; }
     const wrap = h('div', 'wd-wrap');
     const pv = h('div', 'wd-prev', `<img src="${g.fullIcon()}" alt=""><small>Costumes are cosmetic only and never change your stats.</small>`);
     wrap.appendChild(pv);
@@ -308,7 +333,7 @@ const P = {
       const src = this.sel.aucSrc;
       const grid = h('div', 'grid-bag sm');
       const cells = [];
-      S.bag.forEach((b, i) => { if ((b.eq && !b.eq.lock) || (ITEMS[b.id] && ITEMS[b.id].type !== 'quest')) cells.push({ src: { bag: i }, icon: b.eq ? b.eq.icon : b.id, q: b.eq ? b.eq.quality : ITEMS[b.id].quality, n: b.eq ? 0 : b.qty, eq: b.eq, id: b.id }); });
+      S.bag.forEach((b, i) => { if ((b.eq && !b.eq.lock && !g.isBound(b.eq)) || (ITEMS[b.id] && ITEMS[b.id].type !== 'quest')) cells.push({ src: { bag: i }, icon: b.eq ? b.eq.icon : b.id, q: b.eq ? b.eq.quality : ITEMS[b.id].quality, n: b.eq ? 0 : b.qty, eq: b.eq, id: b.id }); });
       Object.keys(S.mats).filter((id) => !MATERIALS[id].notrade).forEach((id) => cells.push({ src: { mat: id }, icon: MATERIALS[id].icon, q: MATERIALS[id].quality, n: S.mats[id], id }));
       for (const c of cells) {
         const on = src && ((src.bag !== undefined && src.bag === c.src.bag) || (src.mat && src.mat === c.src.mat));
@@ -402,7 +427,7 @@ const P = {
       const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.heroIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
         <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}${!me && g.partyHas(key) ? ' · <span class="good">Party</span>' : !me && info.party ? ' · <span class="muted">in a party</span>' : ''}</div>`);
       if (!me && !g.partyHas(key) && !info.party) { const b = h('button', 'btn small green', 'Invite'); b.disabled = mp.status !== 'online'; b.onclick = () => g.partyInvite(key); r.appendChild(b); }
-      if (!me) { const b = h('button', 'btn small blue', 'Go to'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
+      if (!me) { const b = h('button', 'btn small blue', 'Where?'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war || !!g.trial; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
       L.appendChild(r);
     };
     row({ name: S.name, level: S.level, cls: S.cls, guild: S.guild?.name, zone: g.zone?.name }, true);

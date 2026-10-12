@@ -1,6 +1,6 @@
 // Boot: renderer, title screen, character creation, loading and the main loop.
 import * as THREE from 'three';
-import { CLASSES, TIPS } from './data.js';
+import { CLASSES, CLASS_ORDER, TIPS } from './data.js';
 import { World } from './world.js';
 import { SPAWNS } from './data.js';
 import { FX } from './fx.js';
@@ -9,7 +9,9 @@ import { Sfx } from './sfx.js';
 import { Portraits } from './portrait.js';
 import { Game, newSave, migrateSave, SAVE_KEY } from './game.js';
 import { ico } from './icons.js';
-import { buildHumanoid, classLook, HAIR_COLORS, EYE_COLORS, animateHumanoid } from './models.js';
+import { buildHumanoid, heroLook, animateHumanoid } from './models.js';
+import { cleanApp } from './models-hero.js';
+import { buildCustomizer, randomApp } from './customizer.js';
 import { magicCircleTexture } from './toon.js';
 import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
@@ -180,42 +182,35 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;',
 const SYL_A = ['Ae', 'Lu', 'Ri', 'Sel', 'Fae', 'Ka', 'Mi', 'No', 'Va', 'Ely', 'Thal', 'Zy', 'Ori', 'Cel', 'Yu', 'Ne'];
 const SYL_B = ['ra', 'na', 'lia', 'ris', 'wen', 'vyn', 'dor', 'mir', 'iel', 'ka', 'sha', 'nor', 'ssa', 'thas', 'rin', 'le'];
 const randName = () => SYL_A[(Math.random() * SYL_A.length) | 0] + SYL_B[(Math.random() * SYL_B.length) | 0] + (Math.random() < 0.3 ? SYL_B[(Math.random() * SYL_B.length) | 0] : '');
-
 function showCreate() {
   mode = 'create'; stopPeek();
   $('scr-title').hidden = true; $('scr-create').hidden = false;
-  const st = { cls: 'knight', gender: 'f', hair: HAIR_COLORS[0], eye: EYE_COLORS[0] };
+  const st = { cls: 'knight', app: randomApp('human') };
+  st.app.helm = true;
   const stage = new THREE.Group(); stage.position.set(0, world.heightAt(0, -136) + 0.3, -136); scene.add(stage);
   const circle = new THREE.Mesh(new THREE.CircleGeometry(2.2, 48), new THREE.MeshBasicMaterial({ map: magicCircleTexture('#ffd36b'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   circle.rotation.x = -Math.PI / 2; circle.position.y = 0.06; stage.add(circle);
   const ped = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.3, 40), new THREE.MeshToonMaterial({ color: 0xe8e0d0 })); ped.position.y = -0.12; stage.add(ped);
   preview = { stage, circle, model: null };
-  const rebuild = () => {
+  let pending = 0;
+  const rebuild = (puff = false) => {
     if (preview.model) stage.remove(preview.model);
-    preview.model = buildHumanoid(classLook(st.cls, st.gender, st.hair, st.eye, { wings: true }));
+    preview.model = buildHumanoid(heroLook(st.cls, st.app, {}));
     stage.add(preview.model);
-    fx.spawnPuff(stage.position.clone().setY(0.3), new THREE.Color(CLASSES[st.cls].elemColor).getHex());
+    if (puff) fx.spawnPuff(stage.position.clone().setY(0.3), new THREE.Color(CLASSES[st.cls].elemColor).getHex());
   };
-  const info = () => {
-    const C = CLASSES[st.cls];
-    $('class-info').innerHTML = `<h2>${C.name}</h2><span class="elem" style="background:${C.elemColor}">${C.element} Spirit</span><p>${C.desc}</p>
-      <div class="talents">${C.talents.map((t) => `<div><b>${t.name}</b>${t.role} · ${t.desc}</div>`).join('')}</div>
-      <div class="rating">${Object.entries(C.ratings).map(([k, v]) => `<span>${k}</span><span class="pips">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= v ? 'on' : ''}"></i>`).join('')}</span>`).join('')}</div>`;
-  };
+  // sliders rebuild at most every few frames
+  const soon = () => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; rebuild(); }); };
+  const cz = buildCustomizer($('class-info'), st, soon, { sfx });
   const cl = $('class-list'); cl.innerHTML = '';
-  for (const [id, C] of Object.entries(CLASSES)) {
+  for (const id of CLASS_ORDER) {
+    const C = CLASSES[id];
     const b = document.createElement('button');
     b.className = 'class-card' + (id === st.cls ? ' sel' : '');
-    b.innerHTML = `<span class="ci">${ico(C.icon)}</span><span><b>${C.name}</b><small style="color:${C.elemColor}">${C.element}</small> <small style="color:var(--muted)">· ${C.talents[0].role} / ${C.talents[1].role}</small></span>`;
-    b.onclick = () => { st.cls = id; cl.querySelectorAll('.class-card').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); info(); rebuild(); sfx.play('click'); };
+    b.innerHTML = `<span class="ci">${ico(C.icon)}</span><span><b>${C.name}</b><small style="color:${C.elemColor}">${C.role}</small> <small style="color:var(--muted)">· ${C.weapon}</small></span>`;
+    b.onclick = () => { st.cls = id; cl.querySelectorAll('.class-card').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); cz.render(); rebuild(true); sfx.play('click'); };
     cl.appendChild(b);
   }
-  $('gender-seg').querySelectorAll('button').forEach((b) => b.onclick = () => { st.gender = b.dataset.g; $('gender-seg').querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b)); rebuild(); sfx.play('click'); });
-  const sw = (el, arr, key) => {
-    el.innerHTML = '';
-    arr.forEach((c, i) => { const b = document.createElement('button'); b.style.background = c; b.className = i === 0 ? 'sel' : ''; b.setAttribute('aria-label', key + ' color ' + (i + 1)); b.onclick = () => { st[key] = c; el.querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b)); rebuild(); }; el.appendChild(b); });
-  };
-  sw($('hair-sw'), HAIR_COLORS, 'hair'); sw($('eye-sw'), EYE_COLORS, 'eye');
   $('dice').innerHTML = ico('dice');
   $('name-in').value = randName();
   $('dice').onclick = () => { $('name-in').value = randName(); sfx.play('click'); };
@@ -223,7 +218,8 @@ function showCreate() {
     const name = $('name-in').value.trim();
     if (!/^[\p{L}\p{N} _-]{2,14}$/u.test(name)) { $('name-in').focus(); $('name-in').style.borderColor = '#ff5a4a'; return; }
     sfx.play('quest');
-    const S = newSave({ name, ...st });
+    const app = cleanApp(st.app);
+    const S = newSave({ name, cls: st.cls, gender: app.body === 'a' ? 'm' : 'f', hair: app.hair, eye: app.eye, app });
     scene.remove(stage); preview = null;
     $('scr-create').hidden = true;
     startGame(S);
@@ -233,7 +229,7 @@ function showCreate() {
   renderer.domElement.onpointerdown = (e) => { if (mode === 'create') drag = e.clientX; };
   addEventListener('pointerup', () => { drag = null; });
   addEventListener('pointermove', (e) => { if (drag != null && mode === 'create') { previewYaw += (e.clientX - drag) * 0.01; drag = e.clientX; } });
-  info(); rebuild();
+  rebuild(true);
 }
 
 // ---------------------------------------------------------------- game
@@ -250,7 +246,7 @@ async function startGame(S) {
   await frame();
   loading.hidden = true;
   mode = 'game';
-  sfx.on = S.settings.sound;
+  sfx.on = S.settings.sound; sfx.voice = S.app?.voice ?? 0.5;
   if (!S.settings.shadows) game.setSetting('shadows', false);
   sfx.startMusic();
   game.save();

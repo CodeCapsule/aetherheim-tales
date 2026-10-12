@@ -2,6 +2,7 @@
 // seasons, festival events and leaderboards. Pure data + small pure helpers (no three.js, no DOM).
 import { NEW_MATERIALS, RELICS, NEW_MONSTERS, DUNGEON_MONSTERS, GATHER } from './data-world.js';
 import { TAILOR_MATS } from './data-crafting.js';
+import { RAW_MEAT } from './data-trials.js';
 
 // ---------------------------------------------------------------- time keys (UTC, so every reset happens at 00:00 UTC)
 export const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
@@ -111,6 +112,7 @@ MATERIALS.enh_stone3 = { name: 'Divine Enhancement Stone', icon: 'enh_stone3', q
 const MAT_DESC = { ore: 'Ore mined from a vein. Smelted into gear by Smithing.', herb: 'A wild herb for Alchemy.', wood: 'A log for Smithing.', crop: 'Farm produce for Alchemy and cooking.' };
 for (const [id, [name, quality, price]] of Object.entries(NEW_MATERIALS)) MATERIALS[id] = { name, icon: id, quality, price, desc: MAT_DESC[id.split('_')[0]] || '' };
 for (const [id, [name, quality, price, desc]] of Object.entries(TAILOR_MATS)) MATERIALS[id] = { name, icon: id, quality, price, desc };
+MATERIALS.raw_meat = RAW_MEAT;
 for (const [id, r] of Object.entries(RELICS)) MATERIALS[id] = { name: r.name, icon: id, quality: 5, price: 4000, relic: r.dungeon, desc: 'A dungeon collection relic. Register it in the Collection and combine a full set of four into Red gear at the Forge.' };
 
 // [material, chance, min, max] rolled when a tagged monster dies
@@ -150,14 +152,14 @@ export const RECIPES = [
 ];
 
 // ---------------------------------------------------------------- gear progression
-export const SOCKETS = [0, 1, 1, 2, 2, 3, 3]; // sockets per rarity tier
+export const SOCKETS = [0, 1, 1, 2, 2, 3, 3, 3]; // sockets per rarity tier (Common ... Ancient)
 export const GEM_COMBINE = [null, { gold: 300 }, { gold: 1200 }, { gold: 5000 }, { gold: 20000 }]; // 3x level n -> 1x level n+1 (index = n)
 export const ASCEND = [ // indexed by current quality
   { to: 1, mats: { spirit_dust: 4 }, gold: 200 },
   { to: 2, mats: { spirit_dust: 8, spirit_shard: 1 }, gold: 800 },
-  { to: 3, mats: { spirit_shard: 4, golem_core: 2 }, gold: 3000 },
-  { to: 4, mats: { spirit_shard: 10, star_essence: 3 }, gold: 15000 },
-  { to: 5, mats: { spirit_shard: 20, star_essence: 6 }, gold: 50000 },
+  { to: 3, mats: { spirit_shard: 4, golem_core: 2, ore_silver: 6 }, gold: 3000 }, // materials from the next tier's lands
+  { to: 4, mats: { spirit_shard: 10, star_essence: 3, ore_mithril: 6 }, gold: 15000 },
+  { to: 5, mats: { spirit_shard: 20, star_essence: 6, ore_starmetal: 8 }, gold: 50000 },
 ];
 export const reforgeCost = (eq) => ({ mats: { spirit_dust: 3 + eq.quality * 3, ...(eq.quality >= 4 ? { spirit_shard: eq.quality - 2 } : {}) }, gold: 150 * (eq.quality + 1) * (1 + eq.lvl / 10) | 0 });
 export const retemperCost = (eq, lvl) => ({ mats: { spirit_dust: Math.max(2, (lvl - eq.lvl) * 2) }, gold: Math.round(90 * (lvl - eq.lvl) * (eq.quality + 1)) });

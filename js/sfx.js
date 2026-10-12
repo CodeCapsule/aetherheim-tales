@@ -1,6 +1,6 @@
 // Tiny WebAudio synth for UI/combat sounds and a gentle procedural town melody.
 export class Sfx {
-  constructor() { this.ctx = null; this.on = true; this.music = null; }
+  constructor() { this.ctx = null; this.on = true; this.music = null; this.voice = 0.5; }
   ensure() {
     if (!this.ctx) {
       try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { this.ctx = null; }
@@ -34,7 +34,14 @@ export class Sfx {
       case 'click': this.tone(880, 0.06, { type: 'triangle', vol: 0.15 }); break;
       case 'hit': this.noise(0.08, { vol: 0.18, hp: 1500 }); this.tone(220, 0.08, { type: 'square', vol: 0.05, slide: -100 }); break;
       case 'crit': this.noise(0.14, { vol: 0.25, hp: 900 }); this.tone(520, 0.15, { type: 'sawtooth', vol: 0.06, slide: -300 }); break;
-      case 'hurt': this.tone(160, 0.12, { type: 'square', vol: 0.06, slide: -60 }); break;
+      case 'hurt': this.tone(160, 0.12, { type: 'square', vol: 0.06, slide: -60 }); this.grunt(0.55); break;
+      case 'voice': this.grunt(1); break;
+      case 'rumble': this.noise(1.1, { vol: 0.35, hp: 60 }); this.tone(55, 1.1, { type: 'sine', vol: 0.32, slide: -15, attack: 0.15 }); break;
+      case 'chime': [1568, 2093].forEach((f, i) => this.tone(f, 0.7, { type: 'sine', vol: 0.14, delay: i * 0.12 })); break;
+      case 'hiss': this.noise(0.9, { vol: 0.22, hp: 5000 }); break;
+      case 'sizzle': this.noise(0.5, { vol: 0.12, hp: 3000 }); this.noise(0.3, { vol: 0.08, hp: 6000, delay: 0.2 }); break;
+      case 'swish': this.noise(0.16, { vol: 0.1, hp: 2500 }); break;
+      case 'upgrade': [660, 990, 1320].forEach((f, i) => this.tone(f, 0.18, { type: 'triangle', vol: 0.1, delay: i * 0.05 })); break;
       case 'cast': this.tone(600, 0.25, { type: 'sine', vol: 0.12, slide: 500 }); this.tone(900, 0.2, { type: 'triangle', vol: 0.06, delay: 0.05, slide: 400 }); break;
       case 'boom': this.noise(0.4, { vol: 0.3, hp: 200 }); this.tone(90, 0.4, { type: 'sine', vol: 0.25, slide: -50 }); break;
       case 'coin': this.tone(1320, 0.07, { type: 'square', vol: 0.05 }); this.tone(1760, 0.12, { type: 'square', vol: 0.05, delay: 0.07 }); break;
@@ -53,6 +60,12 @@ export class Sfx {
       case 'chest': this.noise(0.2, { vol: 0.12, hp: 600 }); [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.3, { type: 'triangle', vol: 0.12, delay: 0.15 + i * 0.07 })); break;
       case 'open': this.tone(700, 0.08, { type: 'triangle', vol: 0.1 }); this.tone(1050, 0.1, { type: 'triangle', vol: 0.08, delay: 0.05 }); break;
     }
+  }
+  // the hero's voice: a short vowel at the pitch chosen on the creation screen
+  grunt(vol = 1) {
+    const f = 120 + this.voice * 220;
+    this.tone(f, 0.22, { type: 'sawtooth', vol: 0.035 * vol, slide: -f * 0.25, attack: 0.02 });
+    this.tone(f * 2.6, 0.18, { type: 'sine', vol: 0.04 * vol, slide: -f * 0.5, attack: 0.02 });
   }
   startMusic() {
     if (!this.ensure() || this.music) return;

@@ -171,6 +171,16 @@ ${l ? `<path d="M40 22C48 18 54 20 58 26C52 24 48 26 44 30Z" fill="#fff" ${INK2}
 <path d="M24 19V30" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
   return svg(defs, body);
 }
+function gloves(k, l) {
+  const leather = l ? ['#ffe9a0', '#e0a020', '#8a5a08'] : ['#c8a070', '#8a5a2a', '#4a2a10'];
+  const defs = lg(`${k}-l`, leather) + lg(`${k}-m`, ['#ffffff', '#c8d0dc', '#7a8698']) + (l ? aura(k, '#ffe07a').def : '');
+  const body = `${l ? aura(k, '#ffe07a').el : ''}
+<path d="M18 56V36C14 34 12 30 13 26L16 16C17 13 21 13 22 16V24V10C22 6 28 6 28 10V22V8C28 4 34 4 34 8V22V10C34 6 40 6 40 10V26L44 22C47 19 51 22 49 26L42 38V56Z" fill="url(#${k}-l)" ${INK}/>
+<path d="M16 46H44V56H16Z" fill="url(#${k}-m)" ${INK2}/>
+<path d="M22 24V30M28 22V30M34 22V30" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+${l ? spark(52, 12, 4) + spark(10, 40, 3) : ''}`;
+  return svg(defs, body);
+}
 function necklace(k, l) {
   const gem = l ? ['#ffffff', '#7affb0', '#1aa86a'] : ['#ffd0e0', '#ff4a7a', '#a01a40'];
   const defs = lg(`${k}-g`, gem) + lg(`${k}-c`, ['#fff3a0', '#e0a020']) + aura(k, l ? '#7affb0' : '#ff8ab0').def;
@@ -200,7 +210,7 @@ ${spark(37, 9, 2.6)}${l ? spark(52, 50, 4) + spark(12, 22, 3) : ''}`;
 export const ITEM_ICONS = {
   hp_potion, mp_potion, pet_egg, glowcap, exp_scroll, dungeon_ticket, loot_bag, gold, diamond,
   w_sword: sword('ws', false), w_daggers: daggers('wd', false), w_staff: staff('wst', false), w_scepter: scepter('wsc', false),
-  helm: helm('hm', false), armor: armor('ar', false), boots: boots('bt', false), necklace: necklace('nk', false), ring: ring('rg', false),
+  helm: helm('hm', false), armor: armor('ar', false), boots: boots('bt', false), necklace: necklace('nk', false), ring: ring('rg', false), gloves: gloves('gl', false),
   w_sword_l: sword('wsl', true), w_daggers_l: daggers('wdl', true), w_staff_l: staff('wstl', true), w_scepter_l: scepter('wscl', true),
-  helm_l: helm('hml', true), armor_l: armor('arl', true), boots_l: boots('btl', true), necklace_l: necklace('nkl', true), ring_l: ring('rgl', true),
+  helm_l: helm('hml', true), armor_l: armor('arl', true), boots_l: boots('btl', true), necklace_l: necklace('nkl', true), ring_l: ring('rgl', true), gloves_l: gloves('gll', true),
 };

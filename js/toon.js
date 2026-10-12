@@ -84,67 +84,6 @@ function tex(c, { repeat = false } = {}) {
 
 const faceCache = new Map();
 // Anime face texture, drawn onto the front patch of a head sphere.
-export function faceTexture({ eye = '#3a6fd8', gender = 'f', mood = 'normal', blush = true, brow = '#5a3a2a' } = {}) {
-  const key = [eye, gender, mood, blush, brow].join('|');
-  if (faceCache.has(key)) return faceCache.get(key);
-  const c = canvas(256, 256);
-  const g = c.getContext('2d');
-  const cx = 128;
-  const eyeY = 132, dx = 46;
-  if (mood === 'closed') {
-    g.strokeStyle = '#2a1a14'; g.lineWidth = 7; g.lineCap = 'round';
-    for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * dx, eyeY - 4, 18, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); }
-  } else if (mood === 'angry') {
-    for (const s of [-1, 1]) {
-      g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx + s * dx, eyeY, 20, 22, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = eye; g.beginPath(); g.ellipse(cx + s * dx, eyeY + 2, 13, 17, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#fff'; g.beginPath(); g.arc(cx + s * dx - 4, eyeY - 6, 5, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#2a1a14'; g.lineWidth = 8; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx + s * (dx + 22), eyeY - 30); g.lineTo(cx + s * (dx - 20), eyeY - 18); g.stroke();
-    }
-  } else {
-    for (const s of [-1, 1]) {
-      const x = cx + s * dx;
-      // sclera
-      g.fillStyle = '#ffffff';
-      g.beginPath(); g.ellipse(x, eyeY, 21, 27, 0, 0, Math.PI * 2); g.fill();
-      // iris gradient
-      const gr = g.createLinearGradient(0, eyeY - 26, 0, eyeY + 26);
-      gr.addColorStop(0, '#1a1030'); gr.addColorStop(0.45, eye); gr.addColorStop(1, lighten(eye, 0.55));
-      g.fillStyle = gr;
-      g.beginPath(); g.ellipse(x, eyeY + 2, 16, 23, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#120a1e';
-      g.beginPath(); g.ellipse(x, eyeY + 2, 7, 11, 0, 0, Math.PI * 2); g.fill();
-      // highlights
-      g.fillStyle = '#ffffff';
-      g.beginPath(); g.ellipse(x - s * 5 - 3, eyeY - 9, 7, 8, 0, 0, Math.PI * 2); g.fill();
-      g.beginPath(); g.arc(x + 6, eyeY + 12, 3.5, 0, Math.PI * 2); g.fill();
-      // upper lash line
-      g.strokeStyle = '#1e120e'; g.lineWidth = gender === 'f' ? 8 : 6; g.lineCap = 'round';
-      g.beginPath(); g.ellipse(x, eyeY + 4, 22, 30, 0, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
-      if (gender === 'f') {
-        g.lineWidth = 5;
-        g.beginPath(); g.moveTo(x + s * 20, eyeY - 14); g.lineTo(x + s * 30, eyeY - 22); g.stroke();
-      }
-      // brows
-      g.strokeStyle = brow; g.lineWidth = 5;
-      g.beginPath(); g.moveTo(x - 14, eyeY - 40 + (s > 0 ? 0 : 0)); g.quadraticCurveTo(x, eyeY - 46, x + 14, eyeY - 40); g.stroke();
-    }
-  }
-  if (blush) {
-    g.fillStyle = 'rgba(255,120,140,0.45)';
-    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 70, eyeY + 32, 17, 9, 0, 0, Math.PI * 2); g.fill(); }
-  }
-  // mouth
-  g.strokeStyle = '#7a2a2a'; g.lineWidth = 5; g.lineCap = 'round';
-  g.beginPath();
-  if (mood === 'angry') { g.moveTo(cx - 10, eyeY + 50); g.lineTo(cx + 10, eyeY + 48); }
-  else { g.arc(cx, eyeY + 40, 9, 0.2 * Math.PI, 0.8 * Math.PI); }
-  g.stroke();
-  const t = tex(c);
-  faceCache.set(key, t);
-  return t;
-}
 
 // Simple creature face (dot eyes) for monsters & pets.
 export function critterFace({ eye = '#1a1020', mood = 'happy', blush = true, mouth = 'smile', eyeSize = 1, patches = false } = {}) {
@@ -205,12 +144,6 @@ export function facePatch(radius, texture, { width = 1.7, top = 0.9, height = 1.
   m.renderOrder = 2;
   m.raycast = () => {};
   return m;
-}
-
-function lighten(hex, amt) {
-  const c = new THREE.Color(hex);
-  c.lerp(new THREE.Color('#ffffff'), amt);
-  return '#' + c.getHexString();
 }
 
 const texCache = new Map();

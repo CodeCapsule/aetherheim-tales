@@ -183,7 +183,7 @@ export class AdminPanel {
     if (!P.length) tb.innerHTML = '<tr><td colspan="9" class="muted">No players yet.</td></tr>';
     for (const p of P) {
       const on = now - p.lastSeen < ONLINE_MS;
-      const tr = h('tr', this.sel === p.id ? 'sel' : '', `<td><i class="dot ${on ? 'on' : ''}" title="${on ? 'Online' : 'Offline'}"></i></td><td><b>${esc(p.name)}</b>${this.names[p.id] ? `<small>${esc(this.names[p.id])}</small>` : ''}</td>
+      const tr = h('tr', this.sel === p.id ? 'sel' : '', `<td><i class="dot ${on ? 'on' : ''}" title="${on ? 'Online' : 'Offline'}"></i></td><td><b>${esc(p.name)}</b>${p.flags?.macro ? ' <span class="bad" title="The same input sequence with identical timing repeated for a long time: please review">⚑ review</span>' : ''}${this.names[p.id] ? `<small>${esc(this.names[p.id])}</small>` : ''}</td>
         <td>${esc(CLASSES[p.cls]?.name || p.cls)}</td><td class="n">${p.level}</td><td class="n">${fmt(p.br)}</td><td>${esc(p.zone || '')}</td><td class="n">${fmt(p.gold)}</td><td class="n">${hrs(p.playSecs || 0)}</td><td>${on ? '<span class="good">Online</span>' : ago(p.lastSeen)}</td>`);
       tr.onclick = () => { this.sel = p.id; this.render(); };
       tb.appendChild(tr);

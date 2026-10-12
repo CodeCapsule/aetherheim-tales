@@ -7,14 +7,18 @@ import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, namedBySource }
 import { ico, iconCanvas } from './icons.js';
 import { installSystemsUI } from './ui-systems.js';
 import { installLifeUI } from './ui-life.js';
+import { installTrialsUI } from './ui-trials.js';
 import { installPartyUI, partyMembers } from './party.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
 import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
-import { TREE_NODES, TIER_PTS, skillPoints, resetCost, nodeText } from './data-skills.js';
+import { CLASS_SKILLS, SKILL_BY_ID, rankMult, RACES } from './data-classes.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 import { DZ } from './data-dz.js';
+import { MASTERY, MASTERY_MAX, masteryNeed, minMastery, FOG } from './progress.js';
+import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
+import { trialLabel } from './data-trials.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -24,6 +28,7 @@ const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 const TOWN_R = 56; // half-size of the World Map's town view (Sylvan Haven)
+const STAT_WORD = { hpPct: 'max HP', defPct: 'defense', atkPct: 'attack', mpPct: 'max mana', crit: 'critical chance', critDmg: 'critical damage', speedPct: 'move speed', aspd: 'attack speed', mregen: 'mana regeneration', healPct: 'healing', healRecv: 'healing received', skillDmg: 'skill damage', magicDmg: 'magic damage', rangedDmg: 'ranged damage', rangePct: 'range', poisonDmg: 'poison damage', burnDmg: 'burn damage', fireDmg: 'fire damage', block: 'block chance', dodge: 'dodge chance', ccRes: 'stun and knockdown resistance', lifesteal: 'lifesteal', area: 'area size', castSpeed: 'cast speed', stamina: 'stamina regeneration', dmg: 'damage', summonDmg: 'summon damage', summonHp: 'summon HP', summonAspd: 'summon attack speed', summonDur: 'summon duration', summonSlots: 'summon slot', summonCrit: 'of your critical chance for summons', statShare: 'of your stats for summons', atk: 'attack', def: 'defense' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const DOCK_MENU = ['char', 'bag', 'skills', 'quests'];
 const STATION_TABS = ['alchemy', 'smithing', 'red']; // Professions tabs that only open at their NPC
@@ -46,11 +51,11 @@ export class UI {
     // skill bar
     const bar = $('skillbar'); bar.innerHTML = '';
     this.slots = [];
-    for (let i = 1; i <= 6; i++) {
-      const b = h('button', 'slot'); b.dataset.i = i; b.setAttribute('aria-label', 'Skill ' + i);
+    for (let i = 1; i <= 7; i++) {
+      const b = h('button', 'slot' + (i === 7 ? ' ult' : '')); b.dataset.i = i; b.setAttribute('aria-label', i === 7 ? 'Ultimate skill' : 'Skill ' + i);
       b.innerHTML = `<span class="ic"></span><span class="key">${i}</span><span class="cd"></span><span class="cdt"></span>`;
       b.addEventListener('click', () => g.useSkill(i));
-      this.tip(b, () => this.skillTip(g.skillList()[i]));
+      this.tip(b, () => { const sk = g.skillList()[i]; return sk ? this.skillTip(sk) : `<b>${i === 7 ? 'Ultimate' : 'Empty slot'}</b>${i === 7 ? 'Your ultimate unlocks at Lv 200.' : 'Choose a skill for this slot in the Skills window (K).'}`; });
       bar.appendChild(b); this.slots.push(b);
     }
     for (const [id, key] of [['hp_potion', 'Q'], ['mp_potion', 'E']]) {
@@ -63,6 +68,11 @@ export class UI {
     $('btn-mount').onclick = () => g.toggleMount();
     $('btn-auto').onclick = () => g.toggleAuto();
     $('btn-auto').innerHTML = `${ico('auto')}<small>Auto</small>`;
+    $('btn-roll').innerHTML = `${ico('roll')}<small>Roll</small>`; $('btn-roll').onclick = () => g.roll();
+    const bb = $('btn-block'); bb.innerHTML = `${ico('block')}<small>Block</small>`; bb.hidden = S.cls !== 'knight';
+    const hold = (on) => { g.blockHold = on; if (on) g.startBlock(); bb.classList.toggle('on', on); };
+    bb.addEventListener('pointerdown', (e) => { e.preventDefault(); hold(true); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bb.addEventListener(ev, () => hold(false));
     // quick access menus: a few pinned buttons and a More button that expands the rest; on phones each opens whole as a sheet
     this.qa = { acts: false, menu: false };
     const qaTog = (box, key) => {
@@ -176,10 +186,32 @@ export class UI {
   }
   refreshWallet() { const S = this.g.S; this.txt($('w-gold'), fmt(S.gold)); this.txt($('w-dia'), fmt(S.diamonds)); }
   refreshExp() {
-    const S = this.g.S, need = needExp(S.level);
+    const g = this.g, S = g.S, need = needExp(S.level);
     const pct = S.level >= MAX_LEVEL ? 100 : (S.exp / need) * 100;
+    const block = S.level < MAX_LEVEL && S.exp >= need && g.levelBlock ? g.levelBlock() : null;
     $('exp-f').style.width = pct + '%';
-    this.txt($('exp-t'), S.level >= MAX_LEVEL ? 'MAX LEVEL' : `EXP ${fmt(S.exp)} / ${fmt(need)}  (${pct.toFixed(1)}%)`);
+    $('hud-exp').classList.toggle('blocked', !!block);
+    this.txt($('exp-t'), S.level >= MAX_LEVEL ? 'MAX LEVEL' : block ? `EXP FULL · ${g.blockText(block)}` : `EXP ${fmt(S.exp)} / ${fmt(need)}  (${pct.toFixed(1)}%)${S.rested > 0 ? ` · Rested ${fmt(S.rested)}` : ''}`);
+  }
+  // the Hero panel's "what next" box: XP left, the three masteries against this bracket's minimum, the next trial
+  progressBox(body) {
+    const g = this.g, S = g.S; if (!S.mastery) return;
+    const goal = g.nextGoal(), need = minMastery(S.level);
+    const box = h('div', 'prog-box');
+    const lines = [];
+    if (S.level >= MAX_LEVEL) lines.push('<b>Maximum level.</b>');
+    else if (goal.block) lines.push(`<b class="bad">Next level needs:</b> ${esc(g.blockText(goal.block))}`);
+    else lines.push(`<b>Next level:</b> ${fmt(goal.xpLeft)} EXP to go`);
+    if (goal.trial) lines.push(`<b>Next wall:</b> ${esc(trialLabel(goal.trial / 20))} at Lv ${goal.trial} · talk to the Trial Warden`);
+    if (S.rested > 0) lines.push(`<b>Rested:</b> ${fmt(S.rested)} bonus EXP (kills give double until it runs out)`);
+    box.appendChild(h('div', 'pg-goal', lines.join('<br>')));
+    for (const t of ['weapon', 'defense', 'survival']) {
+      const m = g.masteryRec(t), nx = masteryNeed(m.r), max = m.r >= MASTERY_MAX;
+      const row = h('div', 'pg-m' + (m.r < need ? ' low' : ''), `<span class="pl">${ico('m_' + t, 'ico inl')} ${MASTERY[t].name}${t === 'weapon' ? ` <small>(${esc(CLASSES[S.cls].weapon)})</small>` : ''} <b>${m.r}</b><small>/${need}</small></span><span class="bar xp"><i style="width:${max ? 100 : Math.min(100, m.p / nx * 100)}%"></i></span>`);
+      this.tip(row, () => `<b>${MASTERY[t].name} mastery ${m.r}</b>${MASTERY[t].how}.<br>${MASTERY[t].tip}.<br>${max ? 'Maxed.' : `${Math.floor(m.p)}/${nx} to rank ${m.r + 1}`}<br>Levels ${Math.floor(S.level / 20) * 20 || 1}–${Math.floor(S.level / 20) * 20 + 19} need rank ${need} in all three.`);
+      box.appendChild(row);
+    }
+    body.appendChild(box);
   }
   refreshSkills() {
     const g = this.g; if (!g || !this.slots) return;
@@ -187,13 +219,10 @@ export class UI {
     this.slots.forEach((b) => {
       if (b.dataset.potion) { b.querySelector('.cnt').textContent = g.countPotions(b.dataset.potion); return; }
       const sk = list[+b.dataset.i];
-      const icEl = b.querySelector('.ic');
-      if (icEl.dataset.k !== sk.id) { icEl.dataset.k = sk.id; icEl.innerHTML = ico(sk.id); }
-      const locked = g.S.level < sk.lvl;
-      b.classList.toggle('locked', locked);
-      let lk = b.querySelector('.lk');
-      if (locked && !lk) { lk = h('span', 'lk'); b.appendChild(lk); }
-      if (lk) { if (locked) lk.textContent = 'Lv' + sk.lvl; else lk.remove(); }
+      const icEl = b.querySelector('.ic'), key = sk ? sk.id : 'empty';
+      if (icEl.dataset.k !== key) { icEl.dataset.k = key; icEl.innerHTML = sk ? ico(sk.id) : ''; }
+      b.classList.toggle('empty', !sk);
+      b.classList.toggle('locked', !sk && +b.dataset.i === 7);
     });
   }
   refreshSkillCD() {}
@@ -216,7 +245,9 @@ export class UI {
       if (t.kind === 'monster') {
         $('tg-img').src = g.monsterIcon(t.type);
         const tag = t.def0.boss ? '<em>BOSS</em>' : t.def0.elite ? '<em>ELITE</em>' : '';
-        $('tg-name').innerHTML = `Lv${t.level} ${esc(t.def0.name)}${tag}`;
+        // hunting one type over and over pays less: show what a kill is worth now
+        const dr = g.diminishInfo ? g.diminishInfo(t.type) : 1;
+        $('tg-name').innerHTML = `Lv${t.level} ${esc(t.def0.name)}${tag}${dr < 1 ? ` <small class="tg-dr" title="Repeated kills of this monster type give less EXP; it recovers while you hunt elsewhere">EXP ${Math.round(dr * 100)}%</small>` : ''}`;
       } else {
         $('tg-img').src = g.heroIcon(t);
         $('tg-name').innerHTML = `Lv${t.level} ${esc(t.name)} <em style="color:#9ad0ff">${CLASSES[t.cls]?.name || ''}</em>`;
@@ -284,12 +315,15 @@ export class UI {
     const t = p.target;
     if (t !== this.tgShown || (t && t.dead)) this.refreshTarget();
     if (t && !t.dead) { $('tg-hp').style.width = (t.hp / t.maxHp) * 100 + '%'; this.txt($('tg-hp-t'), `${fmt(Math.max(0, t.hp))} / ${fmt(t.maxHp)}`); }
+    // stamina on the roll button
+    const sta = Math.round(p.sta ?? 100);
+    if (sta !== this.staShown) { this.staShown = sta; $('btn-roll').style.setProperty('--sta', sta + '%'); }
     // cooldowns
     const list = g.skillList();
     for (const b of this.slots) {
       let rem = 0, total = 1;
       if (b.dataset.potion) { rem = g.potionCD - g.time; total = 3; }
-      else { const sk = list[+b.dataset.i]; rem = (g.cd[sk.id] || 0) - g.time; total = sk.cd * (1 - g.cdr); b.classList.toggle('nomp', p.mp < g.mpCost(sk) && S.level >= sk.lvl); }
+      else { const sk = list[+b.dataset.i]; if (!sk) continue; rem = g.chargesLeft(sk) > 0 ? 0 : (g.cd[sk.id] || 0) - g.time; total = g.cdTotal(sk); b.classList.toggle('nomp', p.mp < g.mpCost(sk)); }
       const cd = b.querySelector('.cd'), cdt = b.querySelector('.cdt');
       if (rem > 0) { cd.style.background = `conic-gradient(rgba(0,0,0,.7) ${(rem / total) * 360}deg, transparent 0)`; if (cdt) this.txt(cdt, rem > 1 ? String(Math.ceil(rem)) : rem.toFixed(1)); }
       else if (cd.style.background) { cd.style.background = ''; if (cdt) this.txt(cdt, ''); }
@@ -314,16 +348,19 @@ export class UI {
     this.frameN = (this.frameN || 0) + 1;
     if (this.frameN % 2 === 0) this.drawMinimap();
     if (g.dg && this.frameN % 10 === 0) this.updateDungeonHUD();
+    if (g.trial && this.frameN % 10 === 0) this.updateTrialHUD();
     if (this.panelName === 'map' && this.frameN % 15 === 0) this.drawWorldMap();
     this.frameSys();
   }
 
   drawMinimap() {
     const g = this.g, c = this.mm, p = g.player.pos, mm = g.map.minimap || g.world.minimap;
+    if (g.map.noMap) { this.drawCompass(); return; }
     const ppu = mm.canvas.width / mm.size;
     const R = g.map.isDungeon ? 45 : 60, S = 150, k = S / (R * 2);
     c.fillStyle = g.map.isDungeon ? '#0c0f1c' : '#2a4a2a'; c.fillRect(0, 0, S, S);
     c.drawImage(mm.canvas, (p.x - mm.minX - R) * ppu, (p.z - mm.minZ - R) * ppu, R * 2 * ppu, R * 2 * ppu, 0, 0, S, S);
+    if (!g.map.isDungeon) this.drawFog(c, p.x - R, p.z - R, R * 2, S, S);
     const dot = (x, z, col, r = 2.5) => { const sx = (x - p.x + R) * k, sy = (z - p.z + R) * k; if (sx < 0 || sy < 0 || sx > S || sy > S) return; c.fillStyle = col; c.beginPath(); c.arc(sx, sy, r, 0, Math.PI * 2); c.fill(); };
     for (const m of g.monsters) if (!m.dead && (m.map || g.world) === g.map) dot(m.pos.x, m.pos.z, m.def0.boss ? '#ff3aa8' : m.def0.aggressive ? '#ff4a3a' : '#ff9a6a', m.def0.boss ? 5 : 2.2);
     for (const L of g.loots) if (L.map === g.map) dot(L.pos.x, L.pos.z, RARITY[L.q].color, 2.4);
@@ -332,7 +369,6 @@ export class UI {
       for (const n of g.npcs) {
         const sx = (n.pos.x - p.x + R) * k, sy = (n.pos.z - p.z + R) * k, pin = this.npcPin(n.data.icon);
         if (pin) { if (sx > -8 && sy > -8 && sx < S + 8 && sy < S + 8) c.drawImage(pin, sx - 8, sy - 8, 16, 16); } else dot(n.pos.x, n.pos.z, '#ffe066', 3);
-        if (n.markChar && n.markChar !== '…') { c.font = 'bold 13px sans-serif'; c.fillStyle = '#ffd84a'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText(n.markChar, sx + 3, sy - 6); c.fillText(n.markChar, sx + 3, sy - 6); }
       }
       dot(WORLD_BOSS.site.x, WORLD_BOSS.site.z, g.wb && !g.wb.e.dead ? '#ff3aa8' : '#7ad8ff', 3.5);
       // the Danger Zone border and any loot sacks in it
@@ -356,9 +392,46 @@ export class UI {
     c.restore();
   }
 
+  // the explored map: ground you have not walked stays dark (one pixel per 16 m cell, smoothed when drawn)
+  fogChanged() { this.fogStale = true; }
+  fogCanvas() {
+    const g = this.g, n = FOG.n;
+    if (!this.fogCv) { this.fogCv = document.createElement('canvas'); this.fogCv.width = this.fogCv.height = n; this.fogStale = true; }
+    if (this.fogStale && g.fogBits) {
+      this.fogStale = false;
+      const x = this.fogCv.getContext('2d'), img = x.createImageData(n, n);
+      for (let k = 0; k < n * n; k++) { const o = k * 4; img.data[o] = 10; img.data[o + 1] = 13; img.data[o + 2] = 22; img.data[o + 3] = g.fogBits[k] ? 0 : 240; }
+      x.putImageData(img, 0, 0);
+    }
+    return this.fogCv;
+  }
+  drawFog(c, x0, z0, size, dw, dh) {
+    const f = this.fogCanvas(), k = 1 / FOG.cell, sx = (x0 + FOG.size / 2) * k, sz = (z0 + FOG.size / 2) * k, sw = size * k;
+    // clip the source to the grid so every browser scales it the same way
+    const cx0 = Math.max(0, sx), cz0 = Math.max(0, sz), cx1 = Math.min(FOG.n, sx + sw), cz1 = Math.min(FOG.n, sz + sw);
+    if (cx1 <= cx0 || cz1 <= cz0) return;
+    const s = dw / sw;
+    c.save(); c.imageSmoothingEnabled = true;
+    c.drawImage(f, cx0, cz0, cx1 - cx0, cz1 - cz0, (cx0 - sx) * s, (cz0 - sz) * s, (cx1 - cx0) * s, (cz1 - cz0) * (dh / sw));
+    c.restore();
+  }
+  // no map in this trial: only a compass that points north
+  drawCompass() {
+    const c = this.mm, S = 150, yaw = this.g.player.yaw;
+    c.fillStyle = '#141a14'; c.fillRect(0, 0, S, S);
+    c.save(); c.translate(S / 2, S / 2);
+    c.strokeStyle = 'rgba(243,199,91,.55)'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 58, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = '#ff5a4a'; c.beginPath(); c.moveTo(0, -54); c.lineTo(9, -30); c.lineTo(-9, -30); c.closePath(); c.fill();
+    c.font = 'bold 16px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff1c8'; c.fillText('N', 0, -14);
+    c.rotate(Math.PI - yaw); c.fillStyle = '#fff'; c.strokeStyle = '#1a3a1a';
+    c.beginPath(); c.moveTo(0, -10); c.lineTo(7, 8); c.lineTo(0, 4); c.lineTo(-7, 8); c.closePath(); c.fill(); c.stroke();
+    c.restore();
+  }
+
   // ------------------------------------------------------------ quest tracker
   refreshQuest() {
     const g = this.g; if (!g) return;
+    if (g.trial) { this.renderTrialTracker(); return; }
     if (g.dg) { this.renderDungeonTracker(); return; }
     if (g.war) { this.renderWarTracker(); return; }
     const S = g.S, list = $('qt-list'); list.innerHTML = '';
@@ -367,7 +440,7 @@ export class UI {
       const done = q.status === 'complete';
       const obj = g.questObjective(q);
       const it = h('div', 'qt-item', `<span class="qtag main">Main</span><span class="qn">${esc(q.def.name)}</span><div class="qo ${done ? 'done' : ''}">${linkify(obj)}</div>`);
-      it.onclick = () => { g.sfx.play('click'); g.autoQuest('main'); };
+      it.title = 'Click for directions'; it.onclick = () => { g.sfx.play('click'); g.autoQuest('main'); };
       it.title = 'Click to auto-path';
       list.appendChild(it);
     } else {
@@ -389,7 +462,7 @@ export class UI {
   renderDungeonTracker() {
     const g = this.g, dg = g.dg, list = $('qt-list'); list.innerHTML = '';
     const it = h('div', 'qt-item', `<span class="qtag dungeon">Dungeon</span><span class="qn">${esc(dg.def.name)}</span><div class="qo"><u id="dg-obj"></u></div><div class="dg-meta"><span id="dg-time"></span><span id="dg-deaths"></span></div>`);
-    it.title = 'Click to auto-path'; it.onclick = () => { g.sfx.play('click'); g.dungeonGo(); };
+    it.title = 'What is left'; it.onclick = () => { g.sfx.play('click'); g.dungeonGo(); };
     list.appendChild(it);
     const leave = h('button', 'btn small gray', 'Leave Dungeon'); leave.style.margin = '4px 0 0 4px';
     leave.onclick = () => this.modal(dg.done ? 'Return to Carlyle?' : 'Leave the dungeon?', dg.done ? 'Any loot left on the floor will be collected for you.' : 'This run ends and the entry stays used.', [{ label: 'Leave', fn: () => { g.leaveDungeon(); } }, { label: 'Stay', cls: 'gray' }]);
@@ -542,11 +615,12 @@ export class UI {
     tt.style.left = x + 'px'; tt.style.top = y + 'px';
   }
   skillTip(sk) {
-    const g = this.g, lv = g.skillLevel(sk.id);
-    return `<b style="color:var(--gold-l)">${esc(sk.name)} <span style="color:var(--cyan)">Lv ${lv}</span></b>${esc(sk.desc)}<br><span class="ts">MP ${g.mpCost(sk)} · Cooldown ${sk.cd}s${g.S.level < sk.lvl ? ` · Unlocks at Lv ${sk.lvl}` : ''}</span>`;
+    const g = this.g, r = g.rk(sk);
+    if (sk.basic) return `<b style="color:var(--gold-l)">${esc(sk.name)}</b>${esc(sk.desc)}`;
+    return `<b style="color:var(--gold-l)">${esc(sk.name)} <span style="color:var(--cyan)">Rank ${r}/10</span></b>${esc(sk.desc)}.<br><span class="ts">${esc(this.skillNumbers(sk, Math.max(1, r)))}</span>`;
   }
   equipTip(eq) {
-    const lines = itemLines(eq, this.g?.S?.equip);
+    const lines = itemLines(eq, this.g?.S?.equip, this.g?.gearCtx ? this.g.gearCtx() : null);
     return lines.map((l, i) => i === 0 ? `<b style="color:${l.color}">${esc(l.text)}</b>` : `<div style="color:${l.color || 'var(--muted)'}">${esc(l.text)}</div>`).join('');
   }
 
@@ -562,8 +636,8 @@ export class UI {
     const dot = this.menuBtns[name]?.querySelector('.dotn'); if (dot) dot.remove();
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
-      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss' };
-    const widths = { char: 600, bag: 760, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640 };
+      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts' };
+    const widths = { char: 600, bag: 760, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(100vw - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -614,7 +688,7 @@ export class UI {
       const c = h('div', 'eq-col');
       for (const s of slots) {
         const eq = S.equip[s];
-        const b = h('button', 'cell ' + (eq ? 'q' + eq.quality : 'empty'), eq ? `${ico(eq.icon)}${eq.enh ? `<span class="enh">+${eq.enh}</span>` : ''}` : `<span class="ghost">${ico(slotIcon(s, S.cls))}</span>`);
+        const b = h('button', 'cell ' + (eq ? 'q' + eq.quality : 'empty'), eq ? `${ico(eq.icon)}${eq.enh ? `<span class="enh">+${eq.enh}</span>` : ''}${eq.dur === 0 ? '<span class="brk"></span>' : ''}` : `<span class="ghost">${ico(slotIcon(s, S.cls))}</span>`);
         b.setAttribute('aria-label', SLOT_INFO[s].label);
         if (this.sel.eqSlot === s) b.style.outline = '2px solid var(--gold)';
         b.onclick = () => { this.sel.eqSlot = s; this.renderPanel(); };
@@ -623,22 +697,23 @@ export class UI {
       }
       return c;
     };
-    wrap.appendChild(col(['weapon', 'helm', 'armor']));
+    wrap.appendChild(col(['weapon', 'helm', 'armor', 'gloves']));
     const port = h('div', 'char-portrait'); const img = new Image(); img.alt = ''; img.src = g.fullIcon(); port.appendChild(img);
     port.appendChild(h('div', 'cpn stroke', `Lv${S.level} ${esc(S.name)} · ${C.name}`));
     wrap.appendChild(port);
     wrap.appendChild(col(['boots', 'necklace', 'ring']));
     const st = h('div', 'stats-col');
     st.appendChild(h('div', 'br-big', `<span class="flame"></span>${fmt(g.br)}`));
-    const T = C.talents[S.talent];
+    const RC = RACES[S.app?.race] || RACES.human;
     st.appendChild(h('div', 'stats', `
-      <span>Class</span><span>${C.name}</span><span>Talent</span><span>${T.name}</span>
+      <span>Class</span><span>${C.name}</span><span>${S.awaken != null ? 'Path' : 'Race'}</span><span>${S.awaken != null ? esc(C.paths[S.awaken]) : esc(RC.name)}</span>
       <span>Max HP</span><span>${fmt(p.maxHp)}</span><span>Max MP</span><span>${fmt(p.maxMp)}</span>
       <span>Attack</span><span>${fmt(g.atkOf(p))}</span><span>Defense</span><span>${fmt(g.defOf(p))}</span>
       <span>Critical</span><span>${g.critOf(p).toFixed(1)}%</span><span>Crit Damage</span><span>+${Math.round(p.critDmg * 100)}%</span>
       <span>Move Speed</span><span>${(g.speedOf(p) / 7 * 100).toFixed(0)}%</span><span>Element</span><span style="color:${C.elemColor}">${C.element}</span>`));
     wrap.appendChild(st);
     body.appendChild(wrap);
+    this.progressBox(body);
     const s = this.sel.eqSlot, eq = s && S.equip[s];
     const det = h('div', 'detail');
     if (eq) {
@@ -694,7 +769,7 @@ export class UI {
     if (b) {
       const it = b.eq ? null : ITEMS[b.id];
       det.innerHTML = b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[it.quality].color}">${esc(it.name)}</b><div>${esc(it.desc)}</div>`;
-      if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
+      if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : it.type === 'food' ? 'Eat' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
       if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
       if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
     } else if (worn) {
@@ -714,82 +789,107 @@ export class UI {
   }
 
   panel_skills(body) {
-    const g = this.g, S = g.S, C = CLASSES[S.cls];
-    const left = g.treePointsLeft();
-    const tab = this.tabs(body, 'skTab', [['skills', 'Skills'], ['tree', `Skill Tree${left > 0 ? ` · ${left} point${left > 1 ? 's' : ''}` : ''}`]]);
-    if (tab === 'tree') { this.skillTree(body); return; }
-    body.appendChild(h('div', 'lbl', 'Dual Talent'));
-    const tl = h('div', 'talents');
-    C.talents.forEach((t, i) => {
-      const d = h('div', '', `<b>${t.name} <span style="color:var(--cyan);font-size:11px">${t.role}</span></b>${t.desc}`);
-      d.style.cursor = 'pointer'; if (S.talent === i) { d.style.borderColor = 'var(--gold)'; d.style.boxShadow = '0 0 10px rgba(243,199,91,.4)'; }
-      d.onclick = () => g.setTalent(i);
-      tl.appendChild(d);
-    });
-    body.appendChild(tl);
-    body.appendChild(h('div', 'lbl', 'Active skills'));
-    const list = h('div', 'list');
-    for (const sk of g.skillList()) {
-      const lv = g.skillLevel(sk.id), locked = S.level < sk.lvl;
-      const td = g.tAgg?.skill[sk.id] || 0, tc = g.tAgg?.cd[sk.id] || 0;
-      const r = h('div', 'row');
-      r.innerHTML = `<div class="ic">${ico(sk.id)}</div><div class="tx"><b>${esc(sk.name)} <span class="lv">Lv ${lv}</span>${sk.basic ? ' <span style="color:var(--muted);font-size:11px">(auto attack)</span>' : ''}</b>${esc(sk.desc)}<br>MP ${g.mpCost(sk)} · CD ${sk.cd}s${locked ? ` · <span style="color:#ff8a7a">Unlocks at Lv ${sk.lvl}</span>` : ''}${td ? ` · <span class="good">+${td}% damage (tree)</span>` : ''}${tc ? ` · <span class="good">${tc}% faster cooldown (tree)</span>` : ''}</div>`;
-      if (!locked && !sk.basic) {
-        const b = h('button', 'btn small', `Upgrade<br><span class="price" style="justify-content:center"><span class="coin"></span>${fmt(120 * lv * lv)}</span>`);
-        b.onclick = () => g.upgradeSkill(sk.id); r.appendChild(b);
-      }
-      list.appendChild(r);
-    }
-    body.appendChild(list);
-    // passive skills: every passive and capstone learned in the tree
-    body.appendChild(h('div', 'lbl', 'Passive skills'));
-    const pas = Object.entries(S.tree).map(([id, r]) => [TREE_NODES[id], r]).filter(([n, r]) => n && n.cls === S.cls && r && !['stat', 'skill', 'skillCd'].includes(n.k));
-    if (!pas.length) {
-      const note = h('div', 'note', 'Passive skills work on their own, all the time. Learn them in the Skill Tree with the points you earn from leveling up.');
-      const go = h('button', 'btn small', 'Open Skill Tree'); go.onclick = () => { this.sel.skTab = 'tree'; this.renderPanel(); };
-      body.appendChild(note); body.appendChild(go);
-      return;
-    }
-    const pl = h('div', 'list');
-    for (const [n, r] of pas) pl.appendChild(h('div', 'row slim', `<div class="ic">${ico(n.icon)}</div><div class="tx"><b>${esc(n.n)} <span class="lv">${n.t === 5 ? 'Capstone' : `Rank ${r}/${n.max}`}</span></b>${esc(nodeText(n, r).replace(/^Capstone: /, ''))}</div>`));
-    body.appendChild(pl);
-  }
-  // three branches side by side; tiers open as you spend points in a branch
-  skillTree(body) {
-    const g = this.g, S = g.S, tree = g.tree(), earned = skillPoints(S.level), spent = g.treeSpent(), left = earned - spent;
-    const head = h('div', 'st-head', `<span class="st-pts"><b>${left}</b>skill point${left === 1 ? '' : 's'} to spend</span><span class="muted">${spent} of ${earned} spent · 1 point per level up to Lv 50, then 1 every 4 levels</span>`);
-    const rb = h('button', 'btn small gray', `Reset · <span class="coin" style="display:inline-block;vertical-align:-3px"></span> ${fmt(resetCost(S.level))}`);
-    rb.disabled = !spent;
-    rb.onclick = () => this.modal('Reset the skill tree?', `All ${spent} points come back to spend again. It costs ${fmt(resetCost(S.level))} Gold.`, [{ label: 'Reset', fn: () => g.resetTree() }, { label: 'Cancel', cls: 'gray' }]);
+    const g = this.g, S = g.S, C = CLASSES[S.cls], T = CLASS_SKILLS[S.cls];
+    const left = g.skillPtsLeft(), total = g.skillPtsTotal(), wm = g.weaponMastery();
+    // header: points, weapon mastery, respec
+    const head = h('div', 'sk-head', `<span class="st-pts"><b>${left}</b>skill point${left === 1 ? '' : 's'}</span><span class="muted">${total - left} of ${total} spent · 1 per level and 3 per cleared trial · weapon mastery ${wm}</span>`);
+    const R = g.respecInfo();
+    const rb = h('button', 'btn small gray', R.free ? 'Reset ranks (free today)' : 'Reset ranks (used today)');
+    rb.disabled = !R.ok;
+    rb.title = R.town ? (R.free ? 'Free once per day in a town' : 'Come back tomorrow') : 'Only in a town';
+    rb.onclick = () => this.modal('Reset your skill ranks?', 'Every skill goes back to rank 1 and all points return to spend again. Free once per day, only in a town.', [{ label: 'Reset', fn: () => g.respecSkills() }, { label: 'Cancel', cls: 'gray' }]);
     head.appendChild(rb); body.appendChild(head);
-    const cols = h('div', 'st-cols');
-    tree.forEach((br, b) => {
-      const col = h('div', 'st-col'), bs = g.treeSpent(b); col.style.setProperty('--bc', br.color);
-      col.appendChild(h('div', 'st-bname', `${esc(br.name)}<small>${bs} point${bs === 1 ? '' : 's'}</small>`));
-      for (let t = 1; t <= 5; t++) {
-        const row = h('div', 'st-tier' + (bs >= TIER_PTS[t] ? '' : ' locked'));
-        if (bs < TIER_PTS[t]) row.dataset.need = `${TIER_PTS[t]} pts`;
-        for (const n of br.nodes.filter((x) => x.t === t)) {
-          const r = g.treeRank(n.id);
-          const btn = h('button', 'st-node' + (r ? ' on' : '') + (r >= n.max ? ' max' : '') + (n.t === 5 ? ' cap' : '') + (this.sel.stNode === n.id ? ' sel' : '') + (!g.treeBlock(n.id) ? ' can' : ''), `${ico(n.icon)}<span class="st-r">${r}/${n.max}</span>`);
-          btn.setAttribute('aria-label', `${n.n} ${r} of ${n.max}`);
-          btn.onclick = () => { this.sel.stNode = n.id; this.renderPanel(); };
-          btn.ondblclick = () => g.learnNode(n.id);
-          this.tip(btn, () => `<b>${esc(n.n)}</b>${esc(nodeText(n, r || 1))}`);
-          row.appendChild(btn);
-        }
-        col.appendChild(row);
+    // loadout: six actives and the ultimate
+    const lo = h('div', 'sk-load');
+    lo.appendChild(h('div', 'sk-ll', 'Loadout<small>6 active skills + 1 ultimate. Select a slot, then a skill.</small>'));
+    const slots = h('div', 'sk-slots');
+    const mk = (key, id, label) => {
+      const sk = id && SKILL_BY_ID[id];
+      const b = h('button', 'sk-slot' + (this.sel.skSlot === key ? ' sel' : '') + (key === 'ult' ? ' ult' : ''), `${sk ? ico(sk.id) : ''}<span class="k">${label}</span>`);
+      b.setAttribute('aria-label', `Slot ${label}: ${sk ? sk.name : 'empty'}`);
+      b.onclick = () => { this.sel.skSlot = this.sel.skSlot === key ? null : key; this.renderPanel(); };
+      if (sk) this.tip(b, () => this.skillTip(sk));
+      slots.appendChild(b);
+    };
+    S.loadout.forEach((id, i) => mk(i, id, String(i + 1)));
+    mk('ult', S.ult, '7');
+    lo.appendChild(slots); body.appendChild(lo);
+    // which branch to show
+    const pn = C.paths;
+    const tab = this.tabs(body, 'skTab', [['core', 'Core · Lv 1-90'], ['p0', `${pn[0]}${S.awaken === 0 ? ' (your path)' : ''}`], ['p1', `${pn[1]}${S.awaken === 1 ? ' (your path)' : ''}`]]);
+    const list = tab === 'core' ? T.core : T.paths[tab === 'p0' ? 0 : 1];
+    if (tab !== 'core') {
+      const pi = tab === 'p0' ? 0 : 1;
+      const box = h('div', 'sk-path', `<b>${esc(pn[pi])}</b> <span class="muted">${esc(C.pathRole[pi])} · awakening path (Lv 100-200)</span>`);
+      if (S.awaken === pi) box.appendChild(h('span', 'good', ' · your path'));
+      else {
+        const cb = h('button', 'btn small' + (S.level >= 100 ? ' green' : ' gray'), S.awaken == null ? 'Choose this path' : 'Switch (Trial Sigil)');
+        cb.disabled = S.level < 100;
+        cb.title = S.level < 100 ? 'Awakening opens at Lv 100' : '';
+        cb.onclick = () => this.modal(`Awaken as ${pn[pi]}?`, S.awaken == null ? `${esc(C.name)} awakens into ${esc(pn[pi])}: a new skill every 10 levels up to the ultimate at Lv 200.` : 'Switching your awakening path costs one Trial Sigil. Your other path\'s skills are forgotten.', [{ label: 'Awaken', fn: () => g.chooseAwaken(pi) }, { label: 'Cancel', cls: 'gray' }]);
+        box.appendChild(cb);
       }
-      cols.appendChild(col);
-    });
-    body.appendChild(cols);
-    const n = TREE_NODES[this.sel.stNode]?.cls === S.cls ? TREE_NODES[this.sel.stNode] : tree[0].nodes[0];
-    const r = g.treeRank(n.id), why = g.treeBlock(n.id);
+      body.appendChild(box);
+    }
+    const grid = h('div', 'sk-list');
+    for (const sk of list) {
+      const r = g.rk(sk), open = g.skillUnlocked(sk);
+      const row = h('button', 'sk-row' + (open ? '' : ' locked') + (this.sel.skId === sk.id ? ' sel' : '') + ' t-' + sk.type);
+      row.innerHTML = `<span class="sk-lv">Lv ${sk.lv}</span><span class="sk-ic">${ico(sk.id)}</span><span class="sk-tx"><b>${esc(sk.name)}</b><small>${sk.type === 'passive' ? 'Passive' : sk.type === 'ultimate' ? 'Ultimate' : 'Active'} · ${esc(sk.desc)}</small></span><span class="sk-r">${open ? `${r}/10` : '—'}</span>`;
+      row.onclick = () => {
+        // with a loadout slot selected, a click puts the skill there
+        const slot = this.sel.skSlot;
+        if (slot != null && open && ((slot === 'ult' && sk.type === 'ultimate') || (slot !== 'ult' && sk.type === 'active'))) { g.setLoadout(slot, sk.id); this.sel.skSlot = null; }
+        this.sel.skId = sk.id; this.renderPanel();
+      };
+      row.ondblclick = () => g.rankUp(sk.id);
+      grid.appendChild(row);
+    }
+    body.appendChild(grid);
+    // details of the selected skill
+    const sk = (this.sel.skId && SKILL_BY_ID[this.sel.skId]?.cls === S.cls && list.includes(SKILL_BY_ID[this.sel.skId])) ? SKILL_BY_ID[this.sel.skId] : list[0];
+    const r = g.rk(sk), why = g.rankBlock(sk);
     const det = h('div', 'st-det');
-    det.innerHTML = `<div class="st-di">${ico(n.icon)}</div><div class="st-dt"><b>${esc(n.n)}</b> <span class="muted">${esc(tree[n.branch].name)} · ${n.t === 5 ? 'Capstone' : `Tier ${n.t}`} · Rank ${r}/${n.max}</span>
-      <div>${esc(nodeText(n, r || 1))}</div>${r && r < n.max ? `<div class="good">Next rank: ${esc(nodeText(n, r + 1))}</div>` : ''}${why && r < n.max ? `<div style="color:#ffb08a">${esc(why)}</div>` : ''}</div>`;
-    const lb = h('button', 'btn green small', r >= n.max ? 'Mastered' : r ? 'Learn +1' : 'Learn'); lb.disabled = !!why; lb.onclick = () => g.learnNode(n.id);
-    det.appendChild(lb); body.appendChild(det);
+    det.innerHTML = `<div class="st-di">${ico(sk.id)}</div><div class="st-dt"><b>${esc(sk.name)}</b> <span class="muted">${sk.type === 'passive' ? 'Passive' : sk.type === 'ultimate' ? 'Ultimate' : 'Active'} · Lv ${sk.lv} · Rank ${r}/10</span>
+      <div>${esc(sk.desc)}.</div><div class="muted">${esc(this.skillNumbers(sk, Math.max(1, r)))}</div>${r && r < 10 ? `<div class="good">Rank ${r + 1}: ${esc(this.skillNumbers(sk, r + 1))}</div>` : ''}${why && r < 10 ? `<div style="color:#ffb08a">${esc(why)}</div>` : ''}</div>`;
+    const acts = h('div', 'sk-acts');
+    const lb = h('button', 'btn green small', r >= 10 ? 'Mastered' : 'Rank up'); lb.disabled = !!why; lb.onclick = () => g.rankUp(sk.id); acts.appendChild(lb);
+    if (sk.type !== 'passive' && g.skillUnlocked(sk)) {
+      const inUse = sk.type === 'ultimate' ? S.ult === sk.id : S.loadout.includes(sk.id);
+      const eb = h('button', 'btn small' + (inUse ? ' gray' : ''), inUse ? 'In loadout' : 'Equip');
+      eb.disabled = inUse;
+      eb.onclick = () => { if (sk.type === 'ultimate') g.setLoadout('ult', sk.id); else { const i = typeof this.sel.skSlot === 'number' ? this.sel.skSlot : Math.max(0, S.loadout.indexOf(null)); g.setLoadout(i, sk.id); } this.sel.skSlot = null; };
+      acts.appendChild(eb);
+    }
+    det.appendChild(acts); body.appendChild(det);
+  }
+  // the numbers of a skill at a rank, for tooltips and the Skills window
+  skillNumbers(sk, r) {
+    const k = rankMult(r), pct = (v) => `${Math.round(v * 100)}%`, out = [];
+    if (sk.type === 'passive') {
+      const p = sk.p;
+      if (p.stat) for (const [key, v] of Object.entries(p.stat)) out.push(`${key === 'summonSlots' ? `+${v}` : `+${(v * k).toFixed(1).replace(/\.0$/, '')}${key === 'statShare' || key === 'summonCrit' ? '%' : '%'}`} ${STAT_WORD[key] || key}`);
+      if (p.cond) out.push(`+${(p.cond.v * k).toFixed(1).replace(/\.0$/, '')}% ${p.cond.key === 'crit' ? 'critical chance' : p.cond.key === 'critDmg' ? 'critical damage' : p.cond.key === 'aspd' ? 'attack speed' : 'damage'} when it applies`);
+      if (p.onKill?.heal) out.push(`heal ${(p.onKill.heal * k).toFixed(1)}% HP per kill`);
+      if (p.onKill?.atkStack) out.push(`+${(p.onKill.atkStack[0] * k).toFixed(1)}% attack per stack`);
+      if (p.onHurt?.atkStack) out.push(`+${(p.onHurt.atkStack[0] * k).toFixed(1)}% attack per stack`);
+      if (p.onHurt?.reflectM) out.push(`${pct(p.onHurt.reflectM * k)} attack as lightning`);
+      if (p.onHit?.stunChance) out.push(`${(p.onHit.stunChance * k).toFixed(1)}% stun chance`);
+      if (p.onHit?.manaOnCrit) out.push(`${(p.onHit.manaOnCrit * k).toFixed(1)}% mana per critical`);
+      if (p.onHit?.healAllies) out.push(`heal allies ${(p.onHit.healAllies * k).toFixed(1)}%`);
+      if (p.skillMod) { const m = p.skillMod; if (m.cd) out.push(`${SKILL_BY_ID[m.id].name} cooldown ${Math.max(-60, m.cd * k).toFixed(0)}%`); if (m.dur) out.push(`${SKILL_BY_ID[m.id].name} lasts +${(m.dur * k).toFixed(0)}%`); if (m.area) out.push(`${SKILL_BY_ID[m.id].name} area +${(m.area * k).toFixed(0)}%`); if (m.charge) out.push(`charges ${Math.abs(m.charge * k).toFixed(0)}% faster`); }
+      if (p.secondWind) out.push(`heal ${(p.secondWind.heal * k).toFixed(1)}% · ${p.secondWind.cd} s cooldown`);
+      return out.join(' · ') || 'Always on';
+    }
+    if (sk.m) out.push(`${pct(sk.m * k)}${sk.hits > 1 ? ` x${sk.hits}` : ''}${sk.k === 'zone' || sk.k === 'channel' ? ' per tick' : ''} attack damage`);
+    if (sk.pct) out.push(`heal ${pct(sk.pct * (1 + 0.06 * (r - 1)))} max HP`);
+    if (sk.shieldPct) out.push(`shield ${pct(sk.shieldPct * k)} max HP`);
+    if (sk.heal) out.push(`heal ${pct(sk.heal * (1 + 0.06 * (r - 1)))} per tick`);
+    if (sk.mods) for (const [key, v] of Object.entries(sk.mods)) out.push(key === 'dmgTaken' ? `${v < 1 ? '-' : '+'}${Math.round(Math.abs(1 - v) * 100 * (v < 1 ? Math.min(1.6, k) : 1))}% damage taken` : `+${Math.round((v - 1) * 100 * k)}% ${STAT_WORD[key] || key}`);
+    if (sk.dur) out.push(`${sk.dur} s`);
+    if (sk.stun) out.push(`stun ${sk.stun} s`);
+    if (sk.cd) out.push(`MP ${sk.mp} · cooldown ${sk.cd} s`);
+    return out.join(' · ');
   }
 
   panel_pets(body) {
@@ -868,7 +968,7 @@ export class UI {
       const cur = i === idx;
       const r = h('div', 'row');
       r.innerHTML = `<div class="ic">${ico(cur ? 'quests' : 'star')}</div><div class="tx"><b style="color:${cur ? '#ffe066' : 'var(--muted)'}">${esc(qd.name)}</b>${cur ? `${esc(qd.text)}<br><span style="color:#7aff7a">${esc(g.questObjective(q))}</span>` : 'Completed'}</div>`;
-      if (cur) { const b = h('button', 'btn small blue', 'Go'); b.onclick = () => { this.closePanels(); g.autoQuest('main'); }; r.appendChild(b); }
+      if (cur) { const b = h('button', 'btn small blue', 'Directions'); b.onclick = () => g.autoQuest('main'); r.appendChild(b); }
       list.appendChild(r);
     });
     if (idx >= QUESTS.length) list.appendChild(h('div', 'row', '<div class="tx"><b>Your legend is complete!</b>The Spirits sing again. Keep conquering dungeons, world bosses and guild wars.</div>'));
@@ -876,6 +976,11 @@ export class UI {
     body.appendChild(h('div', 'lbl', '<br>Bounty'));
     const B = S.bounty;
     body.appendChild(h('div', 'row', `<div class="ic">${ico('bounty')}</div><div class="tx">${B ? `<b>Defeat ${B.count} ${esc(MONSTERS[B.target].name)}</b>Progress ${B.prog}/${B.count}${B.status === 'complete' ? ' — report to Captain Elena' : ''}` : g.bountyUnlocked() ? '<b>No active bounty</b>Captain Elena by the east gate has work for you.' : '<b>Locked</b>Bounties unlock after "Swift as the Wind".'}</div>`));
+    body.appendChild(h('div', 'lbl', '<br>Journal <span class="muted">· directions, word for word</span>'));
+    const J = h('div', 'journal');
+    if (!(S.journal || []).length) J.appendChild(h('div', 'muted', 'Nothing written yet. Quest givers tell you the way when you accept a task; ask the tracker for directions any time.'));
+    for (const j of (S.journal || []).slice(0, 12)) J.appendChild(h('div', 'jr', `<small>${new Date(j.t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>${esc(j.text)}`));
+    body.appendChild(J);
     body.appendChild(h('div', 'lbl', '<br>Party'));
     const mates = partyMembers().filter((x) => !x.me);
     if (mates.length) body.appendChild(h('div', 'row', `<div class="ic">${ico('cls_' + S.cls)}</div><div class="tx"><b>Party of ${mates.length + 1}</b>With ${mates.map((x) => esc(x.pr.info.name)).join(', ')}. Members nearby share EXP from kills.</div>`));
@@ -891,6 +996,7 @@ export class UI {
     const cv = document.createElement('canvas'); cv.width = 560; cv.height = 560; wrap.appendChild(cv);
     this.wmCanvas = cv; this.wmTown = town;
     if (!g.map.isDungeon && !town) for (const z of ZONES) {
+      if (!g.fogSeen(z.x, z.z) && g.zoneCoverage(z) < 0.05) continue;
       const l = h('div', 'wm-label stroke', `${esc(z.name)}<small>${esc(z.lv)}</small>`);
       l.style.left = ((z.x - mm.minX) / mm.size * 100) + '%'; l.style.top = ((z.z - mm.minZ) / mm.size * 100) + '%';
       wrap.appendChild(l);
@@ -907,9 +1013,9 @@ export class UI {
     cv.onclick = (e) => {
       const r = cv.getBoundingClientRect(), V2 = this.mapView(mm);
       const x = V2.x0 + (e.clientX - r.left) / r.width * V2.size, z = V2.z0 + (e.clientY - r.top) / r.height * V2.size;
-      const [fx, fz] = g.map.nearestFree(x, z);
-      if (Math.hypot(fx - x, fz - z) > 12) { this.toast('Cannot travel there', 'warn'); return; }
-      this.closePanels(); g.engage = false; g.pathTo(fx, fz, true);
+      if (g.map.isDungeon) return;
+      if (!g.fogSeen(x, z)) { this.toast('You have not been there yet', 'warn'); return; }
+      g.giveDirections(x, z, 'that spot', null, false);
     };
     body.appendChild(wrap);
     if (!g.map.isDungeon) {
@@ -918,12 +1024,24 @@ export class UI {
       for (const [id, what, name, sel] of SERVICES) {
         const n = g.npcById(id); if (!n) continue;
         const r = h('div', 'row slim', `<div class="ic">${ico(n.data.icon)}</div><div class="tx"><b>${esc(n.data.name)} <span class="muted">· ${esc(n.data.title)}</span></b>${esc(what)}</div>`);
-        const b = h('button', 'btn small blue', 'Go'); b.onclick = () => { Object.assign(this.sel, sel || {}); g.goToStation(name); };
+        const b = h('button', 'btn small blue', 'Find'); b.onclick = () => { Object.assign(this.sel, sel || {}); g.goToStation(name); };
         r.appendChild(b); L.appendChild(r);
       }
       body.appendChild(L);
+      // cartography: copy the zones you know onto parchment for other explorers
+      const sv = g.masteryLv('survival');
+      body.appendChild(h('div', 'lbl', `Cartography <span class="muted">· Survival mastery ${sv}${sv < SURVEY_MIN_MASTERY ? ` (copying needs ${SURVEY_MIN_MASTERY})` : ''} · Blank Parchment ${g.countItem('blank_parchment')}</span>`));
+      const CL = h('div', 'list carto');
+      for (const z of g.surveyZones()) {
+        const cov = g.zoneCoverage(z); if (cov < 0.05) continue;
+        const r = h('div', 'row slim', `<div class="ic">${ico('survey_map')}</div><div class="tx"><b>${esc(z.name)}</b>${Math.round(cov * 100)}% explored${cov < SURVEY_COVER ? ` · copy at ${Math.round(SURVEY_COVER * 100)}%` : ''}</div>`);
+        const b = h('button', 'btn small', 'Copy map'); b.disabled = cov < SURVEY_COVER || sv < SURVEY_MIN_MASTERY || !g.countItem('blank_parchment'); b.onclick = () => g.copySurvey(z.name);
+        r.appendChild(b); CL.appendChild(r);
+      }
+      if (!CL.children.length) CL.appendChild(h('div', 'muted', 'Explore a zone to copy its map.'));
+      body.appendChild(CL);
     }
-    body.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">${g.map.isDungeon ? 'Click a spot to walk there. Sealed chambers open once the room before them is cleared.' : town ? 'Tap a keeper to walk over and talk. Click anywhere else to walk there.' : 'Click anywhere on the map to auto-path there. Purple markers are dungeon entrances; gold pins are outpost traders. Talk to Nix at the north teleport circle for instant travel.'}</div>`));
+    body.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">${g.map.isDungeon ? 'Sealed chambers open once the room before them is cleared.' : town ? 'Tap a keeper to walk over and talk.' : 'Your map fills in only where you have walked. There is no auto-path: click a spot you have seen for directions by landmark. Blue stones are waystones: awaken them on foot, then travel between them (Nix in town).'}</div>`));
     this.drawWorldMap();
   }
   // the part of the world the map canvas shows: everything, or the town square
@@ -950,17 +1068,25 @@ export class UI {
     c.fillStyle = '#0c0f1c'; c.fillRect(0, 0, cv.width, cv.height);
     c.imageSmoothingEnabled = true;
     c.drawImage(mm.canvas, (V.x0 - mm.minX) * ppu, (V.z0 - mm.minZ) * ppu, V.size * ppu, V.size * ppu, 0, 0, cv.width, cv.height);
+    if (!g.map.isDungeon) this.drawFog(c, V.x0, V.z0, V.size, cv.width, cv.height);
+    const seen = (x, z) => g.map.isDungeon || g.fogSeen(x, z);
     const P = (x, z) => [(x - V.x0) * k, (z - V.z0) * k];
     if (!g.map.isDungeon && !this.wmTown) {
       { const [x, y] = P(DZ.x, DZ.z); c.fillStyle = 'rgba(200,20,20,.28)'; c.strokeStyle = 'rgba(255,60,40,.9)'; c.lineWidth = 2; c.setLineDash([6, 4]); c.beginPath(); c.arc(x, y, DZ.r * k, 0, Math.PI * 2); c.fill(); c.stroke(); c.setLineDash([]);
         c.font = 'bold 12px Nunito, sans-serif'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = '#2a0000'; c.fillStyle = '#ff8a7a'; c.strokeText('DANGER ZONE · PvP', x, y - 4); c.fillText('DANGER ZONE · PvP', x, y - 4); c.fillStyle = '#ffd0c8'; c.font = 'bold 10px Nunito, sans-serif'; c.strokeText(DZ.name, x, y + 9); c.fillText(DZ.name, x, y + 9); c.textAlign = 'left'; }
-      for (const sp of SPAWNS) { if (MONSTERS[sp.type].dz) continue; const [x, y] = P(sp.x, sp.z); c.fillStyle = MONSTERS[sp.type].boss ? 'rgba(255,60,160,.35)' : 'rgba(255,90,60,.22)'; c.beginPath(); c.arc(x, y, sp.r * k + (MONSTERS[sp.type].boss ? 10 : 0), 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#000'; c.lineWidth = 3; const lbl = `${MONSTERS[sp.type].name} Lv${MONSTERS[sp.type].lvl[0]}`; c.strokeText(lbl, x - 30, y + 4); c.fillText(lbl, x - 30, y + 4); }
+      for (const sp of SPAWNS) { if (MONSTERS[sp.type].dz || !seen(sp.x, sp.z)) continue; const [x, y] = P(sp.x, sp.z); c.fillStyle = MONSTERS[sp.type].boss ? 'rgba(255,60,160,.35)' : 'rgba(255,90,60,.22)'; c.beginPath(); c.arc(x, y, sp.r * k + (MONSTERS[sp.type].boss ? 10 : 0), 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#000'; c.lineWidth = 3; const lbl = `${MONSTERS[sp.type].name} Lv${MONSTERS[sp.type].lvl[0]}`; c.strokeText(lbl, x - 30, y + 4); c.fillText(lbl, x - 30, y + 4); }
       for (const n of g.npcs) {
+        if (!seen(n.pos.x, n.pos.z)) continue;
         const [x, y] = P(n.pos.x, n.pos.z), pin = !this.inTown(n.pos) && this.npcPin(n.data.icon);
         if (pin) c.drawImage(pin, x - 9, y - 9, 18, 18);
         else { c.fillStyle = '#ffe066'; c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill(); }
       }
-      for (const pt of g.portals) { const [x, y] = P(pt.center.x, pt.center.z); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#2a1050'; c.lineWidth = 3; c.strokeText(pt.def.name, x - 30, y - 9); c.fillStyle = '#e8c8ff'; c.fillText(pt.def.name, x - 30, y - 9); }
+      // landmarks and waystones you have seen
+      c.textAlign = 'center';
+      for (const L of g.landmarks || []) { if (L.kind === 'none' || !seen(L.x, L.z)) continue; const [x, y] = P(L.x, L.z); c.fillStyle = '#' + (L.color ?? 0xffffff).toString(16).padStart(6, '0'); c.strokeStyle = '#1a1208'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 4, y); c.lineTo(x, y + 6); c.lineTo(x - 4, y); c.closePath(); c.fill(); c.stroke(); c.font = 'italic bold 10px Nunito, sans-serif'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(L.name.replace(/^the /, ''), x, y + 16); c.fillStyle = '#f4ead0'; c.fillText(L.name.replace(/^the /, ''), x, y + 16); }
+      for (const e of g.waystoneEnts || []) { if (!seen(e.pos.x, e.pos.z)) continue; const [x, y] = P(e.pos.x, e.pos.z), on = g.waystoneOn(e.idx); c.fillStyle = on ? '#7ad8ff' : '#5a6070'; c.strokeStyle = '#0a1a2a'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 5, 0, Math.PI * 2); c.fill(); c.stroke(); }
+      c.textAlign = 'left';
+      for (const pt of g.portals) { if (!seen(pt.center.x, pt.center.z)) continue; const [x, y] = P(pt.center.x, pt.center.z); c.fillStyle = '#fff'; c.font = 'bold 11px Nunito, sans-serif'; c.strokeStyle = '#2a1050'; c.lineWidth = 3; c.strokeText(pt.def.name, x - 30, y - 9); c.fillStyle = '#e8c8ff'; c.fillText(pt.def.name, x - 30, y - 9); }
     } else if (g.map.isDungeon) {
       for (const m of g.monsters) if (!m.dead && m.map === g.map) { const [x, y] = P(m.pos.x, m.pos.z); c.fillStyle = m.def0.boss ? '#ff3aa8' : '#ff4a3a'; c.beginPath(); c.arc(x, y, m.def0.boss ? 6 : 3, 0, Math.PI * 2); c.fill(); }
     }
@@ -1004,7 +1130,7 @@ export class UI {
     enter.onclick = () => g.enterDungeon(cur.id);
     acts.appendChild(enter);
     const portal = g.portals.find((pt) => pt.def.id === cur.id);
-    if (portal && !g.dg) { const go = h('button', 'btn blue', 'Go to Entrance'); go.onclick = () => { this.closePanels(); g.goToPortal(portal); }; acts.appendChild(go); }
+    if (portal && !g.dg) { const go = h('button', 'btn blue', 'Directions'); go.onclick = () => { this.closePanels(); g.goToPortal(portal); }; acts.appendChild(go); }
     det.appendChild(acts);
     body.appendChild(det);
   }
@@ -1018,7 +1144,7 @@ export class UI {
       b.onclick = () => { g.setSetting(key, !S.settings[key]); this.refreshSound(); this.renderPanel(); };
       s.appendChild(b);
     };
-    row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Sound & music', 'sound');
+    row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Sound & music', 'sound'); row('Sound captions (trial cues as text)', 'captions');
     body.appendChild(s);
     const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap';
     const sv = h('button', 'btn blue', 'Save Game'); sv.onclick = () => { g.save(); this.toast('Game saved', 'good'); }; acts.appendChild(sv);
@@ -1080,6 +1206,7 @@ export class UI {
 
 installSystemsUI(UI);
 installLifeUI(UI);
+installTrialsUI(UI);
 installPartyUI(UI);
 
 // the dungeon's set: pieces you own and its bonuses

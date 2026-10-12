@@ -1,22 +1,36 @@
 // Item rarity tiers, random affixes, named Unique/Legendary items and loot generation. Pure JS (no three.js).
 import { SLOTS, WEAPON_NAMES, SLOT_BASE, SLOT_INFO, DUNGEONS } from './data.js';
-import { SETS, SET_EFFECTS, SET_COLOR, ANCIENT_COLOR } from './data-sets.js';
+import { SETS, SET_EFFECTS, SET_COLOR, ANCIENT_COLOR, SIX_SETS } from './data-sets.js';
+import { CLASS_SKILLS, SKILL_BY_ID } from './data-classes.js';
 import { SOCKETS, GEMS, GEM_LV, parseGem, parseSoul, SOULS, SOCKET_MAX } from './systems-data.js';
 
+// Eight tiers. min = the lowest level a tier drops at, and the weapon mastery needed to equip it (mastery lock).
 export const RARITY = [
-  { key: 'common', name: 'Common', color: '#e8e8e8', glow: 'rgba(232,232,232,0.25)', mult: 1.0, affixes: 0, beam: 0 },
-  { key: 'uncommon', name: 'Uncommon', color: '#5ee05a', glow: 'rgba(94,224,90,0.4)', mult: 1.25, affixes: 0, beam: 0.3 },
-  { key: 'rare', name: 'Rare', color: '#4aa8ff', glow: 'rgba(74,168,255,0.5)', mult: 1.6, affixes: 1, beam: 0.6 },
-  { key: 'special', name: 'Special', color: '#c46bff', glow: 'rgba(196,107,255,0.55)', mult: 2.0, affixes: 2, beam: 0.8 },
-  { key: 'unique', name: 'Unique', color: '#ff9a2e', glow: 'rgba(255,154,46,0.65)', mult: 2.6, affixes: 3, beam: 1.0 },
-  { key: 'legendary', name: 'Legendary', color: '#ffd84a', glow: 'rgba(255,216,74,0.8)', mult: 3.4, affixes: 3, beam: 1.3 },
-  { key: 'red', name: 'Red', color: '#ff3b3b', glow: 'rgba(255,59,59,0.85)', mult: 4.4, affixes: 4, beam: 1.5 },
+  { key: 'common', name: 'Common', color: '#e8e8e8', glow: 'rgba(232,232,232,0.25)', mult: 1.0, affixes: 0, beam: 0, min: 1 },
+  { key: 'uncommon', name: 'Uncommon', color: '#5ee05a', glow: 'rgba(94,224,90,0.4)', mult: 1.2, affixes: 1, beam: 0.3, min: 1 },
+  { key: 'rare', name: 'Rare', color: '#4aa8ff', glow: 'rgba(74,168,255,0.5)', mult: 1.5, affixes: 2, beam: 0.6, min: 20 },
+  { key: 'special', name: 'Special', color: '#c46bff', glow: 'rgba(196,107,255,0.55)', mult: 1.9, affixes: 2, beam: 0.8, min: 40 },
+  { key: 'unique', name: 'Unique', color: '#ff9a2e', glow: 'rgba(255,154,46,0.65)', mult: 2.4, affixes: 2, beam: 1.0, min: 60 },
+  { key: 'legendary', name: 'Legendary', color: '#ffd84a', glow: 'rgba(255,216,74,0.8)', mult: 3.0, affixes: 3, beam: 1.3, min: 100 },
+  { key: 'red', name: 'Red', color: '#ff3b3b', glow: 'rgba(255,59,59,0.85)', mult: 3.8, affixes: 3, beam: 1.5, min: 140 },
+  { key: 'ancient', name: 'Ancient', color: '#d8a060', glow: 'rgba(216,160,96,0.9)', mult: 5.0, affixes: 4, beam: 1.8, min: 180 },
 ];
+// Legendary and up are account-bound (cannot be traded); items lose durability on death
+export const BOUND_TIER = 5, DUR_MAX = 100, DUR_DEATH = 10;
+export const tierMin = (q) => RARITY[q]?.min || 1;
+// the best tier that may appear at a level (never above max)
+export const tierFor = (lvl, max = 5) => { let q = 0; for (let i = 0; i <= max; i++) if (RARITY[i].min <= lvl) q = i; return q; };
+// Special items carry one small passive
+export const MINOR_PASSIVES = {
+  keen: { name: 'Keen', stat: 'critDmg', v: 6, label: '+6% Crit Damage' }, sturdy: { name: 'Sturdy', stat: 'defPct', v: 4, label: '+4% Defense' },
+  vital: { name: 'Vital', stat: 'hpPct', v: 4, label: '+4% Max HP' }, fierce: { name: 'Fierce', stat: 'atkPct', v: 3, label: '+3% Attack' },
+  nimble: { name: 'Nimble', stat: 'speed', v: 3, label: '+3% Move Speed' }, focused: { name: 'Focused', stat: 'cdr', v: 3, label: '-3% Cooldowns' },
+};
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const pct = (v) => (Math.round(v * 10) / 10).toString();
 // Affix roll: base + per-level growth, scaled by tier (Rare 1.0 ... Legendary 1.6) and a 0.8-1.2 random spread.
-const tierScale = (q) => [0.7, 0.85, 1.0, 1.2, 1.4, 1.6, 1.85][q] || 1;
+const tierScale = (q) => [0.7, 0.85, 1.0, 1.2, 1.4, 1.6, 1.85, 2.1][q] || 1;
 const mk = (name, stat, label, base, perLvl, cap) => ({
   name, stat, label, base, perLvl, cap,
   roll(lvl, q, rng = Math.random) {
@@ -94,7 +108,8 @@ export const LEGENDARY_ITEMS = [
 export const NAMED_LIST = [...UNIQUE_ITEMS.map((d) => ({ ...d, quality: 4 })), ...LEGENDARY_ITEMS.map((d) => ({ ...d, quality: 5 }))];
 const NAMED = new Map([...UNIQUE_ITEMS.map((d) => [d.id, { ...d, quality: 4 }]), ...LEGENDARY_ITEMS.map((d) => [d.id, { ...d, quality: 5 }])]);
 const PREFIX = [['Worn', 'Plain'], ['Sturdy', 'Fine'], ['Sylvan', 'Gleaming'], ['Elven', 'Runed']];
-const WEAPON_KEY = { knight: 'w_sword', assassin: 'w_daggers', mage: 'w_staff', priest: 'w_scepter' };
+const pickMinor = (rng) => { const k = Object.keys(MINOR_PASSIVES); return k[Math.floor(rng() * k.length)]; };
+const WEAPON_KEY = { knight: 'w_sword', assassin: 'w_daggers', mage: 'w_staff', priest: 'w_scepter', berserker: 'w_greataxe', ranger: 'w_bow', summoner: 'w_tome', spellblade: 'w_runesword' };
 const VALID_CLS = Object.keys(WEAPON_KEY);
 
 export function iconKey(slot, cls, quality) {
@@ -102,9 +117,11 @@ export function iconKey(slot, cls, quality) {
   return quality >= 4 ? base + '_l' : base;
 }
 
-export function rollRarity({ elite = false, boss = false, dungeon = false, luck = 0 } = {}, rng = Math.random) {
+// world drops follow the base rates (60 / 25 / 10 / 3.5 / 1.2 / 0.25%); a tier never drops below its minimum level.
+// Red and Ancient do not drop from monsters: they come from trials, top dungeons and the ancient ruins.
+export function rollRarity({ elite = false, boss = false, dungeon = false, luck = 0, lvl = 200 } = {}, rng = Math.random) {
   // weights: Common, Uncommon, Rare, Special, Unique, Legendary
-  let w = [55, 28, 12, 4, 0.8, 0.2];
+  let w = [60, 25, 10, 3.5, 1.2, 0.25];
   if (elite) w = [30, 35, 22, 10, 2.4, 0.6];
   if (dungeon) w = elite ? [10, 30, 34, 19, 5.5, 1.5] : [30, 34, 24, 9, 2.4, 0.6];
   if (boss) w = dungeon ? [0, 0, 46, 38, 12, 4] : [0, 20, 40, 30, 8, 2];
@@ -112,6 +129,7 @@ export function rollRarity({ elite = false, boss = false, dungeon = false, luck 
     const l = Math.min(1, luck);
     w = w.map((x, i) => x * (i >= 2 ? 1 + l * (0.6 + i * 0.3) : 1 - l * 0.5));
   }
+  w = w.map((x, i) => (RARITY[i].min <= lvl ? x : 0));
   const total = w.reduce((a, b) => a + b, 0);
   let r = rng() * total;
   for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i; }
@@ -123,6 +141,7 @@ function baseStats(slot, lvl, quality) {
   if (slot === 'weapon') st.atk = (8 + L * 2.4) * m;
   if (slot === 'helm') { st.hp = (24 + L * 10) * m; st.def = (2 + L * 0.6) * m; }
   if (slot === 'armor') { st.def = (4 + L * 1.2) * m; st.hp = (20 + L * 8) * m; }
+  if (slot === 'gloves') { st.atk = (2 + L * 0.6) * m; st.def = (1 + L * 0.4) * m; }
   if (slot === 'boots') { st.def = (2 + L * 0.7) * m; st.hp = (10 + L * 4) * m; }
   if (slot === 'necklace') { st.hp = (30 + L * 12) * m; st.atk = (2 + L * 0.5) * m; }
   if (slot === 'ring') { st.atk = (3 + L * 1.0) * m; st.crit = 1 + quality * 1.5; }
@@ -141,7 +160,7 @@ function rollAffixes(n, lvl, quality, rng) {
 
 export function genEquip({ slot, lvl, quality, cls, uid, named = null, rng = Math.random } = {}) {
   lvl = Math.max(1, Math.round(lvl || 1));
-  quality = Math.max(0, Math.min(5, quality | 0));
+  quality = Math.max(0, Math.min(5, quality | 0, tierFor(lvl)));
   if (named) return genNamed(typeof named === 'string' ? named : named.id, { lvl, cls, uid, rng });
   if (!slot) slot = SLOTS[Math.floor(rng() * SLOTS.length)];
   if (quality >= 4) {
@@ -153,19 +172,20 @@ export function genEquip({ slot, lvl, quality, cls, uid, named = null, rng = Mat
   const base = slot === 'weapon' ? (WEAPON_NAMES[cls] || 'Blade') : SLOT_BASE[slot];
   return {
     uid, slot, name: `${pre} ${base}`, quality, lvl, stats: baseStats(slot, lvl, quality),
-    affixes: rollAffixes(RARITY[quality].affixes, lvl, quality, rng), effect: null, named: null, enh: 0,
+    affixes: rollAffixes(RARITY[quality].affixes, lvl, quality, rng), effect: null, named: null, enh: 0, dur: DUR_MAX,
+    minor: quality === 3 ? pickMinor(rng) : null,
     icon: iconKey(slot, cls, quality), gems: new Array(SOCKETS[quality]).fill(null),
   };
 }
 
 export function genNamed(namedId, { lvl = 1, cls, uid, rng = Math.random } = {}) {
   const d = NAMED.get(namedId);
-  if (!d) return genEquip({ slot: null, lvl, quality: 3, cls, uid, rng });
   lvl = Math.max(1, Math.round(lvl));
+  if (!d || d.quality > tierFor(lvl)) return genEquip({ slot: d?.slot || null, lvl, quality: d ? tierFor(lvl) : 3, cls, uid, rng });
   const useCls = d.cls || cls;
   return {
     uid, slot: d.slot, name: d.name, quality: d.quality, lvl, stats: baseStats(d.slot, lvl, d.quality),
-    affixes: rollAffixes(RARITY[d.quality].affixes, lvl, d.quality, rng), effect: d.effect, named: d.id, enh: 0,
+    affixes: rollAffixes(RARITY[d.quality].affixes, lvl, d.quality, rng), effect: d.effect, named: d.id, enh: 0, dur: DUR_MAX, bound: d.quality >= BOUND_TIER || undefined,
     icon: iconKey(d.slot, useCls, d.quality), flavor: d.flavor, cls: d.cls || null, gems: new Array(SOCKETS[d.quality]).fill(null),
   };
 }
@@ -173,33 +193,59 @@ export function genNamed(namedId, { lvl = 1, cls, uid, rng = Math.random } = {})
 // Red (tier 6) gear: crafted at the Forge from a full dungeon relic set and a Crimson Core.
 // Four affixes, a random legendary power and three sockets; the dungeon's adjective names it.
 const RED_EFFECTS = ['meteor_proc', 'phoenix', 'frenzy', 'holy_nova', 'starfall', 'worldtree'];
+// a Red item awakens one of your class's core skills (+50% damage, 30% shorter cooldown, +30% reach)
+export const AWAKEN = { dmg: 1.5, cd: 0.7, range: 1.3 };
+function pickAwaken(cls, rng) {
+  const list = (CLASS_SKILLS[cls]?.core || []).filter((s) => s.type === 'active' && s.m);
+  return list.length ? list[Math.floor(rng() * list.length)].id : null;
+}
 export function genRed({ adj, set, slot, lvl, cls, uid, rng = Math.random }) {
   lvl = Math.max(1, Math.round(lvl || 1));
   if (!SLOTS.includes(slot)) slot = SLOTS[Math.floor(rng() * SLOTS.length)];
   const base = slot === 'weapon' ? (WEAPON_NAMES[cls] || 'Blade') : SLOT_BASE[slot];
   return {
     uid, slot, name: `Crimson ${adj} ${base}`, quality: 6, lvl, stats: baseStats(slot, lvl, 6),
-    affixes: rollAffixes(RARITY[6].affixes, lvl, 6, rng), effect: RED_EFFECTS[Math.floor(rng() * RED_EFFECTS.length)], named: null, red: set || null, enh: 0,
+    affixes: rollAffixes(RARITY[6].affixes, lvl, 6, rng), effect: RED_EFFECTS[Math.floor(rng() * RED_EFFECTS.length)], named: null, red: set || null, enh: 0, dur: DUR_MAX, bound: true,
+    awaken: pickAwaken(cls, rng),
     icon: iconKey(slot, cls, 6), flavor: `Forged from the four ${adj} relics and a Crimson Core.`, gems: new Array(SOCKETS[6]).fill(null),
   };
 }
 
 // Dungeon set piece: Unique-strength base stats and affixes, named after its set.
-export function genSet(setId, { slot, lvl, cls, uid, rng = Math.random } = {}) {
+// The piece's tier follows the level it drops at (a tier never appears below its minimum level); an Ancient-tier
+// piece of the Bloodmoon sets needs Lv 180+ and the season's Ancient (ancientOk).
+export function genSet(setId, { slot, lvl, cls, uid, ancientOk = false, rng = Math.random } = {}) {
   const set = SETS[setId]; if (!set) return null;
+  if (set.six6) return genSix(setId, { slot, lvl, cls, uid, rng });
   if (!set.slots.includes(slot)) slot = set.slots[Math.floor(rng() * set.slots.length)];
   lvl = Math.max(1, Math.round(lvl || 1));
-  const dg = DUNGEONS.find((d) => d.id === set.dungeon), q = set.ancient ? 5 : 4;
+  const dg = DUNGEONS.find((d) => d.id === set.dungeon);
+  const q = set.ancient && ancientOk && lvl >= RARITY[7].min ? 7 : Math.min(set.ancient ? 5 : 4, tierFor(lvl));
   return {
     uid, slot, name: `${set.ancient ? 'Ancient ' : ''}${set.name} ${SLOT_BASE[slot]}`, quality: q, lvl, stats: baseStats(slot, lvl, q),
-    affixes: rollAffixes(RARITY[q].affixes, lvl, q, rng), effect: null, named: null, set: setId, enh: 0,
+    affixes: rollAffixes(RARITY[q].affixes, lvl, q, rng), effect: null, named: null, set: setId, enh: 0, dur: DUR_MAX, bound: q >= BOUND_TIER || undefined, minor: q === 3 ? pickMinor(rng) : null,
     icon: iconKey(slot, cls, q), flavor: set.ancient ? `One of four Ancient ${set.name} pieces, torn from the Bloodmoon Wastes.` : `One of four ${set.name} pieces, found in ${dg?.name || 'a dungeon'}.`, gems: new Array(SOCKETS[q]).fill(null),
   };
 }
+// Six-piece set piece (Rare to Ancient, by the set's tier). Ancient pieces carry the owner's name engraved.
+export function genSix(setId, { slot, lvl, cls, uid, owner = null, rng = Math.random } = {}) {
+  const set = SIX_SETS[setId]; if (!set) return null;
+  if (!set.slots.includes(slot)) slot = set.slots[Math.floor(rng() * set.slots.length)];
+  const q = set.tier;
+  lvl = Math.max(set.min, Math.round(lvl || set.min));
+  return {
+    uid, slot, name: set.pieces[slot], quality: q, lvl, stats: baseStats(slot, lvl, q),
+    affixes: rollAffixes(RARITY[q].affixes, lvl, q, rng), effect: null, named: null, set: setId, enh: 0, dur: DUR_MAX,
+    bound: q >= BOUND_TIER || undefined, engraved: q === 7 && owner ? owner : undefined, minor: q === 3 ? pickMinor(rng) : null,
+    icon: iconKey(slot, cls, q), flavor: `${set.name} · ${set.role}. ${set.source}.`, gems: new Array(SOCKETS[q]).fill(null),
+  };
+}
+// does a worn piece count? (six-piece sets need their minimum weapon mastery)
+const counts = (eq, ctx) => !(eq.dur === 0) && (!SIX_SETS[eq.set] || !ctx || ctx.mastery == null || ctx.mastery >= SIX_SETS[eq.set].min);
 // how many pieces of each set are equipped
-function setCounts(equipMap) {
+function setCounts(equipMap, ctx = null) {
   const n = {};
-  for (const slot of SLOTS) { const eq = equipMap && equipMap[slot]; if (eq?.set && SETS[eq.set]) n[eq.set] = (n[eq.set] || 0) + 1; }
+  for (const slot of SLOTS) { const eq = equipMap && equipMap[slot]; if (eq?.set && SETS[eq.set] && counts(eq, ctx)) n[eq.set] = (n[eq.set] || 0) + 1; }
   return n;
 }
 
@@ -216,11 +262,13 @@ export function normalizeItem(eq, cls) {
   if (eq.named === undefined) eq.named = null;
   if (!eq.stats || typeof eq.stats !== 'object') eq.stats = {};
   eq.enh = eq.enh | 0;
-  eq.quality = Math.max(0, Math.min(6, eq.quality | 0));
+  eq.quality = Math.max(0, Math.min(7, eq.quality | 0));
+  if (eq.dur == null) eq.dur = DUR_MAX;
+  if (eq.quality >= BOUND_TIER) eq.bound = true;
   eq.lvl = Math.max(1, eq.lvl | 0);
   if (!SLOTS.includes(eq.slot)) eq.slot = EMOJI_SLOT[eq.icon] || 'ring';
   fitSockets(eq);
-  const validKey = typeof eq.icon === 'string' && /^(w_(sword|daggers|staff|scepter)|helm|armor|boots|necklace|ring)(_l)?$/.test(eq.icon);
+  const validKey = typeof eq.icon === 'string' && /^(w_(sword|daggers|staff|scepter|greataxe|bow|tome|runesword)|helm|armor|gloves|boots|necklace|ring)(_l)?$/.test(eq.icon);
   if (!validKey) {
     const wc = EMOJI_WEAPON[eq.icon] || (VALID_CLS.includes(cls) ? cls : 'knight');
     eq.icon = iconKey(eq.slot, wc, eq.quality);
@@ -228,11 +276,13 @@ export function normalizeItem(eq, cls) {
   return eq;
 }
 
-const ZERO = () => ({ atk: 0, def: 0, hp: 0, crit: 0, critDmg: 0, speed: 0, lifesteal: 0, cdr: 0, expGain: 0, goldFind: 0, thorns: 0, regen: 0, manaCost: 0 });
+const ZERO = () => ({ atk: 0, def: 0, hp: 0, crit: 0, critDmg: 0, speed: 0, lifesteal: 0, cdr: 0, expGain: 0, goldFind: 0, thorns: 0, regen: 0, manaCost: 0,
+  atkPct: 0, defPct: 0, hpPct: 0, allPct: 0, bossPct: 0, firePct: 0, poisonPct: 0, rangedPct: 0, healPct: 0, atkSpeed: 0, regenPct: 0, skillRange: 0, discovery: 0, masteryPct: 0, dmgTaken: 0 });
 function itemStats(eq) {
   const out = ZERO();
-  if (!eq) return out;
+  if (!eq || eq.dur === 0) return out; // broken: no stats until repaired
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);
+  if (eq.minor && MINOR_PASSIVES[eq.minor]) out[MINOR_PASSIVES[eq.minor].stat] += MINOR_PASSIVES[eq.minor].v;
   for (const s of ['atk', 'def', 'hp']) out[s] += (eq.stats?.[s] || 0) * k;
   out.crit += eq.stats?.crit || 0;
   for (const a of eq.affixes || []) { const def = AFFIXES[a.id]; if (def && Number.isFinite(a.v)) out[def.stat] += a.v * ka; }
@@ -240,25 +290,29 @@ function itemStats(eq) {
   return out;
 }
 
-const CAPS = { cdr: 40, speed: 40, lifesteal: 25, manaCost: 60, thorns: 60 };
-export function aggregateEquip(equipMap) {
+const CAPS = { cdr: 40, speed: 40, lifesteal: 25, manaCost: 60, thorns: 60, dmgTaken: 40 };
+export function aggregateEquip(equipMap, ctx = null) {
   const stats = ZERO(), effects = [];
   for (const slot of SLOTS) {
     const eq = equipMap && equipMap[slot];
-    if (!eq) continue;
+    if (!eq || eq.dur === 0) continue;
     const s = itemStats(eq);
     for (const k in s) stats[k] += s[k];
     if (eq.effect && EFFECTS[eq.effect] && !effects.includes(eq.effect)) effects.push(eq.effect);
     for (const gid of eq.gems || []) { const fx = parseSoul(gid); if (fx && EFFECTS[fx] && !effects.includes(fx)) effects.push(fx); }
   }
-  const sets = setCounts(equipMap);
+  const sets = setCounts(equipMap, ctx);
+  const add = (b) => { if (!b) return; if (typeof b === 'string') { if (!effects.includes(b)) effects.push(b); } else for (const [k, v] of Object.entries(b)) stats[k] += v; };
   for (const [id, n] of Object.entries(sets)) {
     const set = SETS[id];
+    if (set.six6) { if (n >= 2) add(set.two); if (n >= 4) add(set.four); if (n >= 6) add(set.six); if (id === 'six_cerberus' && n >= 4) stats.defPct += 12; continue; }
     if (n >= 2) for (const [k, v] of Object.entries(set.two)) stats[k] += v;
     if (n >= 4 && !effects.includes(set.power)) effects.push(set.power);
   }
+  const awaken = [];
+  for (const slot of SLOTS) { const eq = equipMap?.[slot]; if (eq?.awaken && eq.dur !== 0) awaken.push(eq.awaken); }
   for (const k in CAPS) stats[k] = Math.min(CAPS[k], stats[k]);
-  return { stats, effects, sets };
+  return { stats, effects, sets, awaken };
 }
 
 const WEIGHTS = { atk: 9, def: 7, hp: 0.55, crit: 14, critDmg: 4, speed: 10, lifesteal: 25, cdr: 20, expGain: 3, goldFind: 2, thorns: 6, regen: 8, manaCost: 6 };
@@ -269,21 +323,30 @@ export function itemScore(eq) {
   for (const k in WEIGHTS) score += (s[k] || 0) * WEIGHTS[k];
   if (eq.effect && EFFECTS[eq.effect]) score += EFFECTS[eq.effect].tier === 'legendary' ? 900 : 350;
   if (eq.set) score += 250;
+  if (eq.awaken) score += 700;
   for (const gid of eq.gems || []) { const fx = parseSoul(gid); if (fx && EFFECTS[fx]) score += EFFECTS[fx].tier === 'legendary' ? 900 : 350; }
   return Math.round(score);
 }
 
 const STAT_LABEL = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: 'Critical' };
+const SIX_STAT = { atkPct: '% Attack', defPct: '% Defense', hpPct: '% Max HP', allPct: '% to all stats', bossPct: '% damage to bosses', firePct: '% fire damage', poisonPct: '% poison damage', rangedPct: '% ranged damage', healPct: '% healing done', atkSpeed: '% attack speed', regenPct: '% HP regeneration', skillRange: '% skill range', discovery: '% discovery XP', masteryPct: '% mastery gains', dmgTaken: '% damage taken' };
 const SET_STAT = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: '% Critical', critDmg: '% Crit Damage', speed: '% Move Speed', lifesteal: '% Lifesteal', cdr: '% Cooldown Reduction', expGain: '% EXP Gain', goldFind: '% Gold Find', thorns: '% Thorns', regen: ' HP per second', manaCost: '% Skill MP Cost Reduction' };
-export function itemLines(eq, equipMap = null) {
-  const R = RARITY[eq.quality] || RARITY[0];
-  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: eq.set ? (SETS[eq.set]?.ancient ? ANCIENT_COLOR : SET_COLOR) : R.color }];
-  lines.push({ text: `${eq.set ? 'Set' : R.name} ${SLOT_INFO[eq.slot]?.label || eq.slot} · Lv ${eq.lvl}`, color: '#b6c2dc' });
+export function itemLines(eq, equipMap = null, ctx = null) {
+  const R = RARITY[eq.quality] || RARITY[0], six = SIX_SETS[eq.set];
+  const lines = [{ text: eq.name + (eq.enh ? ` +${eq.enh}` : ''), color: eq.set && !six ? (SETS[eq.set]?.ancient ? ANCIENT_COLOR : SET_COLOR) : R.color }];
+  lines.push({ text: `${R.name}${eq.set ? ' Set' : ''} ${SLOT_INFO[eq.slot]?.label || eq.slot} · Lv ${eq.lvl}`, color: '#b6c2dc' });
+  const need = Math.max(tierMin(eq.quality), six ? six.min : 0);
+  if (need > 1) lines.push({ text: `Requires weapon mastery ${need}${ctx?.mastery != null ? ` (you have ${ctx.mastery})` : ''}`, color: ctx?.mastery != null && ctx.mastery < need ? '#ff8a7a' : '#b6c2dc' });
+  if (eq.bound || eq.quality >= BOUND_TIER) lines.push({ text: 'Account-bound: cannot be traded', color: '#ffb35a' });
+  if (eq.engraved) lines.push({ text: `Engraved: “${eq.engraved}”`, color: '#d8a060' });
+  if (eq.dur != null) lines.push({ text: eq.dur === 0 ? 'BROKEN: no stats until repaired (Gorm)' : `Durability ${eq.dur}/${DUR_MAX}`, color: eq.dur === 0 ? '#ff5a4a' : eq.dur < 30 ? '#ffb35a' : '#8a94b0' });
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);
   for (const s of ['atk', 'def', 'hp']) if (eq.stats?.[s]) lines.push({ text: `${STAT_LABEL[s]} +${Math.round(eq.stats[s] * k)}`, color: '#ffffff' });
   if (eq.stats?.crit) lines.push({ text: `Critical +${r1(eq.stats.crit)}%`, color: '#ffffff' });
   if (eq.enh) lines.push({ text: `Enhanced +${eq.enh}: base stats x${k.toFixed(2)}${ka > 1 ? `, affixes x${ka.toFixed(2)}` : ''}`, color: eq.enh >= 15 ? '#ff7a4a' : eq.enh >= 10 ? '#d8a0ff' : '#8ad0ff' });
   for (const a of eq.affixes || []) { const def = AFFIXES[a.id]; if (def) lines.push({ text: def.label(r1(a.v * ka)), color: '#7aff7a' }); }
+  if (eq.minor && MINOR_PASSIVES[eq.minor]) lines.push({ text: `Passive · ${MINOR_PASSIVES[eq.minor].name}: ${MINOR_PASSIVES[eq.minor].label}`, color: '#d8a0ff' });
+  if (eq.awaken && SKILL_BY_ID[eq.awaken]) lines.push({ text: `Awakened skill · ${SKILL_BY_ID[eq.awaken].name}: +50% damage, 30% shorter cooldown, +30% reach`, color: '#ff7a6a' });
   if (eq.effect && EFFECTS[eq.effect]) {
     const e = EFFECTS[eq.effect];
     lines.push({ text: `${e.name}: ${e.desc}`, color: e.tier === 'legendary' ? '#ffe27a' : '#ffb35a' });
@@ -293,7 +356,15 @@ export function itemLines(eq, equipMap = null) {
     lines.push(g ? { text: `◆ ${GEM_LV[g.lv - 1]} ${GEMS[g.type].name}: ${GEMS[g.type].label(GEMS[g.type].vals[g.lv - 1])}`, color: GEMS[g.type].color }
       : fx ? { text: `✦ ${SOULS[fx]} Soulstone: ${EFFECTS[fx].desc}`, color: '#ff9ae8' } : { text: '◇ Empty socket', color: '#8a94b0' });
   }
-  const set = eq.set && SETS[eq.set];
+  if (six) {
+    const n = setCounts(equipMap, ctx)[eq.set] || 0, worn = new Set(SLOTS.filter((s) => equipMap?.[s]?.set === eq.set));
+    const SC = R.color, line = (b) => (typeof b === 'string' ? `${EFFECTS[b].name}: ${EFFECTS[b].desc}` : Object.entries(b).map(([k, v]) => `${k === 'dmgTaken' ? '-' : '+'}${v}${SIX_STAT[k] || SET_STAT[k] || ' ' + k}`).join(', '));
+    lines.push({ text: `${six.name} (${n}/6) · ${six.role}: ${six.slots.map((s) => (worn.has(s) ? '●' : '○') + ' ' + SLOT_INFO[s].label).join('  ')}`, color: SC });
+    lines.push({ text: `(2) ${line(six.two)}`, color: n >= 2 ? SC : '#8a94b0' });
+    lines.push({ text: `(4) ${line(six.four)}`, color: n >= 4 ? SC : '#8a94b0' });
+    lines.push({ text: `(6) ${line(six.six)}`, color: n >= 6 ? SC : '#8a94b0' });
+  }
+  const set = eq.set && !six && SETS[eq.set];
   if (set) {
     const n = setCounts(equipMap)[eq.set] || 0, worn = new Set(SLOTS.filter((s) => equipMap?.[s]?.set === eq.set));
     const SC = set.ancient ? ANCIENT_COLOR : SET_COLOR;
@@ -309,6 +380,15 @@ export function itemLines(eq, equipMap = null) {
 export function sellPrice(eq) {
   if (!eq) return 0;
   return Math.round(12 * eq.lvl * (eq.quality + 1) * (1 + (eq.enh || 0) * 0.3) * (eq.quality >= 6 ? 4 : eq.quality >= 4 ? 2 : 1));
+}
+// repairing: gold by level and tier; above Legendary (Red, Ancient) also rare materials
+export function repairCost(eq) {
+  if (!eq || eq.dur == null || eq.dur >= DUR_MAX) return null;
+  const miss = (DUR_MAX - eq.dur) / DUR_MAX;
+  const c = { gold: Math.max(10, Math.round(sellPrice(eq) * 0.4 * miss)), mats: {} };
+  if (eq.quality >= 6) c.mats.star_essence = Math.max(1, Math.ceil(miss * (eq.quality === 7 ? 4 : 2)));
+  if (eq.quality === 7) c.mats.spirit_shard = Math.max(1, Math.ceil(miss * 6));
+  return c;
 }
 
 // ---------------------------------------------------------------- progression helpers (Forge)
