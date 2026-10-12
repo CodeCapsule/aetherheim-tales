@@ -275,6 +275,7 @@ export const TIPS = [
   'Your Axe, Pickaxe and Sickle sit on the tool belt above the skill bar: press 8, 9 or 0 to gather the nearest node.',
   'Press R to summon or dismiss your mount.',
   'Auto-hit (T) fights from where you stand. Roll (Shift) through red telegraphs.',
+  'Play with a friend: share your join code from the Online window, and they join your party and appear beside you.',
   'Pets fight by your side and add to your Battle Rating.',
   'Enhance gear at Gorm the Blacksmith to raise your Battle Rating.',
   'Step out of red circles on the ground to avoid boss attacks!',

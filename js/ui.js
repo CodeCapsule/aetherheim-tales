@@ -20,6 +20,7 @@ import { MASTERY, MASTERY_MAX, masteryNeed, FOG } from './progress.js';
 import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
 import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
+import { canInstall, installApp } from './app.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -1171,6 +1172,7 @@ export class UI {
     body.appendChild(s);
     const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap';
     const sv = h('button', 'btn blue', 'Save Game'); sv.onclick = () => { g.save(); this.toast('Game saved', 'good'); }; acts.appendChild(sv);
+    if (canInstall()) { const ia = h('button', 'btn green', `${ico('download', 'ico inl')} Install App`); ia.onclick = () => installApp((...a) => this.modal(...a)).then(() => this.renderPanel()); acts.appendChild(ia); }
     if (this.openAdmin && this.adminAllowed && this.adminAllowed()) { const ad = h('button', 'btn', 'Game Master Console'); ad.onclick = () => { this.closePanels(); this.openAdmin(); }; acts.appendChild(ad); }
     const del = h('button', 'btn gray', 'New Character'); del.onclick = () => this.modal('Start over?', 'This deletes your saved hero and returns to character creation.', [{ label: 'Delete & Restart', fn: () => { try { localStorage.removeItem('alfheim_tales_save_v1'); } catch { /* ignore */ } location.reload(); } }, { label: 'Cancel', cls: 'gray' }]);
     acts.appendChild(del);

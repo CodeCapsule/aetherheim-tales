@@ -16,9 +16,18 @@ import { magicCircleTexture } from './toon.js';
 import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
 import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from './mp.js';
+import { setupApp, canInstall, installApp, onInstallChange } from './app.js';
+import { parseJoinCode, setPendingJoin } from './coop.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
+setupApp();
+// an invite link (?join=3K7QPM): fill in the code on the title screen, and drop it from the address bar
+const invited = (() => {
+  const q = new URLSearchParams(location.search), c = parseJoinCode(q.get('join'));
+  if (q.has('join')) { q.delete('join'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
+  return c;
+})();
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
 let renderer, scene, camera, world, fx, ui, sfx, portraits, sun, lights, game = null;
@@ -127,6 +136,7 @@ function showTitle(save) {
   $('title-top').innerHTML = `${crestArt(true)}<span>Aetherheim Tales Online</span>`;
   $('title-feats').innerHTML = [['smithing', 'Craft'], ['trade', 'Trade'], ['map', 'Explore'], ['farm', 'Grow'], ['online', 'Together']].map(([k, t]) => `<span>${ico(k)}${t}</span>`).join('<i></i>');
   const list = $('server-list'); list.innerHTML = '';
+  if (invited) setServer(invited.server);
   const cur = getServer(), multi = mpEnabled(), rows = {};
   for (const sv of SERVERS) {
     const b = document.createElement('button');
@@ -146,14 +156,45 @@ function showTitle(save) {
   });
   refreshTitleLive();
   const h3 = document.querySelector('#scr-title .srv-panel h3'); if (h3) { h3.textContent = 'Select Server'; h3.title = multi ? 'Pick the same server as your friends to play together' : ''; }
+  // join a friend: their code picks the server, and the game joins them once it has loaded
+  const jin = $('join-in'), jnote = $('join-note'), jrow = jin.closest('.join-row'), jbtn = $('btn-joinfriend');
+  const markServer = (id) => list.querySelectorAll('.server').forEach((x, i) => { const on = SERVERS[i].id === id; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', String(on)); });
+  const say = (html) => { jnote.innerHTML = html; jnote.hidden = !html; };
+  // the code box opens from Join a Friend, or already filled in when you came through an invite link
+  const openJoin = () => { jrow.hidden = false; jbtn.hidden = true; $('scr-title').classList.add('joining'); };
+  jrow.hidden = true; jbtn.hidden = !multi; say(''); $('scr-title').classList.remove('joining');
+  jbtn.innerHTML = `${ico('join_code', 'ico inl')}<span class="long">Join a Friend</span><span class="short">Join</span>`;
+  jbtn.onclick = () => { sfx.ensure(); sfx.play('click'); openJoin(); jin.focus(); };
+  if (invited && multi) { jin.value = invited.text; markServer(invited.server); openJoin(); }
+  const takeCode = () => {
+    const raw = jin.value.trim(); if (!raw) return true;
+    const c = setPendingJoin(raw);
+    if (!c) { say('A join code has 6 letters and numbers, like <b>3K7-QPM</b>.'); jin.focus(); return false; }
+    markServer(c.server); return true;
+  };
+  jin.onkeydown = (e) => { if (e.key === 'Enter') $('btn-join').click(); };
+  $('btn-join').onclick = () => {
+    sfx.ensure();
+    if (!jin.value.trim()) { say('Type the join code your friend sent you.'); jin.focus(); return; }
+    if (!takeCode()) return;
+    sfx.play('open');
+    if (save) startGame(save); else showCreate();
+  };
+  // the Install App button (browsers that can install, and iPhone/iPad)
+  const inst = $('btn-install');
+  const showInstall = () => { inst.hidden = !canInstall(); };
+  inst.innerHTML = `${ico('download', 'ico inl')} Install App`;
+  inst.onclick = () => { sfx.ensure(); sfx.play('click'); installApp((...a) => ui.modal(...a)); };
+  onInstallChange(showInstall); showInstall();
   const cont = $('btn-continue'), enter = $('btn-enter');
+  const joining = invited && multi ? ` · joining ${invited.text}` : '';
   if (save) {
     cont.hidden = false; cont.className = 'btn-gold';
-    cont.innerHTML = `${SWORDS}<span>Enter Game<small>Continue as ${escapeHtml(save.name)} · Lv ${save.level}</small></span>`;
+    cont.innerHTML = `${SWORDS}<span>Enter Game<small>Continue as ${escapeHtml(save.name)} · Lv ${save.level}${joining}</small></span>`;
     enter.className = 'btn-gold alt'; enter.textContent = 'Create a New Hero';
-  } else { enter.className = 'btn-gold'; enter.innerHTML = `${SWORDS}<span>Enter Game</span>`; }
-  cont.onclick = () => { sfx.ensure(); sfx.play('open'); startGame(save); };
-  enter.onclick = () => { sfx.ensure(); sfx.play('open'); showCreate(); };
+  } else { enter.className = 'btn-gold'; enter.innerHTML = `${SWORDS}<span>Enter Game${joining ? `<small>and join your friend (${invited.text})</small>` : ''}</span>`; }
+  cont.onclick = () => { sfx.ensure(); if (!takeCode()) return; sfx.play('open'); startGame(save); };
+  enter.onclick = () => { sfx.ensure(); if (!takeCode()) return; sfx.play('open'); showCreate(); };
 }
 
 // live link on the title screen: GM console entry (owner/editors, or any local copy), announcement and notices

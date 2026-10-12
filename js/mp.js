@@ -68,6 +68,7 @@ function cleanInfo(m) {
     x: num(m.x, -400, 400, 0), z: num(m.z, -400, 400, 9),
     party: /^[a-z0-9]{4,16}$/.test(m.party) ? m.party : null, pj: num(m.pj, 0, 1e13, 0),
     aura: /^#[0-9a-f]{6}$/i.test(m.aura) ? m.aura : null, pr: cleanFirsts(m.pr), gt: num(m.gt, 0, 7, 0) | 0, dawn: !!m.dawn,
+    jh: /^[a-z0-9]{1,8}$/.test(m.jh) ? m.jh : null,
   };
 }
 
@@ -116,6 +117,7 @@ const M = {
       wings: !!S.wings, wingColor: S.wingColor || null, costume: S.costume || {}, mount: this.mounted ? S.activeMount : null, pet: S.activePet || null,
       zone: this.trial ? 'Breakthrough Trial' : this.dg ? this.dg.def.name : this.war ? 'Guild War' : (this.zone?.name || 'Carlyle'), map: where, br: this.br || 0,
       party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, dawn: !!(this.hasFx && this.hasFx('six_dawn6')),
+      jh: this.coopHashNow(), // finds you by your join code (coop.js)
     };
     if (!stable) { info.x = Math.round(p.pos.x * 10) / 10; info.z = Math.round(p.pos.z * 10) / 10; }
     return info;
@@ -130,6 +132,7 @@ const M = {
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
     this.partyUpdate(dt);
+    this.coopTick(dt);
     if (mp.status !== 'online' || !mp.channel) return;
     const p = this.player;
     // presence: only when what others see changes (look, level, zone, mount, pet)
@@ -191,6 +194,7 @@ const M = {
       this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
     }
     this.partySync();
+    if (this.coop) this.coopTick(0, true);
     this.ui.refreshOnline && this.ui.refreshOnline();
   },
   mpMove(m) {
@@ -288,12 +292,14 @@ const M = {
     const b = document.createElement('div'); b.className = 'chat-bubble'; b.textContent = text.slice(0, 80);
     e.np?.prepend(b); e.bubble = b; e.bubbleT = 6;
   },
-  // where a friend is, in words (fast travel is only between waystones)
+  // walk (and ride) to where another player is now; party members can travel straight to each other (coop.js)
   mpGoTo(key) {
     const pr = mp.peers.get(key); if (!pr) return;
     if (pr.info.map !== 'world' || !pr.net.w) { this.ui.toast(`${pr.info.name} is in ${pr.info.zone}`, 'warn'); return; }
     this.ui.closePanels();
-    this.giveDirections(pr.net.x, pr.net.z, pr.info.name, null, false);
+    this.engage = false; this.pendingTalk = null; this.pendingPortal = null; this.pendingLife = null;
+    this.pathTo(pr.net.x, pr.net.z, true, true);
+    this.ui.toast(`Auto-path: heading to ${pr.info.name}`);
   },
   mpSwitchServer(s) {
     if (s === mp.server) return;

@@ -421,19 +421,44 @@ const P = {
     for (const sv of SERVERS) { const b = h('button', 'chip' + (sv.id === mp.server ? ' sel' : ''), `${ico(sv.icon, 'ico inl')}${sv.name}`); b.onclick = () => g.mpSwitchServer(sv.id); head.appendChild(b); }
     if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
     body.appendChild(head);
+    this.coopBox(body);
     this.partyBlock(body);
     const L = h('div', 'list');
     const row = (info, me, key) => {
       const r = h('div', 'row slim' + (me ? ' me' : ''), `<div class="ic"><img class="ico" src="${me ? g.headIcon() : g.heroIcon({ name: info.name, look: g.rplayers.find((e) => e.peerId === key)?.look || g.playerLook() })}" alt=""></div>
         <div class="tx"><b>${esc(info.name)}${me ? ' <span class="muted">(you)</span>' : ''}</b>Lv ${info.level} ${esc(CLASSES[info.cls]?.name || '')}${info.guild ? ` · &lt;${esc(info.guild)}&gt;` : ''} · ${esc(info.zone || '')}${!me && g.partyHas(key) ? ' · <span class="good">Party</span>' : !me && info.party ? ' · <span class="muted">in a party</span>' : ''}</div>`);
       if (!me && !g.partyHas(key) && !info.party) { const b = h('button', 'btn small green', 'Invite'); b.disabled = mp.status !== 'online'; b.onclick = () => g.partyInvite(key); r.appendChild(b); }
-      if (!me) { const b = h('button', 'btn small blue', 'Where?'); b.disabled = info.map !== 'world' || !!g.dg || !!g.war || !!g.trial; b.onclick = () => g.mpGoTo(key); r.appendChild(b); }
+      if (!me) {
+        const mate = g.partyHas(key), b = h('button', 'btn small blue', mate ? 'Go to' : 'Where?');
+        b.title = mate ? 'Travel to your party member' : 'Walk to this player';
+        b.disabled = info.map !== 'world' || !!g.dg || !!g.war || !!g.trial; b.onclick = () => (mate ? g.coopGoTo(key) : g.mpGoTo(key)); r.appendChild(b);
+      }
       L.appendChild(r);
     };
     row({ name: S.name, level: S.level, cls: S.cls, guild: S.guild?.name, zone: g.zone?.name }, true);
     for (const [key, pr] of mp.peers) row(pr.info, false, key);
     body.appendChild(L);
-    body.appendChild(h('div', 'note', mp.peers.size ? 'You see each other in the world and your chat messages reach everyone on this server. Monsters, loot and progress stay separate for each player.' : `Nobody else is on ${esc(serverName(mp.server))} right now. Ask your friends to pick the same server on the title screen.`));
+    body.appendChild(h('div', 'note', mp.peers.size ? 'You see each other in the world and your chat messages reach everyone on this server. Monsters, loot and progress stay separate for each player.' : `Nobody else is on ${esc(serverName(mp.server))} right now. Send a friend your join code (above) to play together.`));
+  },
+  // co-op: your join code to share, and a box for a friend's code
+  coopBox(body) {
+    const g = this.g, box = h('div', 'coop-box');
+    box.innerHTML = `<div class="cb-top"><div><span class="lbl">${ico('join_code', 'ico inl')} Your join code</span><b class="cb-code">${esc(g.joinCode())}</b></div></div>
+      <div class="cb-join"><input id="coop-in" maxlength="9" placeholder="Friend's code, e.g. 3K7-QPM" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Friend's join code"></div>
+      <div class="cb-note">Friends who enter your code join your party and appear beside you, from any server. Making a new code stops the old one working.</div>`;
+    const top = box.querySelector('.cb-top'), acts = h('div', 'cb-acts');
+    const cp = h('button', 'btn small', 'Copy'); cp.onclick = () => g.copyJoinCode();
+    const sh = h('button', 'btn small green', 'Share invite'); sh.onclick = () => g.shareJoin();
+    const nw = h('button', 'btn small gray', 'New code'); nw.onclick = () => g.newJoinCode();
+    acts.append(cp, sh, nw); top.appendChild(acts);
+    const inp = box.querySelector('#coop-in'); inp.value = this.sel.coopIn || '';
+    inp.oninput = () => { this.sel.coopIn = inp.value; };
+    const go = h('button', 'btn small blue', 'Join');
+    go.onclick = () => { if (g.coopJoin(inp.value)) { this.sel.coopIn = ''; inp.value = ''; inp.blur(); } };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') go.click(); };
+    box.querySelector('.cb-join').appendChild(go);
+    if (g.coop) box.appendChild(h('div', 'cb-wait', `Looking for <b>${esc(g.coop.text)}</b> on ${esc(serverName(g.coop.server))}…`));
+    body.appendChild(box);
   },
   refreshOnline() {
     const A = this.acts?.online; if (!A) return;

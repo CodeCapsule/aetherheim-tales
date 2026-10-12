@@ -130,7 +130,25 @@ const G = {
       }
       this.ui.chat('party', `<b>${esc(name)}</b> accepted your invitation.`); this.sfx.play('quest');
     } else if (t === 'dec') { ps.sent.delete(from); this.ui.toast(`${name} declined the invitation`, 'warn'); }
-    else if (t === 'busy') { ps.sent.delete(from); this.ui.toast(m.why === 'full' ? 'The party is full' : m.why === 'party' ? `${name} is already in a party` : `${name} is busy right now`, 'warn'); }
+    else if (t === 'busy') { ps.sent.delete(from); this.coopBusy(from); this.ui.toast(m.why === 'full' ? 'The party is full' : m.why === 'party' ? `${name} is already in a party` : `${name} is busy right now`, 'warn'); }
+    // a join code is the host's permission: whoever knows it joins the host's party without an invitation popup
+    else if (t === 'join') {
+      if (!this.coopCodeOk(str(m.code, 8))) return;
+      if (this.partyHas(from)) { this.partySend('jok', { to: from, party: mp.party.id }); return; }
+      if (partyMembers().length >= PARTY_MAX) { this.partySend('busy', { to: from, why: 'full' }); return; }
+      if (!mp.party.id) { mp.party.id = ps.pending || newId(); mp.party.pj = Date.now(); ps.pending = null; ps.aloneT = 0; ps.quietUntil = Date.now() + 5000; remember(); this.mpTrackNow(); this.partySync(); }
+      this.partySend('jok', { to: from, party: mp.party.id });
+      this.ui.chat('party', `<b>${esc(name)}</b> joined your party with your join code.`); this.sfx.play('quest');
+    } else if (t === 'jok') {
+      const id = partyId(m.party); if (!id || !this.coopWaitingFor(from)) return;
+      if (mp.party.id !== id) {
+        if (mp.party.id) this.partyLeave(null);
+        mp.party.id = id; mp.party.pj = Date.now(); ps.quietUntil = Date.now() + 5000; ps.aloneT = 0;
+        remember(); this.mpTrackNow();
+        this.ui.chat('party', `You joined <b>${esc(name)}</b>'s party.`); this.sfx.play('quest'); this.partySync();
+      }
+      this.coopJoined(from);
+    }
     else if (t === 'kick') {
       if (mp.party.id && m.party === mp.party.id && this.partyLeader() === from) this.partyLeave(`<b>${esc(name)}</b> removed you from the party.`);
     } else if (t === 'chat') {

@@ -11,6 +11,12 @@
 <meta property="og:description" content="A free cel-shaded 3D fantasy MMORPG you play in the browser. No install needed.">
 <meta property="og:url" content="https://codecapsule.github.io/aetherheim-tales/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4L58 20V44L32 60L6 44V20Z' fill='%23f0a830' stroke='%235a2a00' stroke-width='4'/%3E%3Cpath d='M32 16L44 32L32 48L20 32Z' fill='%23fffbe6'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aetherheim">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800&family=Nunito:wght@600;700;800;900&family=Lilita+One&display=swap">
 <style>
@@ -1030,6 +1036,33 @@ button { font-family: inherit; }
 .chat-log .c-party .ch { color: #7aff9a; }
 .ftxt.pexp { color: #8affc0; font-size: 15px; }
 .party-box { margin-bottom: 10px; }
+/* co-op join code box (Online window) */
+.coop-box { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: linear-gradient(180deg, rgba(60, 110, 200, .18), rgba(20, 30, 60, .35)); border: 1px solid rgba(120, 180, 255, .35); }
+.coop-box .cb-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.coop-box .cb-code { display: block; font-family: var(--f-num); font-weight: 400; font-size: 26px; letter-spacing: .12em; color: #fff; text-shadow: 0 0 10px rgba(120, 190, 255, .7); user-select: all; }
+.coop-box .cb-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.coop-box .cb-join { display: flex; gap: 6px; margin-top: 10px; }
+.coop-box .cb-join input { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(150, 195, 255, .45); background: rgba(0, 0, 0, .35); color: #fff; font: 700 14px var(--f-ui); letter-spacing: .08em; text-transform: uppercase; }
+.coop-box .cb-join input::placeholder { text-transform: none; letter-spacing: 0; color: #8a98b8; }
+.coop-box .cb-note { margin-top: 6px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.coop-box .cb-wait { margin-top: 6px; font-size: 12px; color: #9ad8ff; }
+/* title screen: join a friend and install the app */
+.srv-panel { position: relative; }
+.srv-join { position: absolute; top: clamp(8px, 1.4vh, 14px); right: clamp(10px, 1.6vw, 16px); height: 26px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 13px; cursor: pointer; font: 800 12px var(--f-ui); color: #d8ecff; background: rgba(60, 110, 200, .35); border: 1px solid rgba(120, 190, 255, .6); }
+.srv-join:hover { background: rgba(80, 140, 230, .5); }
+.srv-join[hidden] { display: none; }
+.srv-join .ico { width: 16px; height: 16px; }
+.srv-join .short { display: none; }
+@media (max-width: 600px) { .srv-join .long { display: none; } .srv-join .short { display: inline; } }
+.join-row:not([hidden]) { display: flex; }
+#scr-title.joining .title-feats { display: none; } /* room for the code box */
+.join-row { gap: 6px; margin-top: clamp(6px, 1vh, 10px); }
+.join-row input { flex: 1; min-width: 0; height: clamp(32px, 4.6vh, 40px); padding: 0 12px; border-radius: 10px; border: 1px solid rgba(150, 195, 255, .35); background: rgba(0, 0, 0, .3); color: #fff; font: 700 14px var(--f-ui); letter-spacing: .08em; text-transform: uppercase; }
+.join-row input::placeholder { text-transform: none; letter-spacing: 0; color: #9aa8c4; }
+.join-row button { padding: 0 16px; border-radius: 10px; border: 1px solid #6ad8ff; background: linear-gradient(180deg, #3a7ae8, #1a3a98); color: #fff; font: 800 14px var(--f-ui); cursor: pointer; }
+.join-row button:hover { filter: brightness(1.1); }
+.join-note { margin-top: 6px; font-size: 12px; color: #9ad8ff; text-align: center; }
+.btn-gold.alt.install { color: #cfe8ff; border-color: rgba(120, 190, 255, .7); }
 .party-box .crown { font-size: 10px; color: #241a08; background: var(--gold); border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
 @media (max-width: 900px) {
   #hud-party { top: 196px; transform: scale(.85); transform-origin: top left; }
@@ -1285,11 +1318,15 @@ button { font-family: inherit; }
       <div class="tagline">A New Adventure Awaits</div>
       <div class="srv-panel">
         <h3>Select Server</h3>
+        <button class="srv-join" id="btn-joinfriend" type="button" hidden></button>
         <div class="server-list" id="server-list"></div>
+        <div class="join-row" hidden><input id="join-in" maxlength="9" placeholder="Friend's join code (optional)" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Friend's join code"><button id="btn-join" type="button">Join</button></div>
+        <div class="join-note" id="join-note" hidden></div>
       </div>
       <div class="title-actions">
         <button class="btn-gold" id="btn-continue" hidden></button>
         <button class="btn-gold" id="btn-enter">Enter Game</button>
+        <button class="btn-gold alt install" id="btn-install" hidden>Install App</button>
       </div>
       <div class="title-feats" id="title-feats"></div>
       <div class="legal">An original fan-made game inspired by the 2013 web MMORPG Alfheim Tales Online. All models, art and code here are original. Not affiliated with the original developers or publisher.</div>

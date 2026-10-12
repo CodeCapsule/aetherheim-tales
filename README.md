@@ -5,7 +5,9 @@ Every model, texture, icon and sound is generated in code; no assets from the or
 
 ## Play
 
-**https://codecapsule.github.io/aetherheim-tales/** — runs in any modern desktop or mobile browser, no install or account needed.
+**https://codecapsule.github.io/aetherheim-tales/** — runs in any modern desktop or mobile browser, no account needed.
+Press **Install App** on the title screen to add it to your home screen or desktop (on iPhone: Safari > Share > Add to
+Home Screen). To play with a friend, send them your **join code** from the Online window.
 
 Progress is saved in your browser (local storage), so it stays on the device and browser you play on.
 
@@ -15,7 +17,8 @@ To run it yourself, serve this folder with any static web server:
 npx http-server . -p 8080   # then visit http://localhost:8080
 ```
 
-Three.js loads from jsDelivr, so the first load needs an internet connection.
+Three.js loads from jsDelivr, so the first load needs an internet connection; after that the installed app also opens
+offline and plays solo.
 
 ## What's in it
 
@@ -190,7 +193,7 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   one click below.
 - **Play together (real time)**: on the website, everyone who picks the same server on the title screen shares one
   world. You see each other walk, ride and wear costumes, your chat reaches everyone on the server, and the **Online**
-  panel lists who is on and tells you where they are. Monsters, loot and progress stay
+  panel lists who is on (Where? walks you to them; Go to takes you straight to a party member). Monsters, loot and progress stay
   separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
   Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
   key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
@@ -199,6 +202,17 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   member, and each member's own level gap and EXP boosts apply to their share. The party frame under your wallet
   shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
   the earliest member leads and can remove players, and reloading the page keeps you in your party.
+- **Co-op with join codes**: every hero has a join code (the server number plus five letters, like `3K7-QPM`), shown in
+  the **Online** window with Copy, Share invite and New code buttons. A friend who enters it there, or on the title screen
+  under **Join a Friend**, or who opens your invite link (`…/aetherheim-tales/?join=3K7QPM`), moves to your server,
+  joins your party without an invitation popup and appears beside you; from then on you share EXP like any party.
+  Presence only carries a hash of the code, and **New code** stops the old one working. Monsters and loot still run
+  separately on each player's device.
+- **Install as an app**: the website is an installable app (web app manifest, icons and an offline cache in `sw.js`).
+  Chrome, Edge and Android show **Install App** on the title screen and in Settings; on iPhone and iPad the button
+  explains Safari's Share > Add to Home Screen. The installed game opens full screen from its own icon, updates itself
+  whenever it is online, and still plays solo with no connection (co-op needs one). On iPhone the home-screen app keeps
+  its own save, separate from Safari's.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
   and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
@@ -275,6 +289,8 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
+| `js/coop.js` | Co-op join codes: your code, joining a friend's party by code or invite link, travelling to party members |
+| `js/app.js`, `sw.js`, `manifest.webmanifest`, `img/` | The installable app: Install button, offline cache, app manifest and icons |
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
 | `js/data-sets.js` | Dungeon sets, Ancient sets and the 17 six-piece sets with their powers |
 | `js/data-pets.js` | Pet abilities and how they grow with pet level |
