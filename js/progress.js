@@ -1,6 +1,5 @@
 // Earned levels: the XP curve, diminishing returns per monster type, the level-gap penalty, discovery XP, the soul
-// marker left on death, the three masteries (Weapon, Defense, Survival) that gate level-ups, the trial walls every
-// 20 levels, rested XP, the mentor bonus, the seasonal catch-up, Battle Rating and the explored-map grid.
+// marker left on death, the three masteries (Weapon, Defense, Survival), the trial walls every 20 levels, rested XP, the mentor bonus, the seasonal catch-up, Battle Rating and the explored-map grid.
 import * as THREE from 'three';
 import { CLASSES, RACES } from './data-classes.js';
 import { glowTexture } from './toon.js';
@@ -11,7 +10,7 @@ export const xpNext = (L) => Math.floor(500 * Math.pow(Math.max(1, L), 2.2));
 // the old curve: monster and quest XP were tuned to it, so they are scaled to keep the same share of a level
 const oldNeed = (L) => Math.floor(70 * Math.pow(L, 1.6) + 30);
 export const expScale = (L) => xpNext(Math.max(1, L)) / oldNeed(Math.max(1, L));
-// all three masteries must reach the bracket value to level up inside a bracket (1-19: 10, 20-39: 30 ...)
+// the mastery rank a hero from before masteries starts at (1-19: 10, 20-39: 30 ...)
 export const minMastery = (L) => Math.min(190, 10 + 20 * Math.floor(Math.max(1, L) / 20));
 // a breakthrough trial at the end of each 20-level bracket blocks further levels until it is cleared
 export const TRIAL_WALLS = [20, 40, 60, 80, 100, 120, 140, 160, 180];
@@ -91,24 +90,19 @@ const P = {
       const p = this.player;
       this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.9), `${MASTERY[type].name} mastery ${m.r}`, 'exp');
       if (m.r % 10 === 0) this.ui.chat('system', `<b>${MASTERY[type].name} mastery</b> reached rank ${m.r}.`);
-      // a level that waited on this mastery comes through now
-      if (S.exp >= xpNext(S.level)) this.gainExp(0);
       this.recalc();
       this.ui.refreshPanel && this.ui.refreshPanel();
     }
   },
-  // the reason the next level is blocked, or null
+  // the reason the next level is blocked (an uncleared trial wall), or null; masteries never hold a level back
   levelBlock(L = this.S.level) {
     if (L >= MAX_LV) return null;
     if (TRIAL_WALLS.includes(L) && !this.S.trials?.[L / 20]) return { trial: L / 20 };
-    const need = minMastery(L), gaps = [];
-    for (const t of ['weapon', 'defense', 'survival']) { const r = this.masteryLv(t); if (r < need) gaps.push({ type: t, have: r, need }); }
-    return gaps.length ? { gaps } : null;
+    return null;
   },
   blockText(b) {
     if (!b) return '';
-    if (b.trial) return `Clear Trial ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][b.trial]} to pass Lv ${b.trial * 20}`;
-    return b.gaps.map((g) => `${MASTERY[g.type].name} mastery ${g.have}/${g.need}`).join(' · ');
+    return `Clear Trial ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][b.trial]} to pass Lv ${b.trial * 20}`;
   },
   trialsCleared() { return Object.keys(this.S.trials || {}).length; },
   // high-level players grouped with someone 10+ levels lower earn mastery against that member's enemies
@@ -157,12 +151,12 @@ const P = {
     const d = new Date(), months = (d.getUTCFullYear() - 2026) * 12 + d.getUTCMonth() - 9;
     return months >= 1 && L < 20 * months ? 1.15 : 1;
   },
-  // the XP bar is full but a mastery or trial holds the level: say so now and then
+  // the XP bar is full but a trial wall holds the level: say so now and then
   levelBlockNotice(b) {
     if (this.time - (this.blockNoteT ?? -99) < 45) return;
     this.blockNoteT = this.time;
     this.ui.toast(`XP bar full: ${this.blockText(b)}`, 'warn');
-    this.ui.chat('system', `Your XP bar is full, but the next level needs: <b>${this.blockText(b)}</b>.${b.gaps ? ' ' + b.gaps.map((g) => MASTERY[g.type].tip).join('. ') + '.' : ' Talk to the Trial Warden in Sylvan Haven.'}`);
+    this.ui.chat('system', `Your XP bar is full, but the next level needs: <b>${this.blockText(b)}</b>. Talk to the Trial Warden in Sylvan Haven.`);
   },
 
   // ================================================================ death: the soul marker

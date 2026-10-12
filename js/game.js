@@ -910,8 +910,8 @@ export class Game {
     const EL = this.elixirMods ? this.elixirMods() : {}, LB = liveBoost();
     return Math.round(base * (1 + this.stat('expGain') / 100 + (EL.exp || 0) + (this.petIs('exp') ? this.petFx.v / 100 : 0)) * (LB ? LB.exp : 1));
   }
-  // a full XP bar only levels up once all three masteries meet the bracket minimum and the trial wall is cleared;
-  // until then the bar stays full and further XP is not banked
+  // a full XP bar levels up unless a trial wall is still standing; until it is cleared the bar stays full and further
+  // XP is not banked
   gainExp(n) {
     const S = this.S;
     if (S.level >= MAX_LEVEL) return;

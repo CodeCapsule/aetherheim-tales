@@ -16,7 +16,7 @@ import { CLASS_SKILLS, SKILL_BY_ID, rankMult, RACES } from './data-classes.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 import { DZ } from './data-dz.js';
-import { MASTERY, MASTERY_MAX, masteryNeed, minMastery, FOG } from './progress.js';
+import { MASTERY, MASTERY_MAX, masteryNeed, FOG } from './progress.js';
 import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
 import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
@@ -204,10 +204,10 @@ export class UI {
     $('hud-exp').classList.toggle('blocked', !!block);
     this.txt($('exp-t'), S.level >= MAX_LEVEL ? 'MAX LEVEL' : block ? `EXP FULL · ${g.blockText(block)}` : `EXP ${fmt(S.exp)} / ${fmt(need)}  (${pct.toFixed(1)}%)${S.rested > 0 ? ` · Rested ${fmt(S.rested)}` : ''}`);
   }
-  // the Hero panel's "what next" box: XP left, the three masteries against this bracket's minimum, the next trial
+  // the Hero panel's "what next" box: XP left, the three masteries and the next trial
   progressBox(body) {
     const g = this.g, S = g.S; if (!S.mastery) return;
-    const goal = g.nextGoal(), need = minMastery(S.level);
+    const goal = g.nextGoal();
     const box = h('div', 'prog-box');
     const lines = [];
     if (S.level >= MAX_LEVEL) lines.push('<b>Maximum level.</b>');
@@ -218,8 +218,8 @@ export class UI {
     box.appendChild(h('div', 'pg-goal', lines.join('<br>')));
     for (const t of ['weapon', 'defense', 'survival']) {
       const m = g.masteryRec(t), nx = masteryNeed(m.r), max = m.r >= MASTERY_MAX;
-      const row = h('div', 'pg-m' + (m.r < need ? ' low' : ''), `<span class="pl">${ico('m_' + t, 'ico inl')} ${MASTERY[t].name}${t === 'weapon' ? ` <small>(${esc(CLASSES[S.cls].weapon)})</small>` : ''} <b>${m.r}</b><small>/${need}</small></span><span class="bar xp"><i style="width:${max ? 100 : Math.min(100, m.p / nx * 100)}%"></i></span>`);
-      this.tip(row, () => `<b>${MASTERY[t].name} mastery ${m.r}</b>${MASTERY[t].how}.<br>${MASTERY[t].tip}.<br>${max ? 'Maxed.' : `${Math.floor(m.p)}/${nx} to rank ${m.r + 1}`}<br>Levels ${Math.floor(S.level / 20) * 20 || 1}–${Math.floor(S.level / 20) * 20 + 19} need rank ${need} in all three.`);
+      const row = h('div', 'pg-m', `<span class="pl">${ico('m_' + t, 'ico inl')} ${MASTERY[t].name}${t === 'weapon' ? ` <small>(${esc(CLASSES[S.cls].weapon)})</small>` : ''} <b>${m.r}</b></span><span class="bar xp"><i style="width:${max ? 100 : Math.min(100, m.p / nx * 100)}%"></i></span>`);
+      this.tip(row, () => `<b>${MASTERY[t].name} mastery ${m.r}</b>${MASTERY[t].how}.<br>${MASTERY[t].tip}.<br>${max ? 'Maxed.' : `${Math.floor(m.p)}/${nx} to rank ${m.r + 1}`}`);
       box.appendChild(row);
     }
     body.appendChild(box);

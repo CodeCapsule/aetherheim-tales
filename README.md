@@ -56,9 +56,10 @@ Three.js loads from jsDelivr, so the first load needs an internet connection.
   a lower-level member grouped with someone 10+ levels above keeps the full XP of their own kills. Time offline banks
   rested XP (1% of a level per hour, up to half a level).
 - **Masteries**: Weapon (hits and skills with your weapon type), Defense (blocks, dodges and parries; a perfect dodge
-  counts three times) and Survival (exploring, gathering, crafting, cooking) run from 1 to 200. A full XP bar waits
-  until all three reach the bracket minimum (10, 30, 50 ... 190). They only grow against enemies within 5 levels, and
-  auto-hit kills in the open world give half. The Hero window always shows XP left, mastery gaps and the next trial.
+  counts three times) and Survival (exploring, gathering, crafting, cooking) run from 1 to 200. They never hold back a
+  level-up; they unlock skill ranks above 5, higher gear tiers and map copying. They only grow against enemies within 5
+  levels, and auto-hit kills in the open world give half. The Hero window always shows XP left, your masteries and the
+  next trial.
 - **Breakthrough trials**: a wall stands at Lv 20, 40, 60 ... 180, with the Final Ascension at 200. At Thalia the Trial
   Warden (Sylvan Haven) you craft a Trial Sigil from your bracket's ore, wood, herbs and spirit dust. Each trial is a
   solo fight where every hero of your class has the same stats, so only skill counts: I The Gate Warden (a duel against
