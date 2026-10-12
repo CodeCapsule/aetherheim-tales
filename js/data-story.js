@@ -175,12 +175,12 @@ const Q = [
   { id: 'c6_9', ch: 6, name: 'Throne of Yggdrasil', giver: 'outpost7', turnin: 'outpost7', type: 'dungeon', target: 'd11', count: 1, minLv: 196,
     text: 'Enter the Throne of Yggdrasil and end the Hollow Choir, once and for all.',
     done: 'It is over. The Choir is broken and the four Spirits sing together again. Go home, hero. Rowan will want to hear it from you.', rewards: R(200, 1.0, { diamonds: 150, equip: 'weapon', equipQ: 5 }), next: 'c6_10' },
-  { id: 'c6_10', ch: 6, name: 'Legend of Aetherheim', giver: 'outpost7', turnin: 'elder', type: 'talk',
+  { id: 'c6_10', ch: 6, name: 'Legend of Hiraya', giver: 'outpost7', turnin: 'elder', type: 'talk',
     text: 'Return to Elder Rowan in Sylvan Haven.',
     done: 'Fire, Water, Wind and Earth, free and singing together for the first time since the Old War. Carlyle owes you everything, Savior of Yggdrasil. Your tale will be told for a thousand years.',
     rewards: { exp: 0, gold: 50000, diamonds: 300, mount: 'mount_phoenix', pet: 'pet_phoenix', title: 'Savior of Yggdrasil' }, next: 'c6_end' },
   { id: 'c6_end', ch: 6, name: 'Epilogue', giver: 'elder', turnin: 'elder', type: 'end',
-    text: 'The World Tree is at peace and the Spirits sing again. Your story is complete, but adventure never ends: dungeons, world bosses, guild wars and Red gear still wait. Thank you for playing Aetherheim Tales!',
+    text: 'The World Tree is at peace and the Spirits sing again. Your story is complete, but adventure never ends: dungeons, world bosses, guild wars and Red gear still wait. Thank you for playing Hiraya Tales Online!',
     done: '', rewards: {}, next: null },
 ];
 export const STORY_QUESTS = Q;

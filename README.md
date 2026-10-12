@@ -1,13 +1,14 @@
-# Aetherheim Tales — fan-made 3D browser MMORPG
+# Hiraya Tales Online — 3D browser MMORPG
 
-An original single-player game inspired by the 2013 anime-style web MMORPG *Alfheim Tales Online*, built with Three.js. Not affiliated with the original game.
-Every model, texture, icon and sound is generated in code; no assets from the original game are used.
+An original game inspired by the 2013 anime-style web MMORPG *Alfheim Tales Online*, built with Three.js. Not affiliated
+with the original game. Every model, texture, icon and sound is generated in code; no assets from the original game are
+used.
 
 ## Play
 
 **https://codecapsule.github.io/aetherheim-tales/** — runs in any modern desktop or mobile browser, no account needed.
-Press **Install App** on the title screen to add it to your home screen or desktop (on iPhone: Safari > Share > Add to
-Home Screen). To play with a friend, send them your **join code** from the Online window.
+Everyone plays together on the **Pilipinas** server: other players appear in your world, and you can chat, party up
+and fight in the Danger Zone.
 
 Progress is saved in your browser (local storage), so it stays on the device and browser you play on.
 
@@ -17,8 +18,7 @@ To run it yourself, serve this folder with any static web server:
 npx http-server . -p 8080   # then visit http://localhost:8080
 ```
 
-Three.js loads from jsDelivr, so the first load needs an internet connection; after that the installed app also opens
-offline and plays solo.
+Three.js loads from jsDelivr, so the game needs an internet connection.
 
 ## What's in it
 
@@ -73,7 +73,7 @@ offline and plays solo.
   health), VIII Gauntlet (five bosses, no healing between), IX The Silent Keeper (no visual tells, only a rumble, a
   chime and a hiss; captions in Settings) and the Final Ascension (all of it at once). A failed attempt keeps your XP
   and mastery and uses the sigil. A clear grants a title, an aura other players see and 3 skill points, and the first
-  clears on each server go on the Hall of Firsts.
+  clears on the server go on the Hall of Firsts.
 - **Cooking**: campfires in town, at every outpost and in the Hunger trial cook Raw Meat (from beasts), crops and herbs
   into skewers, bread, stew, pie, a feast and starberry soup: food heals over time and some dishes add a 2-minute bonus.
 - **Finding your way**: the map fills in only where you have walked; every zone has three or four tall landmarks
@@ -181,19 +181,19 @@ offline and plays solo.
 - **Equipment progression**: gear can also be reforged (reroll affixes), re-tempered to your level,
   ascended up a rarity tier (Special gear awakens into a named Unique, Unique into a Legendary) and salvaged into Spirit
   Dust, Shards and Star Essence. The Legendary Codex tracks all 21 named items, grants a collection bonus and pays out at milestones.
-- **Game Master Console**: the server list on the title screen has a Game Master Console link for the artifact's owner
+- **Game Master Console**: the server panel on the title screen has a Game Master Console link for the artifact's owner
   and editors (and in any local copy). In the published version the game reports each signed-in player's status to the
   artifact's shared database, and the console shows players online, levels, classes, zones, gear, play time, an
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
-- **Title screen**: the world turns behind a winged Aetherheim Tales Online crest. The server list (Elysium, Valhalla,
-  Zephyr, Solaria, Nordheim, Yggdrasil) shows each server's status and how many heroes are on it right now (Low, Medium,
-  High), read live from the multiplayer service without joining it. **Enter Game** continues your hero; a new hero is
+- **Title screen**: the world turns behind a winged Hiraya Tales Online crest. The server panel shows the one server,
+  **Pilipinas** (its emblem is the eight-rayed sun and three stars), with its status and how many heroes are on it right
+  now (Low, Medium, High), read live from the multiplayer service without joining it. **Enter Game** continues your hero; a new hero is
   one click below.
-- **Play together (real time)**: on the website, everyone who picks the same server on the title screen shares one
+- **Play together (real time)**: on the website, everyone plays on the Pilipinas server and shares one
   world. You see each other walk, ride and wear costumes, your chat reaches everyone on the server, and the **Online**
-  panel lists who is on (Where? walks you to them; Go to takes you straight to a party member). Monsters, loot and progress stay
+  panel lists who is on and tells you where they are. Monsters, loot and progress stay
   separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
   Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
   key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
@@ -202,17 +202,6 @@ offline and plays solo.
   member, and each member's own level gap and EXP boosts apply to their share. The party frame under your wallet
   shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
   the earliest member leads and can remove players, and reloading the page keeps you in your party.
-- **Co-op with join codes**: every hero has a join code (the server number plus five letters, like `3K7-QPM`), shown in
-  the **Online** window with Copy, Share invite and New code buttons. A friend who enters it there, or on the title screen
-  under **Join a Friend**, or who opens your invite link (`…/aetherheim-tales/?join=3K7QPM`), moves to your server,
-  joins your party without an invitation popup and appears beside you; from then on you share EXP like any party.
-  Presence only carries a hash of the code, and **New code** stops the old one working. Monsters and loot still run
-  separately on each player's device.
-- **Install as an app**: the website is an installable app (web app manifest, icons and an offline cache in `sw.js`).
-  Chrome, Edge and Android show **Install App** on the title screen and in Settings; on iPhone and iPad the button
-  explains Safari's Share > Add to Home Screen. The installed game opens full screen from its own icon, updates itself
-  whenever it is online, and still plays solo with no connection (co-op needs one). On iPhone the home-screen app keeps
-  its own save, separate from Safari's.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
   and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
@@ -235,17 +224,27 @@ offline and plays solo.
   (alchemy), Opal (gems), Coco (costumes), Elias (relics and Crimson Cores), plus pet and stable shops and a trader at
   every outpost. Grimsby runs the **Auction House**: real-time lots with bidding, buyouts and rival bids, and your
   own auctions.
-- **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. Your equipped gear is shown inside
-  the Bag window, next to the slots (tap a piece to see it or take it off), with the selected item's details below it.
-  **Sell All** sells everything up to a chosen rarity in one go; locked gear is always kept.
+- **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. The Bag is a compact window
+  (`Bag 22 / 48`) with tabs (All, Gear, Consume, Quest, Valuable, Others, Mats), six slots a row, a strip for the selected
+  item (Equip or Use, Sell, Lock), **Sort** (gear first by rarity, then consumables, quest items and valuables) and
+  **Sell All**, which sells everything up to a chosen rarity in one go (locked gear is always kept). Your Diamonds and
+  Gold sit at the bottom beside a **Mall** button. Equipped gear is in the Character window (C).
 - **MMO systems**: Battle Rating, bag, auto-hit, auto potions, titles, daily sign-in, online gifts, a gold/diamond mall
   (no XP or progress for sale), world and guild chat, minimap and world map.
-- **Quick access menus**: activities sit in a slim panel at the top right (Online, Missions, Dungeon, the World Boss
-  timer) and the character menu in a compact panel at the bottom right (Hero, Bag, Skills, Pets, Gathering, Quests,
-  Map). **More** expands each panel to the rest and collapses again when you pick something or click away; a red dot
-  on More means something inside is waiting.
-- **Phones and tablets**: on small screens the HUD docks to a bar along the bottom (Events, Hero, Bag, Skills, Quests,
-  Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
+- **Action bar**: on computers one gold-framed bar runs along the bottom, in the style of classic web MMORPGs: a row
+  of small slots for Mount, Auto, Roll, Block and the tool belt sits over the skill row (keys 1-7 and the Q/E potions
+  with their counts), the round menu buttons with their labels sit to the right (Hero, Bag, Skills, Pets, Mounts,
+  Gathering, Relics, Codex, Quests, Map, Settings) and the EXP strip runs underneath. Activities sit in a slim panel at
+  the top right (Online, Missions, Dungeon, the World Boss timer); **More** there expands to the rest.
+- **Day and night, seasonal weather**: one clock for every player; a day lasts 40 minutes. Dawn and dusk blush the
+  sky, nights are deep blue with stars, a moon and lit lamps (still easy to see in), and the shadows follow the sun
+  and moon. The weather changes every 10 minutes from the real-world season's table: spring brings blossom breezes and
+  rain, summer rain and thunderstorms (lightning and thunder), autumn falling leaves, winter snow and blizzards, with
+  cloudy and clear spells between. Rain falls as snow in the frost highlands. The minimap shows the time and the
+  weather; Settings can switch the falling particles off. Dungeons, trials and guild wars keep their own light, and
+  the weather never changes combat.
+- **Phones and tablets**: on small screens the HUD docks to a leather-and-gold bar along the bottom (Events, Hero, Bag,
+  Skills, Quests, Chat, More). Events and More open as sheets above the dock that close when you pick something or tap the game; a red
   dot marks a sheet with something waiting. The skill bar sits above the dock with Mount, Auto, Roll and Block above it, a joystick
   in the bottom-left corner (with the tool belt above it) walks your hero (one thumb walks while the other turns the camera; tapping the ground still
   works), and the layout also works in landscape.
@@ -267,7 +266,7 @@ offline and plays solo.
 | Other | Tab next target, F talk, Enter chat, Esc close |
 
 Progress saves to the browser's local storage. Daily and weekly resets, world boss times and seasons follow the real clock (UTC).
-The only other players in the world are real ones on your server (see Play together). Guildmates, guild war rivals,
+The only other players in the world are real ones on the server (see Play together). Guildmates, guild war rivals,
 market buyers and auction bids are simulated, so those systems also work solo.
 
 ## Code layout
@@ -284,13 +283,12 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/data-world.js` | Expanded world content: outer zones, Lv 16-200 monsters, dungeons 4-11, relics, professions, crops, recipes, costumes, shops |
 | `js/life.js` | Gathering nodes, farming, alchemy, smithing, elixirs, costumes, relic collection and Red gear |
 | `js/economy.js` | Bag expansion, Sell All, NPC shops and the Auction House |
+| `js/sky.js` | Day and night (sky colours, sun, moon, stars, lamps) and seasonal weather (rain, storms, snow, petals, leaves) |
 | `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill and Soul Forge |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
-| `js/coop.js` | Co-op join codes: your code, joining a friend's party by code or invite link, travelling to party members |
-| `js/app.js`, `sw.js`, `manifest.webmanifest`, `img/` | The installable app: Install button, offline cache, app manifest and icons |
 | `js/data-story.js` | Main story chapters II-VI, quest items and chapter titles |
 | `js/data-sets.js` | Dungeon sets, Ancient sets and the 17 six-piece sets with their powers |
 | `js/data-pets.js` | Pet abilities and how they grow with pet level |

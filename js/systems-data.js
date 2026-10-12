@@ -176,7 +176,7 @@ export const CODEX_MILESTONES = [
   { n: 6, reward: { mats: { star_essence: 2 } }, label: '2 Star Essence' },
   { n: 10, reward: { diamonds: 150, title: 'Codex Keeper' }, label: '150 Diamonds + title' },
   { n: 15, reward: { items: [['legend_cache', 1]] }, label: 'Legendary Cache' },
-  { n: 21, reward: { diamonds: 500, title: 'Lorekeeper of Aetherheim' }, label: '500 Diamonds + title' },
+  { n: 21, reward: { diamonds: 500, title: 'Lorekeeper of Hiraya' }, label: '500 Diamonds + title' },
 ];
 
 // ---------------------------------------------------------------- daily & weekly missions

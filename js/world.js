@@ -351,7 +351,7 @@ export class World {
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 32, 16), mat);
     this.root.add(this.sky);
     const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xfff6c8, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
-    sun.position.set(500, 700, 400); sun.scale.setScalar(320); this.root.add(sun);
+    sun.position.set(500, 700, 400); sun.scale.setScalar(320); this.root.add(sun); this.sunSprite = sun; // moved by the day and night cycle (sky.js)
     // clouds
     this.clouds = [];
     const ct = cloudTexture();
@@ -1094,6 +1094,7 @@ export class World {
     }
     // lamp halos
     const lm = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffd27a, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 });
+    this.lampMat = lm; // brighter at night (sky.js)
     for (const [x, y, z] of this.lampGlows) { const s = new THREE.Sprite(lm); s.position.set(x, y, z); s.scale.setScalar(2.6); this.root.add(s); }
   }
 

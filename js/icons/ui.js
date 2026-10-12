@@ -1,4 +1,4 @@
-// Alfheim Tales — UI icon set (menu, activities, classes, elements, HUD buttons, rewards).
+// Hiraya Tales Online — UI icon set (menu, activities, classes, elements, HUD buttons, rewards).
 // Hand-authored SVG strings: no emoji, no fonts, no external refs, so they render the same on
 // every device. Use as <img src="data:image/svg+xml,${encodeURIComponent(UI_ICONS.bag)}">.
 // The small helpers below only assemble markup at module load; every value is a plain string.

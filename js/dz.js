@@ -49,8 +49,9 @@ const Z = {
     if (Math.abs(this.dzFx - target) > 0.001 || target) {
       if (!this.dzFog) this.dzFog = this.scene.fog.color.clone();
       this.dzFx += (target - this.dzFx) * (1 - Math.exp(-dt * 2.5));
-      this.scene.fog.color.copy(this.dzFog).lerp(DZ_FOG, this.dzFx * 0.8);
-      if (!inside && this.dzFx < 0.002) { this.scene.fog.color.copy(this.dzFog); this.dzFog = null; this.dzFx = 0; }
+      const base = this.skyFog || this.dzFog; // the day and night colour when the sky cycle runs
+      this.scene.fog.color.copy(base).lerp(DZ_FOG, this.dzFx * 0.8);
+      if (!inside && this.dzFx < 0.002) { this.scene.fog.color.copy(base); this.dzFog = null; this.dzFx = 0; }
     }
     // loot sacks: bob, expire, and get picked up when you walk over them
     const now = Date.now(), p = this.player;

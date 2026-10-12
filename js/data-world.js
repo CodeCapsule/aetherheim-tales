@@ -390,7 +390,7 @@ OUTPOSTS.forEach((o, i) => {
   NEW_NPCS.push({ id: 'outpost' + i, icon: 'npc_shop', name: ['Bram', 'Lotte', 'Kael', 'Freya', 'Iris', 'Moro', 'Stella', 'Eldrin'][i], title: 'Outpost Trader', x: o.x, z: o.z, look: 'trader', face: o.face, service: 'shop:outpost', greet: `Welcome to the ${o.zone} outpost. Stock up before you head out!` });
 });
 export const NEW_TELEPORTS = OUTPOSTS.map((o) => ({ name: o.zone, x: o.x + Math.sin(o.face) * 5, z: o.z + Math.cos(o.face) * 5, lv: NEW_ZONES.find((z) => z.name === o.zone).lv }));
-export const NEW_TITLES = ['Peerless Smith', 'Master Gatherer', 'Green Thumb', 'Grand Alchemist', 'Crimson Smith', 'Relic Hunter', 'Fashionista', 'World Devourer Slayer', 'Legend of Aetherheim'];
+export const NEW_TITLES = ['Peerless Smith', 'Master Gatherer', 'Green Thumb', 'Grand Alchemist', 'Crimson Smith', 'Relic Hunter', 'Fashionista', 'World Devourer Slayer', 'Legend of Hiraya'];
 
 // ---------------------------------------------------------------- auction
 export const AUCTION = { fee: 0.05, minStep: 0.05, durations: [5, 15, 30, 60], active: 12, maxMine: 6 };

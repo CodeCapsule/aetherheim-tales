@@ -2,7 +2,7 @@
 import {
   CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
 } from './data.js';
-import { needExp, fmt, esc, PET_TIER } from './game.js';
+import { needExp, fmt, esc, PET_TIER, bagCat } from './game.js';
 import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, namedBySource } from './loot.js';
 import { ico, iconCanvas } from './icons.js';
 import { installSystemsUI } from './ui-systems.js';
@@ -20,7 +20,7 @@ import { MASTERY, MASTERY_MAX, masteryNeed, FOG } from './progress.js';
 import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
 import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
-import { canInstall, installApp } from './app.js';
+import { DAY_MIN, WEATHER_MIN } from './sky.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -362,6 +362,14 @@ export class UI {
     if (g.casting) $('cast-f').style.width = Math.min(100, (g.casting.t / g.casting.dur) * 100) + '%';
     // coords & gift timer
     this.txt($('coords'), `${Math.round(p.pos.x)}, ${Math.round(p.pos.z)}`);
+    // the clock and the weather (sky.js); indoors (dungeons, trials, wars) it is hidden
+    const mt = $('map-time'), out = g.map === g.world && !g.dg && !g.trial && !g.war;
+    mt.hidden = !out;
+    if (out) {
+      const sk = g.skyInfo(), wi = sk.weather.icon === 'w_clear' && sk.night ? 'w_night' : sk.weather.icon;
+      const key = sk.time + wi + sk.weather.name;
+      if (mt.dataset.k !== key) { mt.dataset.k = key; mt.innerHTML = `${ico(sk.night ? 'w_night' : 'w_clear', 'ico inl')}<b>${sk.time}</b>${ico(wi, 'ico inl')}${esc(sk.weather.name)}`; mt.title = `${sk.season} · ${sk.night ? 'Night' : 'Day'} · ${sk.weather.name}. A day lasts ${DAY_MIN} minutes and the weather changes every ${WEATHER_MIN}.`; }
+    }
     const gf = ONLINE_GIFTS[S.gift.idx];
     if (gf) {
       const left = Math.max(0, gf.secs - S.gift.t);
@@ -661,7 +669,7 @@ export class UI {
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
       missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts' };
-    const widths = { char: 600, bag: 760, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520 };
+    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(100vw - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -751,59 +759,49 @@ export class UI {
     this.titleChooser(body);
   }
 
+  // the Bag: a compact window with tabs, six slots a row, the selected item's buttons, Sort and Sell All, and your money
   panel_bag(body) {
     const g = this.g, S = g.S;
-    // the bag on the left; what you wear and the selected item (with its buttons) beside it, always in view
-    const wrap = h('div', 'bag-wrap'), main = h('div', 'bag-main'), side = h('div', 'bag-side');
-    const tab = this.tabs(main, 'bagTab', [['all', 'All'], ['eq', 'Equipment'], ['it', 'Items'], ['mats', 'Materials']]);
-    if (tab === 'mats') this.matsGrid(main);
+    this.panel.classList.add('bag2');
+    this.panel.querySelector('.ptitle').innerHTML = `Bag <small>${S.bag.length} / ${g.bagMax()}</small>`;
+    const tab = this.tabs(body, 'bagTab', [['all', 'All'], ['gear', 'Gear'], ['use', 'Consume'], ['quest', 'Quest'], ['val', 'Valuable'], ['other', 'Others'], ['mats', 'Mats']]);
+    body.querySelector('.tabs').classList.add('small');
+    if (tab === 'mats') this.matsGrid(body);
     else {
-      const grid = h('div', 'grid-bag');
-      const idx = S.bag.map((b, i) => [b, i]).filter(([b]) => tab === 'all' || (tab === 'eq' ? !!b.eq : !b.eq));
-      for (let k = 0; k < g.bagMax(); k++) {
-        const e = idx[k];
+      const grid = h('div', 'grid-bag bag6');
+      const list = S.bag.map((b, i) => [b, i]).filter(([b]) => tab === 'all' || bagCat(b) === tab);
+      const n = tab === 'all' ? g.bagMax() : Math.max(18, Math.ceil(list.length / 6) * 6);
+      for (let k = 0; k < n; k++) {
+        const e = list[k];
         if (!e) { grid.appendChild(h('div', 'cell empty')); continue; }
         const [b, i] = e;
         const q = b.eq ? b.eq.quality : ITEMS[b.id].quality;
-        const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}` : `${ico(b.id)}<span class="cnt">${b.qty}</span>`);
+        const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}` : `${ico(b.id)}${b.qty > 1 ? `<span class="cnt">${b.qty}</span>` : ''}`);
         if (this.sel.bagIdx === i) c.classList.add('picked');
-        c.onclick = () => { this.sel.bagIdx = i; this.sel.bagEq = null; this.renderPanel(); };
-        c.ondblclick = () => g.useBagItem(i);
+        c.onclick = () => { this.sel.bagIdx = this.sel.bagIdx === i ? null : i; this.renderPanel(); };
+        c.ondblclick = () => { this.sel.bagIdx = null; g.useBagItem(i); };
         this.tip(c, () => b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[q].color}">${esc(ITEMS[b.id].name)}</b>${esc(ITEMS[b.id].desc)}`);
         grid.appendChild(c);
       }
-      main.appendChild(grid);
-      main.appendChild(h('div', '', `<div style="margin-top:8px;font-size:12px;color:var(--muted)">Slots ${S.bag.length}/${g.bagMax()} · Double-click to use or equip</div>`));
-      this.bagTools(main);
+      body.appendChild(grid);
+      // the selected item and what you can do with it
+      const b = S.bag[this.sel.bagIdx], strip = h('div', 'bag-sel');
+      if (b) {
+        const it = b.eq ? null : ITEMS[b.id], q = b.eq ? b.eq.quality : it.quality;
+        strip.innerHTML = `<span class="cell q${q}">${ico(b.eq ? b.eq.icon : b.id)}</span><b style="color:${RARITY[q].color}">${esc(b.eq ? b.eq.name : it.name)}${b.eq?.enh ? ` +${b.eq.enh}` : ''}</b>`;
+        const acts = h('div', 'acts');
+        if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : it.type === 'food' ? 'Eat' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
+        if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
+        if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
+        strip.appendChild(acts);
+      } else strip.innerHTML = '<span class="muted">Tap an item to use, equip or sell it · double-click uses it</span>';
+      body.appendChild(strip);
+      this.bagTools(body);
     }
-    side.appendChild(h('div', 'lbl', 'Equipped'));
-    const eqg = h('div', 'bag-eq');
-    for (const s of Object.keys(SLOT_INFO)) {
-      const eq = S.equip[s];
-      const c = h('button', 'cell ' + (eq ? 'q' + eq.quality : 'empty'), eq ? `${ico(eq.icon)}${eq.enh ? `<span class="enh">+${eq.enh}</span>` : ''}` : `<span class="ghost">${ico(slotIcon(s, S.cls))}</span>`);
-      c.setAttribute('aria-label', SLOT_INFO[s].label);
-      if (this.sel.bagEq === s) c.classList.add('picked');
-      c.onclick = () => { this.sel.bagEq = s; this.sel.bagIdx = null; this.renderPanel(); };
-      this.tip(c, () => eq ? this.equipTip(eq) : `<b>${SLOT_INFO[s].label}</b>Empty slot`);
-      eqg.appendChild(c);
-    }
-    side.appendChild(eqg);
-    const det = h('div', 'bag-det'), acts = h('div', 'acts');
-    const b = tab === 'mats' ? null : S.bag[this.sel.bagIdx], worn = !b && this.sel.bagEq && S.equip[this.sel.bagEq];
-    if (b) {
-      const it = b.eq ? null : ITEMS[b.id];
-      det.innerHTML = b.eq ? this.equipTip(b.eq) + this.compare(b.eq) : `<b style="color:${RARITY[it.quality].color}">${esc(it.name)}</b><div>${esc(it.desc)}</div>`;
-      if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : it.type === 'food' ? 'Eat' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
-      if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
-      if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
-    } else if (worn) {
-      det.innerHTML = this.equipTip(worn) + '<div style="color:var(--gold-l)">Equipped</div>';
-      const bu = h('button', 'btn gray small', 'Unequip'); bu.onclick = () => { const s = this.sel.bagEq; this.sel.bagEq = null; g.unequip(s); }; acts.appendChild(bu);
-    } else det.innerHTML = '<div class="muted">Select an item to see it here and equip, use or sell it.</div>';
-    if (acts.childElementCount) det.appendChild(acts);
-    side.appendChild(det);
-    wrap.appendChild(main); wrap.appendChild(side);
-    body.appendChild(wrap);
+    // your money and the Mall
+    const foot = h('div', 'bag-foot', `<div class="bag-money"><div><span class="gem"></span>Diamonds<b>${fmt(S.diamonds)}</b></div><div><span class="coin"></span>Gold<b>${fmt(S.gold)}</b></div></div>`);
+    const mall = h('button', 'bag-mall', `${ico('mall')}<span>Mall</span>`); mall.onclick = () => this.togglePanel('mall'); foot.appendChild(mall);
+    body.appendChild(foot);
   }
   compare(eq) {
     const cur = this.g.S.equip[eq.slot];
@@ -1168,11 +1166,10 @@ export class UI {
       b.onclick = () => { g.setSetting(key, !S.settings[key]); this.refreshSound(); this.renderPanel(); };
       s.appendChild(b);
     };
-    row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Sound & music', 'sound'); row('Sound captions (trial cues as text)', 'captions');
+    row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Weather effects (rain, snow, petals, leaves)', 'weather'); row('Sound & music', 'sound'); row('Sound captions (trial cues as text)', 'captions');
     body.appendChild(s);
     const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap';
     const sv = h('button', 'btn blue', 'Save Game'); sv.onclick = () => { g.save(); this.toast('Game saved', 'good'); }; acts.appendChild(sv);
-    if (canInstall()) { const ia = h('button', 'btn green', `${ico('download', 'ico inl')} Install App`); ia.onclick = () => installApp((...a) => this.modal(...a)).then(() => this.renderPanel()); acts.appendChild(ia); }
     if (this.openAdmin && this.adminAllowed && this.adminAllowed()) { const ad = h('button', 'btn', 'Game Master Console'); ad.onclick = () => { this.closePanels(); this.openAdmin(); }; acts.appendChild(ad); }
     const del = h('button', 'btn gray', 'New Character'); del.onclick = () => this.modal('Start over?', 'This deletes your saved hero and returns to character creation.', [{ label: 'Delete & Restart', fn: () => { try { localStorage.removeItem('alfheim_tales_save_v1'); } catch { /* ignore */ } location.reload(); } }, { label: 'Cancel', cls: 'gray' }]);
     acts.appendChild(del);

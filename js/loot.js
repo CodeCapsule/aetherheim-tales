@@ -97,7 +97,7 @@ export const LEGENDARY_ITEMS = [
   { id: 'l_yggwrath', name: 'Yggdrasil\'s Wrath', slot: 'weapon', cls: 'knight', effect: 'frenzy', flavor: 'A blade grown, not forged, from the World Tree itself.' },
   { id: 'l_nidfangs', name: 'Nidhogg\'s Fangs', slot: 'weapon', cls: 'assassin', effect: 'starfall', flavor: 'Still hungry for the roots of the world.', source: 'nidhogg' },
   { id: 'l_ragnarok', name: 'Ragnarok Ember', slot: 'weapon', cls: 'mage', effect: 'meteor_proc', flavor: 'The last spark of a world that burned.' },
-  { id: 'l_tear', name: 'Tear of Aetherheim', slot: 'weapon', cls: 'priest', effect: 'holy_nova', flavor: 'Shed by the Water Spirit for a fallen hero.' },
+  { id: 'l_tear', name: 'Tear of Hiraya', slot: 'weapon', cls: 'priest', effect: 'holy_nova', flavor: 'Shed by the Water Spirit for a fallen hero.' },
   { id: 'l_fairyking', name: 'Crown of the Fairy King', slot: 'helm', effect: 'starfall', flavor: 'Oberon wore it when the World Tree was young.' },
   { id: 'l_aegis', name: 'Aegis of the Four Spirits', slot: 'armor', effect: 'phoenix', flavor: 'Fire, Water, Wind and Earth, bound as one.', source: 'gravelord' },
   { id: 'l_skystride', name: 'Skystride Greaves', slot: 'boots', effect: 'frenzy', flavor: 'Each step lands a little closer to the sky.' },
@@ -260,6 +260,7 @@ export function normalizeItem(eq, cls) {
   if (!Array.isArray(eq.affixes)) eq.affixes = [];
   if (eq.effect === undefined) eq.effect = null;
   if (eq.named === undefined) eq.named = null;
+  if (typeof eq.name === 'string' && eq.name.includes('Aetherheim')) eq.name = eq.name.replace('Aetherheim', 'Hiraya'); // the world's old name
   if (!eq.stats || typeof eq.stats !== 'object') eq.stats = {};
   eq.enh = eq.enh | 0;
   eq.quality = Math.max(0, Math.min(7, eq.quality | 0));

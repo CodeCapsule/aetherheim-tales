@@ -67,7 +67,7 @@ export class AdminPanel {
     const keepScroll = this.el.querySelector('.adm-body')?.scrollTop || 0;
     const mode = live.db && live.admin ? 'live' : live.framed ? 'nodb' : 'local';
     this.el.innerHTML = '';
-    const head = h('div', 'adm-head', `<div class="adm-title">${ico('crown', 'ico')}<div><b>Game Master Console</b><small>Aetherheim Tales · ${esc(LIVE_VERSION)}</small></div></div>
+    const head = h('div', 'adm-head', `<div class="adm-title">${ico('crown', 'ico')}<div><b>Game Master Console</b><small>Hiraya Tales Online · ${esc(LIVE_VERSION)}</small></div></div>
       <div class="adm-status ${mode}">${mode === 'live' ? `<i></i>Live database · ${this.players.length} player${this.players.length === 1 ? '' : 's'} reporting` : mode === 'nodb' ? '<i></i>Database unavailable in this view' : '<i></i>Local copy · this browser only'}</div>`);
     const x = h('button', 'btn gray small adm-close', 'Back'); x.onclick = () => this.close(); head.appendChild(x);
     this.el.appendChild(head);
