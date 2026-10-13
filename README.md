@@ -212,6 +212,11 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   member, and each member's own level gap and EXP boosts apply to their share. The party frame under your wallet
   shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
   the earliest member leads and can remove players, and reloading the page keeps you in your party.
+  Party members see the same monsters: every monster in the open world has the same spawn point, level and respawn
+  timing in every browser, and party members send what they do to them a few times a second. A monster your partner
+  is fighting walks over to them on your screen and loses the same HP; when they kill it, it dies on your screen at
+  once (counting for your kill quests and bounties if you are within 60 m) and comes back at the same moment for both
+  of you.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
   and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
@@ -262,11 +267,14 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   the weather never changes combat.
 - **Phones and tablets (MOBA-style controls)**: a joystick in the bottom-left corner walks your hero (one thumb walks
   while the other turns the camera; tapping the ground still works). On the right, a big **Attack** button hits your
-  target or the nearest enemy, with the seven skills in an arc around it and the healing and mana potions above. Mount,
-  Auto, Roll and Block and the tool belt sit above the joystick, with the chat button above them. The menu is the same
-  icon grid as on computers, under the minimap, plus **Events** for the activities; the quest tracker sits below it
-  (and slides under the target frame while you have a target). Landscape puts the menu beside the minimap and the
-  quest tracker on the left. Phones whose browser asks for the desktop site (the "Desktop site" switch) used to get a
+  target or the nearest enemy, with the seven skills in an arc around it and the healing and mana potions above. Taps
+  that just miss a control don't walk your hero there: just outside Attack still attacks, just outside the joystick
+  steers, and the gaps between the skills ignore taps. Mount, Auto, Roll and Block and the tool belt sit above the
+  joystick, with the chat button above them. The menu is one column of four buttons under the minimap (Hero, Bag,
+  Skills, Quests); scroll it, or tap the arrow under it, for Events, Map, Gathering, Pets and the rest. The **Menu**
+  tab above it folds the column away to free the screen (remembered on that device; a red dot shows when something
+  inside wants you). The target frame and the quest tracker sit beside the column, or along the right edge while it
+  is folded. Landscape puts the four buttons in a row beside the minimap and the quest tracker on the left. Phones whose browser asks for the desktop site (the "Desktop site" switch) used to get a
   tiny desktop layout with no joystick: the game now spots a touch screen laid out wider than the phone and scales its
   interface back to the phone's real width, so the touch layout appears either way.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
@@ -309,7 +317,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
-| `js/party.js` | Parties: invitations, party frame and chat, shared EXP |
+| `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |
 | `js/social.js` | The player menu, friends (requests, list, online notices) and inspecting another player |
 | `js/trade.js` | Trading between players: requests, the trade window, escrow, lock and confirm |
 | `js/data-guide.js`, `js/guide.js` | The Crafter's Path guide quests and the Quest Log's Guide pages |

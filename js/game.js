@@ -51,6 +51,11 @@ import { shadowTexture, textTexture, targetRingTexture, beamTexture, ringTexture
 export const SAVE_KEY = 'alfheim_tales_save_v1';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
+// seeded randomness for world monsters: every browser respawns a monster at the same spot, level and time, so party
+// members see the same monsters (see party.js, shared monsters)
+const seedOf = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const seeded = (a) => () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const mobRng = (e, salt = 0) => seeded(seedOf(e.uid) + e.gen * 7919 + salt);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const angLerp = (a, b, t) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * t; };
@@ -145,7 +150,8 @@ export class Game {
       if (n.event && !this.event) continue;
       this.createNPC(n.event ? { ...n, name: HOST_NAMES[this.event.id] || n.name } : n);
     }
-    for (const sp of SPAWNS) for (let i = 0; i < sp.count; i++) this.createMonster(sp);
+    let mobN = 0;
+    for (const sp of SPAWNS) for (let i = 0; i < sp.count; i++) this.createMonster(sp, { uid: 'w' + mobN++ });
     this.createPortals();
     this.initSystems();
     this.initLife();
@@ -268,7 +274,7 @@ export class Game {
   }
   createMonster(sp, o = {}) {
     const d = MONSTERS[sp.type];
-    const variant = d.variant ?? ((Math.random() * 3) | 0);
+    const variant = d.variant ?? ((o.uid ? seedOf(o.uid) % 3 : Math.random() * 3) | 0);
     const inner = monsterModel(d, variant, o.look);
     if (d.scale && d.scale !== 1) inner.scale.multiplyScalar(d.scale);
     const e = this.makeEnt('monster', inner, { radius: d.boss ? 3 : d.structure ? 2.6 : d.elite ? 1.6 : d.height > 3 ? 1.4 : d.war ? 0.6 : 0.9, shadowR: d.boss ? 4 : d.structure ? 2.4 : d.elite || d.height > 3 ? 1.6 : 0.85, height: d.height });
@@ -276,6 +282,7 @@ export class Game {
     e.baseScale = inner.scale.x || 1;
     if (inner.userData.humanoid) e.humanoid = inner;
     e.map = o.map || this.world; e.dungeon = !!o.dungeon; e.room = o.room ?? -1; e.summoned = !!o.summoned; e.fixed = o.fixed || null;
+    e.uid = o.uid || null; e.gen = 0; // world spawns: the same id and life count in every browser
     if (d.dz) { e.dz = true; this.dzTint(e); }
     const cls = 'monster' + (d.aggressive ? ' aggr' : '') + (d.elite ? ' elite' : '') + (d.boss ? ' boss' : '');
     this.nameplate(e, `<div class="n"></div>`, cls, true);
@@ -284,23 +291,23 @@ export class Game {
     return e;
   }
   respawn(e, first = false, exact = false) {
-    const sp = e.spawn, d = e.def0, W = e.map || this.world;
+    const sp = e.spawn, d = e.def0, W = e.map || this.world, R = e.uid ? mobRng(e) : Math.random;
     let x = sp.x, z = sp.z;
     if (!exact) for (let i = 0; i < 20; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * sp.r;
+      const a = R() * Math.PI * 2, r = Math.sqrt(R()) * sp.r;
       x = sp.x + Math.cos(a) * r; z = sp.z + Math.sin(a) * r;
       if (!W.isBlocked(x, z)) break;
     }
     const lr = sp.lvl || d.lvl;
-    e.level = e.fixed?.level ?? (d.dz ? this.dzMonsterLevel(e) : Math.round(rnd(lr[0], lr[1])));
+    e.level = e.fixed?.level ?? (d.dz ? this.dzMonsterLevel(e) : Math.round(lr[0] + R() * (lr[1] - lr[0])));
     const st = e.fixed || this.monsterStats(e.type, e.level);
     e.maxHp = e.hp = st.hp; e.atk = st.atk; e.def = st.def; e.crit = d.boss ? 8 : 4;
     e.pos.set(x, W.heightAt(x, z), z);
     e.home = { x, z };
-    e.dead = false; e.state = 'idle'; e.target = null; e.returning = false; e.tagged = false; e.stun = 0; e.dots = [];
+    e.dead = false; e.state = 'idle'; e.target = null; e.returning = false; e.tagged = false; e.stun = 0; e.dots = []; e.pull = null;
     e.model.visible = true; e.inner.position.y = 0; e.inner.scale.setScalar(e.baseScale || 1);
-    e.wanderT = rnd(1, 5); e.attackCD = 1; e.skillT = 6;
-    e.yaw = e.yawT = Math.random() * Math.PI * 2;
+    e.wanderT = 1 + R() * 4; e.attackCD = 1; e.skillT = 6;
+    e.yaw = e.yawT = R() * Math.PI * 2;
     if (e.np) {
       const tag = d.boss ? '[Boss] ' : d.elite ? '[Elite] ' : '';
       if (e.labelHtml) e.np.querySelector('.n').innerHTML = e.labelHtml;
@@ -675,7 +682,7 @@ export class Game {
     }
     if (dst.wb) this.wbHit(src, dst, dmg);
     if (dst.kind === 'monster') {
-      if (mine) { dst.tagged = true; this.lastCombat = this.time; }
+      if (mine) { dst.tagged = true; this.lastCombat = this.time; if (dst.uid && dmg > 0 && dst.hp > 0) this.partyMobHit(dst); }
       if (!dst.target || dst.target.dead) dst.target = src.kind === 'pet' ? this.player : src;
       dst.returning = false;
     }
@@ -790,8 +797,9 @@ export class Game {
   killMonster(m) {
     const d = m.def0, p = this.player;
     m.hp = 0; m.dead = true; m.state = 'dead'; m.deadT = 0;
-    m.respawnT = m.dungeon || m.summoned || m.wb || d.structure ? Infinity : d.war ? 7 : d.boss ? 90 : rnd(9, 15);
+    m.respawnT = m.dungeon || m.summoned || m.wb || d.structure ? Infinity : d.war ? 7 : d.boss ? 90 : m.uid ? 9 + mobRng(m, 13)() * 6 : rnd(9, 15);
     m.dots = [];
+    if (m.uid) { if (m.tagged) this.partyMobKill(m); m.gen++; } // party members see it die too
     if (p.target === m) { this.setTarget(null); }
     if (this.pet && this.pet.target === m) this.pet.target = null;
     if (m.dungeon && this.dg && m === this.dg.boss) this.completeDungeon();
@@ -1882,6 +1890,12 @@ export class Game {
           }
           if (d.boss && !(m.silT > this.time)) this.bossSkills(m, t, dt);
         }
+      } else if (m.pull) {
+        // a party member is fighting this monster (party.js): walk over to where it is on their screen
+        const P = m.pull, far = flat(m.pos, P) > 14;
+        if (far) m.pos.set(P.x, m.pos.y, P.z);
+        const r = far || this.moveEnt(m, P.x, P.z, m.speed * 1.3, dt); moving = r === false;
+        if (r === true || r === 'blocked') { m.pull = null; m.wander = null; m.wanderT = 4; if (P.fx != null) m.yawT = Math.atan2(P.fx - m.pos.x, P.fz - m.pos.z); }
       } else {
         m.wanderT -= dt;
         if (m.wanderT <= 0) {

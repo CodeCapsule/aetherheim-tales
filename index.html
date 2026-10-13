@@ -1465,9 +1465,11 @@ button { font-family: inherit; }
 }
 
 /* ---- phones and tablets: MOBA-style controls. The joystick walks (left); Attack and the skills sit in an arc on the
-   right with the potions above; Mount, Auto, Roll and Block and the tool belt sit above the joystick; the menu is the
-   same icon grid as on computers, under the minimap, with Events for the activities. ---- */
-#btn-attack, #hud-menu .mbtn.ph { display: none; }
+   right with the potions above; Mount, Auto, Roll and Block and the tool belt sit above the joystick; the menu is one
+   column of four under the minimap (it scrolls for the rest, Events included) that folds away with its Menu tab.
+   Taps that just miss a control land on a guard instead of walking the hero there: near the Attack button they still
+   attack, near the joystick they steer, and between the skills they do nothing. ---- */
+#btn-attack, #hud-menu .mbtn.ph, #menu-fold, #menu-more, #ctl-guard { display: none; }
 html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #tooltip, html.uiz #banner, html.uiz #world-ui, html.uiz .screen { zoom: var(--uiz); }
 @media (max-width: 900px), (max-height: 500px) {
   #hud #hud-dock { display: none; }
@@ -1480,7 +1482,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
   #hud #skillbar .slot.potion .key { display: none; }
   #hud #skillbar .slot.potion .cnt { right: 50%; transform: translateX(50%); bottom: -1px; }
   #hud #skillbar .slot:nth-child(1) { right: 119px; bottom: 37px; }
-  #hud #skillbar .slot:nth-child(2) { right: 94px; bottom: 98px; }
+  #hud #skillbar .slot:nth-child(2) { right: 97px; bottom: 101px; }
   #hud #skillbar .slot:nth-child(3) { right: 33px; bottom: 123px; }
   #hud #skillbar .slot:nth-child(4) { right: 181px; bottom: 37px; }
   #hud #skillbar .slot:nth-child(5) { right: 161px; bottom: 111px; }
@@ -1488,9 +1490,13 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
   #hud #skillbar .slot:nth-child(7) { right: 33px; bottom: 185px; }
   #hud #skillbar .slot:nth-child(8) { right: 36px; bottom: 245px; }
   #hud #skillbar .slot:nth-child(9) { right: 111px; bottom: 225px; }
-  #hud #btn-attack { display: grid; place-items: center; position: absolute; right: 20px; bottom: 24px; width: 72px; height: 72px; border: 3px solid var(--gold); background: radial-gradient(circle at 38% 30%, #ff9a6a, #c8341a 58%, #6a1408); box-shadow: 0 0 0 2px #3a2008, 0 6px 14px rgba(0, 0, 0, .55); }
-  #hud #btn-attack .ico { width: 42px; height: 42px; }
-  #hud #btn-attack:active { transform: scale(.94); }
+  #hud #hud-bar #btn-attack { display: grid; place-items: center; position: absolute; right: 16px; bottom: 20px; width: 80px; height: 80px; overflow: visible; border: 3px solid var(--gold); background: radial-gradient(circle at 38% 30%, #ff9a6a, #c8341a 58%, #6a1408); box-shadow: 0 0 0 2px #3a2008, 0 6px 14px rgba(0, 0, 0, .55); }
+  #hud #hud-bar #btn-attack .ico { width: 48px; height: 48px; }
+  #hud #hud-bar #btn-attack::before { content: ''; position: absolute; inset: -16px; border-radius: 50%; }
+  #hud #ctl-guard { display: block; position: absolute; right: -125px; bottom: -121px; width: 362px; height: 362px; border-radius: 50%; }
+  #hud #hud-stick { overflow: visible; }
+  #hud #hud-stick::before { content: ''; position: absolute; inset: -22px; border-radius: 50%; }
+  #hud #hud-bar #btn-attack:active { transform: scale(.94); }
   #hud #hud-bar .side-btns { position: absolute; left: 16px; right: auto; bottom: 162px; display: flex; flex-direction: row; gap: 8px; padding: 0; background: none; border: 0; box-shadow: none; }
   #hud #hud-bar .big-rbtn { width: 40px; height: 40px; border-width: 2px; font-size: 16px; }
   #hud #hud-bar .big-rbtn small { display: none; }
@@ -1504,28 +1510,80 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
   #hud #hud-chat.open .chat-log { height: auto; max-height: 26vh; min-height: 60px; }
   #hud #hud-exp { left: 0; right: 0; bottom: 0; height: 6px; border: 0; border-radius: 0; }
   #hud #hud-exp span, #hud #hud-exp .ticks { display: none; }
-  #hud #hud-target { top: 332px; bottom: auto; left: auto; right: 8px; transform: scale(.68); transform-origin: top right; }
+  #hud #hud-target { top: 170px; bottom: auto; left: auto; right: 66px; transform: scale(var(--tg-s, .68)); transform-origin: top right; }
   #hud #hud-wb { transform: scale(.68); transform-origin: top left; }
   #hud #hud-cast { bottom: 300px; }
   #hud #hud-map { transform: scale(.72); transform-origin: top right; }
-  #hud #hud-menu { display: grid; position: absolute; top: 176px; right: 8px; bottom: auto; left: auto; width: 176px; max-height: none; overflow: visible; box-sizing: border-box; grid-template-columns: repeat(4, 1fr); gap: 8px 4px; justify-items: center; padding: 6px; border-radius: 14px; animation: none; z-index: 3;
+  #hud #hud-menu { display: grid; position: absolute; top: 200px; right: 8px; bottom: auto; left: auto; width: 52px; max-height: min(192px, calc(100% - 530px)); overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: none; scroll-snap-type: y proximity; scroll-padding: 6px; box-sizing: border-box; grid-template-columns: 1fr; gap: 8px; justify-items: center; padding: 6px 0; border-radius: 14px; animation: none; z-index: 3;
     background: linear-gradient(180deg, rgba(64, 44, 24, .95), rgba(20, 13, 7, .96)); border: 2px solid #b8862a; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .3), 0 6px 16px rgba(0, 0, 0, .45); }
+  #hud #hud-menu::-webkit-scrollbar { display: none; }
   #hud #hud-menu .mbtn, #hud #hud-menu .mbtn.ph { display: flex; width: 38px; order: 0; }
   #hud #hud-menu .qa-tog, #hud #hud-menu .al, #hud #hud-menu .k { display: none; }
   #hud #hud-menu .ai { width: 38px; height: 38px; border: 2px solid #b8862a; background: radial-gradient(circle at 50% 30%, #4a3a26, #1a120a 75%); }
   #hud #hud-menu .ai .ico { width: 27px; height: 27px; }
   #hud #hud-menu .mbtn.on .ai { border-color: var(--gold-l); box-shadow: 0 0 10px rgba(243, 199, 91, .6); }
-  #hud #hud-menu .mbtn.hot .ai::after { content: ''; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: #ff4a5a; box-shadow: 0 0 0 2px #1a120a, 0 0 8px #ff4a5a; }
-  #hud #hud-acts { top: 176px; bottom: auto; left: 8px; right: 192px; max-height: calc(100% - 430px); box-sizing: border-box; }
-  #hud #hud-quest { top: 332px; right: 8px; width: 176px; max-height: calc(100% - 332px - 295px); min-height: 0; overflow-y: auto; }
-  #hud.has-target #hud-quest { top: 382px; max-height: calc(100% - 382px - 295px); }
+  #hud #hud-menu .mbtn.hot .ai::after, #hud #menu-fold.hot::after, #hud #menu-more.hot::after { content: ''; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: #ff4a5a; box-shadow: 0 0 0 2px #1a120a, 0 0 8px #ff4a5a; }
+  #hud #hud-menu .mbtn { scroll-snap-align: start; flex: none; }
+  #hud #hud-menu .mbtn[data-m="char"] { order: 1; }
+  #hud #hud-menu .mbtn[data-m="bag"] { order: 2; }
+  #hud #hud-menu .mbtn[data-m="skills"] { order: 3; }
+  #hud #hud-menu .mbtn[data-m="quests"] { order: 4; }
+  #hud #hud-menu .mbtn[data-m="events"] { order: 5; }
+  #hud #hud-menu .mbtn[data-m="map"] { order: 6; }
+  #hud #hud-menu .mbtn[data-m="life"] { order: 7; }
+  #hud #hud-menu .mbtn[data-m="pets"] { order: 8; }
+  #hud #hud-menu .mbtn[data-m="mounts"] { order: 9; }
+  #hud #hud-menu .mbtn[data-m="collect"] { order: 10; }
+  #hud #hud-menu .mbtn[data-m="codex"] { order: 11; }
+  #hud #hud-menu .mbtn[data-m="settings"] { order: 12; }
+  #hud #menu-fold { display: flex; align-items: center; justify-content: center; gap: 1px; position: absolute; top: 170px; right: 8px; width: 52px; height: 26px; padding: 0; border-radius: 13px; z-index: 3; cursor: pointer;
+    background: linear-gradient(180deg, rgba(64, 44, 24, .95), rgba(20, 13, 7, .96)); border: 2px solid #b8862a; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .3), 0 3px 8px rgba(0, 0, 0, .45); color: #ffe7a8; font: 800 9px var(--f-ui); letter-spacing: .02em; text-transform: uppercase; }
+  #hud #menu-fold .ico { width: 15px; height: 15px; flex: none; }
+  #hud #menu-more { display: grid; place-items: center; position: absolute; top: calc(202px + min(192px, 100% - 530px)); right: 18px; width: 32px; height: 18px; padding: 0; border-radius: 9px; z-index: 3; cursor: pointer; background: rgba(20, 13, 7, .9); border: 1px solid #b8862a; }
+  #hud #menu-more[hidden], #hud.menu-min #hud-menu, #hud.menu-min #menu-more { display: none; }
+  #hud #menu-more .ico { width: 14px; height: 14px; transition: transform .15s; }
+  #hud #menu-more.end .ico { transform: rotate(180deg); }
+  #hud #hud-acts { top: 170px; bottom: auto; left: 8px; right: 66px; max-height: calc(100% - 430px); box-sizing: border-box; }
+  #hud #hud-quest { top: 170px; right: 66px; width: var(--qt-w, 176px); max-height: calc(100% - 170px - 322px); min-height: 0; overflow-y: auto; }
+  #hud.has-target #hud-quest { top: calc(176px + 68px * var(--tg-s, .68)); max-height: calc(100% - 176px - 68px * var(--tg-s, .68) - 322px); }
+  /* the menu folded away: the target frame and the quest tracker take the right edge */
+  #hud.menu-min #hud-target, #hud.menu-min #hud-quest { top: 204px; right: 8px; }
+  #hud.menu-min #hud-quest { max-height: calc(100% - 204px - 322px); }
+  #hud.menu-min.has-target #hud-quest { top: calc(210px + 68px * var(--tg-s, .68)); max-height: calc(100% - 210px - 68px * var(--tg-s, .68) - 322px); }
+}
+/* portrait phones 381px and wider: a bigger Attack button and a wider skill arc */
+@media (min-width: 381px) and (max-width: 900px) and (min-height: 501px) {
+  #hud #hud-bar #btn-attack { right: 18px; bottom: 22px; width: 88px; height: 88px; }
+  #hud #hud-bar #btn-attack .ico { width: 52px; height: 52px; }
+  #hud #ctl-guard { right: -143px; bottom: -139px; width: 410px; height: 410px; }
+  #hud #skillbar .slot { width: 50px; height: 50px; font-size: 22px; }
+  #hud #skillbar .slot.potion { width: 42px; height: 42px; }
+  #hud #skillbar .slot:nth-child(1) { right: 135px; bottom: 41px; }
+  #hud #skillbar .slot:nth-child(2) { right: 106px; bottom: 110px; }
+  #hud #skillbar .slot:nth-child(3) { right: 37px; bottom: 139px; }
+  #hud #skillbar .slot:nth-child(4) { right: 203px; bottom: 41px; }
+  #hud #skillbar .slot:nth-child(5) { right: 181px; bottom: 124px; }
+  #hud #skillbar .slot:nth-child(6) { right: 120px; bottom: 185px; }
+  #hud #skillbar .slot:nth-child(7) { right: 37px; bottom: 207px; }
+  #hud #skillbar .slot:nth-child(8) { right: 41px; bottom: 271px; }
+  #hud #skillbar .slot:nth-child(9) { right: 124px; bottom: 251px; }
+  #hud #hud-bar .side-btns { bottom: 182px; }
+  #hud #hud-bar .toolbelt { bottom: 230px; }
+  #hud #chat-toggle { bottom: 278px; }
+  #hud #hud-chat.open { bottom: 322px; }
 }
 /* landscape phones: the menu grid runs beside the minimap, the quest tracker sits on the left, the small buttons beside the joystick */
 @media (max-height: 500px) {
   #hud #hud-map { transform: scale(.62); }
-  #hud #hud-menu { top: 8px; right: 124px; width: 268px; grid-template-columns: repeat(6, 1fr); }
-  #hud #hud-acts { top: 116px; right: 124px; left: auto; width: 268px; max-height: calc(100% - 128px); box-sizing: border-box; }
-  #hud #hud-quest, #hud.has-target #hud-quest { top: calc(124px + var(--party-h, 0px) * .78); left: 8px; right: auto; width: 196px; max-height: calc(100% - 124px - var(--party-h, 0px) * .78 - 150px); }
+  #hud #menu-fold { top: 8px; right: 124px; width: 26px; height: 52px; border-radius: 13px; }
+  #hud #menu-fold span { display: none; }
+  #hud #menu-fold .ico { width: 17px; height: 17px; }
+  #hud #hud-menu { top: 8px; right: 176px; width: 192px; height: 52px; max-height: none; overflow: auto hidden; scroll-snap-type: x proximity; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 38px; align-items: center; padding: 0 6px; }
+  #hud #menu-more { top: 18px; right: 154px; width: 18px; height: 32px; }
+  #hud #menu-more .ico { transform: rotate(-90deg); }
+  #hud #menu-more.end .ico { transform: rotate(90deg); }
+  #hud #hud-acts { top: 66px; right: 124px; left: auto; width: 268px; max-height: calc(100% - 78px); box-sizing: border-box; }
+  #hud #hud-quest, #hud.has-target #hud-quest, #hud.menu-min #hud-quest, #hud.menu-min.has-target #hud-quest { top: calc(124px + var(--party-h, 0px) * .78); left: 8px; right: auto; width: 196px; max-height: calc(100% - 124px - var(--party-h, 0px) * .78 - 150px); }
   #hud #hud-stick { width: 100px; height: 100px; bottom: 20px; }
   #hud #hud-bar .side-btns { left: 132px; bottom: 16px; }
   #hud #hud-bar .toolbelt { left: 132px; bottom: 64px; }
@@ -1534,7 +1592,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
   #hud #hud-chat.open .chat-log { max-height: calc(100vh - 240px); }
   #hud #skillbar .slot:nth-child(8) { right: 246px; bottom: 40px; }
   #hud #skillbar .slot:nth-child(9) { right: 229px; bottom: 110px; }
-  #hud #hud-target { top: 158px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%) scale(.78); transform-origin: top center; }
+  #hud #hud-target, #hud.menu-min #hud-target { top: 158px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%) scale(.78); transform-origin: top center; }
   #hud #hud-wb { transform: translateX(-50%) scale(.72); transform-origin: top center; }
   #hud #hud-cast { bottom: 120px; }
 }
@@ -1627,6 +1685,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
     <div id="hud-cast" hidden><div class="cl stroke" id="cast-l"></div><div class="bar"><i id="cast-f"></i></div></div>
     <div id="hud-dockbar">
     <div id="hud-bar">
+      <div id="ctl-guard"></div>
       <div class="toolbelt" id="toolbelt"></div>
       <div class="skillbar" id="skillbar"></div>
       <div class="side-btns">
@@ -1640,6 +1699,8 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
     <div id="hud-exp"><i id="exp-f"></i><div class="ticks"></div><span id="exp-t"></span></div>
     </div>
     <div id="hud-menu"></div>
+    <button id="menu-fold" aria-label="Menu"></button>
+    <button id="menu-more" aria-label="More menu buttons" hidden></button>
     <div id="hud-dock"></div>
     <div id="hud-stick" aria-label="Move"><div class="knob"></div></div>
     <div id="toasts"></div>

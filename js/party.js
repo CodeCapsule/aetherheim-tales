@@ -3,6 +3,9 @@
 // leads), so no server is needed and reloading the page keeps you in your party. Monsters run separately in each
 // browser, so a kill's EXP is shared by message: the killer splits it with party members nearby, plus a bonus per
 // extra member, and every member applies their own level penalty and EXP boosts to their share.
+// Shared monsters: every open-world monster has the same id in every browser and respawns at the same seeded spot
+// (game.js). Party members send what they do to them a few times a second (HP left, where the fight is, kills), so a
+// monster a partner is fighting walks over to them on your screen, loses the same HP, and dies when they kill it.
 import { mp } from './mp.js';
 import { CLASSES } from './data.js';
 import { curveStats, MAX_LEVEL } from './data-world.js';
@@ -16,6 +19,8 @@ const INVITE_SECS = 30;
 const XP_FLUSH = 1.2; // seconds between EXP share messages (kills in between are added up)
 const ALONE_SECS = 20; // a party with nobody else in it for this long disbands
 const STORE = 'aetherheim_party';
+const MOB_FLUSH = 0.2; // seconds between shared-monster messages (hits in between are merged, one row per monster)
+const MOB_ROWS = 24;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (v, lo, hi, d = 0) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -47,6 +52,7 @@ export function partyMembers() {
 const G = {
   partyInit() {
     this.partyXp = new Map(); this.partyXpAt = null; this.partyXpT = 0; this.partyChatT = 0; this.partyBarT = 0;
+    this.partyMobs = new Map(); this.partyMobT = 0; this.mobIdx = null;
     try {
       const s = JSON.parse(sessionStorage.getItem(STORE) || 'null');
       if (s && s.server === mp.server && partyId(s.id)) { mp.party.id = s.id; mp.party.pj = num(s.pj, 0, 1e13, Date.now()); ps.restoring = true; }
@@ -139,6 +145,7 @@ const G = {
       this.ui.chat('party', esc(text), name);
       const e = this.rplayers.find((x) => x.peerId === from); if (e && !e.netHidden) this.mpBubble(e, text);
     } else if (t === 'xp') this.partyGetExp(m);
+    else if (t === 'mob') this.partyMobMsg(m, from);
   },
   // presence changed: announce who joined or left, who leads, and recolour party members
   partySync() {
@@ -196,8 +203,67 @@ const G = {
     this.fx.text(p.pos.clone().setY(p.pos.y + p.height + 0.6), `+${fmt(total)} Party EXP`, 'exp pexp');
     this.gainExp(total);
   },
+  // ------------------------------------------------------------ shared monsters
+  partyMobsOn() { return !!(mp.party.id && mp.status === 'online' && this.partyMobs && !this.dg && !this.war && !this.trial && partyMembers().length > 1); },
+  // one of our hits landed on an open-world monster (game.js damage): queue its HP and where the fight is
+  partyMobHit(m) {
+    if (!this.partyMobsOn() || (this.partyMobs.size >= MOB_ROWS && !this.partyMobs.has(m.uid))) return;
+    const row = this.partyMobs.get(m.uid);
+    if (row && row.k) return; // already queued as a kill
+    this.partyMobs.set(m.uid, { u: m.uid, g: m.gen, ty: m.type, f: Math.round(Math.max(0, m.hp / m.maxHp) * 1e4) / 1e4, x: Math.round(m.pos.x * 10) / 10, z: Math.round(m.pos.z * 10) / 10 });
+  },
+  // we killed it (game.js killMonster, before the life count goes up): it dies for the party too, and comes back when ours does
+  partyMobKill(m) {
+    if (!this.partyMobsOn()) return;
+    this.partyMobs.set(m.uid, { u: m.uid, g: m.gen, ty: m.type, f: 0, k: Number.isFinite(m.respawnT) ? Math.max(0.1, Math.round(m.respawnT * 10) / 10) : 300, x: Math.round(m.pos.x * 10) / 10, z: Math.round(m.pos.z * 10) / 10 });
+  },
+  partyMobFlush(dt) {
+    if (!this.partyMobs.size) { this.partyMobT = 0; return; }
+    this.partyMobT -= dt;
+    if (this.partyMobT > 0) return;
+    this.partyMobT = MOB_FLUSH;
+    if (this.partyMobsOn()) this.partySend('mob', { party: mp.party.id, h: [...this.partyMobs.values()].map((r) => [r.u, r.g, r.ty, r.f, r.x, r.z, r.k || 0]) });
+    this.partyMobs.clear();
+  },
+  mobById(uid) {
+    if (!this.mobIdx) { this.mobIdx = new Map(); for (const e of this.monsters) if (e.uid) this.mobIdx.set(e.uid, e); }
+    const e = this.mobIdx.get(uid);
+    return e && !e.removed && e.uid === uid ? e : null;
+  },
+  partyMobMsg(m, from) {
+    if (!mp.party.id || m.party !== mp.party.id || !Array.isArray(m.h)) return;
+    const pr = mp.peers.get(from); if (!pr || pr.info.map !== 'world') return;
+    const away = !!(this.dg || this.war || this.trial), p = this.player;
+    const who = this.rplayers.find((x) => x.peerId === from && !x.netHidden);
+    for (const row of m.h.slice(0, MOB_ROWS)) {
+      if (!Array.isArray(row) || typeof row[0] !== 'string' || !/^w\d{1,5}$/.test(row[0])) continue;
+      const e = this.mobById(row[0]); if (!e || e.type !== row[2]) continue;
+      const g = num(row[1], 0, 1e7, 0) | 0, f = num(row[3], 0, 1, 1), x = num(row[4], -5200, 5200, e.pos.x), z = num(row[5], -5200, 5200, e.pos.z), k = num(row[6], 0, 300, 0);
+      // life counts can differ between two players who only just met: the higher one wins
+      if (g > e.gen) e.gen = g;
+      if (e.dead) continue;
+      if (k) { this.partyMobDie(e, k, away || p.dead ? Infinity : Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z)); continue; }
+      e.hp = Math.min(e.hp, Math.max(1, Math.ceil(f * e.maxHp)));
+      // nobody is fighting it here: it walks over to the fight on their screen (and stays there)
+      if (!e.target && Math.hypot(x - e.spawn.x, z - e.spawn.z) <= (e.spawn.r || 0) + 45) {
+        e.returning = false; e.home = { x, z };
+        if (Math.hypot(e.pos.x - x, e.pos.z - z) > 3) e.pull = { x, z, fx: who ? who.pos.x : null, fz: who ? who.pos.z : null };
+        else if (who) e.yawT = Math.atan2(who.pos.x - e.pos.x, who.pos.z - e.pos.z);
+      }
+    }
+  },
+  // a party member killed it: it dies here too (their kill: no loot or gold for us, the EXP share comes separately),
+  // counts for our kill quests and bounties if we are close, and respawns when theirs does
+  partyMobDie(e, rt, dist) {
+    e.tagged = false;
+    if (dist < 80) this.fx.emit(e.pos.clone().setY(e.pos.y + e.height * 0.6), { count: 12, color: 0xfff2c0, speed: 3, life: 0.45, size: 0.45 });
+    this.killMonster(e);
+    e.respawnT = rt;
+    if (dist <= PARTY_RANGE) this.questKill(e);
+  },
   partyUpdate(dt) {
     if (!this.partyXp) return; // multiplayer is off
+    this.partyMobFlush(dt);
     if (ps.invite && ps.invite.until < Date.now()) { const inv = ps.invite; ps.invite = null; this.ui.partyInvitePopup(null); this.partySend('dec', { to: inv.from }); }
     if (this.partyXp.size) {
       this.partyXpT -= dt;
@@ -228,7 +294,7 @@ const U = {
     if (!el) { el = h('div', ''); el.id = 'hud-party'; hud.appendChild(el); }
     const mem = partyMembers(), others = mem.filter((x) => !x.me);
     el.hidden = !mp.party.id;
-    if (el.hidden) { hud.style.setProperty('--party-h', '0px'); hud.style.setProperty('--party-w', '0px'); return; }
+    if (el.hidden) { hud.style.setProperty('--party-h', '0px'); hud.style.setProperty('--party-w', '0px'); this.fitPhoneHud(); return; }
     el.innerHTML = `<div class="ph">Party <small>${mem.length}/${PARTY_MAX}${mem[0]?.me ? ' · Leader' : ''}</small></div>`;
     if (!others.length) el.appendChild(h('div', 'pm-wait', 'Waiting for members…'));
     for (const x of others) {
@@ -240,6 +306,7 @@ const U = {
       el.appendChild(r);
     }
     hud.style.setProperty('--party-h', el.offsetHeight + 8 + 'px'); hud.style.setProperty('--party-w', el.offsetWidth + 8 + 'px');
+    this.fitPhoneHud();
     this.refreshPartyBars();
     if (this.panelName === 'online') this.softRefresh();
   },

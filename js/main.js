@@ -98,6 +98,7 @@ async function init() {
 
 function onResize() {
   fitTouch();
+  ui && ui.fitPhoneHud && ui.fitPhoneHud();
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   fx.setViewport(innerHeight);

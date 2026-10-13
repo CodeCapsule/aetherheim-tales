@@ -38,6 +38,7 @@ const STAT_WORD = { hpPct: 'max HP', defPct: 'defense', atkPct: 'attack', mpPct:
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const DOCK_MENU = ['char', 'bag', 'skills', 'quests'];
 const STATION_TABS = ['alchemy', 'smithing', 'red']; // Professions tabs that only open at their NPC
+const MENU_MIN = 'hiraya_menu_min'; // phones: the menu column is folded away
 // town NPCs that run a window, listed on the World Map
 const SERVICES = [['gorm', 'Forge: enhance, craft, upgrade, salvage, smithing', 'forge', { fgTab: 'enhance' }], ['opal', 'Gem Workshop: sockets, gems, soulstones', 'forge', { fgTab: 'gems' }],
   ['vera', 'Alchemy', 'life', { lifeTab: 'alchemy' }], ['mira', 'Market', 'market'], ['grimsby', 'Auction House', 'auction', { aucTab: 'browse' }], ['aldric', 'Guilds and Guild Wars', 'guild', { guildTab: 'hall' }], ['coco', 'Wardrobe and costumes', 'wardrobe']]; // menu buttons that also sit on the phone dock
@@ -114,6 +115,22 @@ export class UI {
     const ev = h('button', 'mbtn ph', `<span class="ai">${ico('events')}</span><span class="al">Events</span>`); ev.title = 'Events and activities'; ev.setAttribute('aria-label', 'Events and activities');
     ev.onclick = () => { g.sfx.play('click'); this.setSheet(this.sheet === 'acts' ? '' : 'acts'); };
     menu.appendChild(ev); this.evBtn = ev;
+    // phones: the menu is one column of four under the minimap (scroll or tap the arrow for the rest), and folds away
+    for (const [n, b] of Object.entries(this.menuBtns)) b.dataset.m = n;
+    ev.dataset.m = 'events';
+    const fold = $('menu-fold'), more = $('menu-more');
+    fold.onclick = () => { g.sfx.play('click'); this.setMenuMin(!this.menuMin); };
+    more.innerHTML = ico('qa_down');
+    more.onclick = () => {
+      g.sfx.play('click');
+      const across = menu.scrollWidth > menu.clientWidth + 2;
+      if (more.classList.contains('end')) menu.scrollTo(0, 0);
+      else menu.scrollBy(across ? menu.clientWidth - 8 : 0, across ? 0 : menu.clientHeight - 8);
+      this.refreshMenuMore();
+    };
+    menu.addEventListener('scroll', () => this.refreshMenuMore(), { passive: true });
+    let min = false; try { min = localStorage.getItem(MENU_MIN) === '1'; } catch { /* storage unavailable */ }
+    this.setMenuMin(min, false);
     // activities (top right): Online, Missions, Dungeon and the World Boss timer stay out; the rest sit behind More
     const acts = $('hud-acts'); acts.innerHTML = ''; acts.className = 'qa';
     const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
@@ -187,6 +204,7 @@ export class UI {
     this.bindSystems();
     this.refreshSound();
     $('hud').hidden = false;
+    this.fitPhoneHud();
   }
 
   refreshAll() { this.refreshPlayer(); this.refreshSkills(); this.refreshQuest(); this.refreshExp(); this.refreshActs(); this.refreshMountBtn(); this.refreshTarget(); }
@@ -320,6 +338,32 @@ export class UI {
     t.setAttribute('aria-expanded', String(on));
     this.refreshDock();
   }
+  // phones: fold the menu column away (remembered on this device) or open it again
+  setMenuMin(on, save = true) {
+    this.menuMin = on;
+    $('hud').classList.toggle('menu-min', on);
+    const f = $('menu-fold');
+    f.innerHTML = `${ico(on ? 'more' : 'qa_less')}<span>Menu</span>`;
+    f.setAttribute('aria-expanded', String(!on)); f.title = on ? 'Show the menu' : 'Hide the menu';
+    if (save) try { localStorage.setItem(MENU_MIN, on ? '1' : '0'); } catch { /* storage unavailable */ }
+    this.fitPhoneHud(); this.refreshMenuMore(); this.refreshDock();
+  }
+  // the arrow under the menu column: shown when some buttons are scrolled out of sight; points back up at the end
+  refreshMenuMore() {
+    const m = $('hud-menu'), b = $('menu-more'); if (!b) return;
+    const across = m.scrollWidth > m.clientWidth + 2, down = m.scrollHeight > m.clientHeight + 2;
+    b.hidden = this.menuMin || !(across || down);
+    b.classList.toggle('end', across ? m.scrollLeft + m.clientWidth >= m.scrollWidth - 4 : m.scrollTop + m.clientHeight >= m.scrollHeight - 4);
+  }
+  // phones (portrait): the target frame and the quest tracker fill the gap between the party frame and the menu column
+  fitPhoneHud() {
+    const hud = $('hud'); if (!hud) return;
+    const pw = parseFloat(hud.style.getPropertyValue('--party-w')) || 0;
+    const room = vw() - (this.menuMin ? 8 : 66) - (pw ? pw * 0.78 + 10 : 0);
+    hud.style.setProperty('--tg-s', Math.max(0.5, Math.min(0.68, room / 236)).toFixed(3));
+    hud.style.setProperty('--qt-w', Math.round(Math.max(110, Math.min(176, room))) + 'px');
+    this.refreshMenuMore();
+  }
   // dock buttons (and the More buttons) light up when something inside them wants attention
   refreshDock() {
     const D = this.dockBtns; if (!D || !this.acts) return;
@@ -330,6 +374,12 @@ export class UI {
     this.evBtn?.classList.toggle('hot', D.acts.classList.contains('hot'));
     D.menu.classList.toggle('hot', Object.values(this.menuBtns).some((b) => !b.classList.contains('indock') && !!b.querySelector('.dotn')));
     for (const n of DOCK_MENU) D[n].classList.toggle('hot', !!this.menuBtns[n]?.querySelector('.dotn'));
+    // phones: the folded menu, or the arrow to buttons scrolled out of sight, light up too
+    this.refreshMenuMore();
+    const lit = [...Object.values(this.menuBtns), this.evBtn].filter((b) => b && (b.querySelector('.dotn') || b.classList.contains('hot')));
+    $('menu-fold')?.classList.toggle('hot', !!this.menuMin && lit.length > 0);
+    const m = $('hud-menu'), box = m.getBoundingClientRect();
+    $('menu-more')?.classList.toggle('hot', !this.menuMin && lit.some((b) => { const r = b.getBoundingClientRect(); return r.width && (r.top >= box.bottom - 4 || r.left >= box.right - 4 || r.bottom <= box.top + 4); }));
   }
   markMenu(n) { const b = this.menuBtns[n]; if (b && this.panelName !== n && !b.querySelector('.dotn')) b.appendChild(h('span', 'dotn', ico('new'))); }
   setZone(z) { $('zone-name').innerHTML = `${esc(z.name)}${z.lv ? `<small>${esc(z.lv)}</small>` : ''}`; $('zone-name').classList.toggle('dz', !!z.dz); }
