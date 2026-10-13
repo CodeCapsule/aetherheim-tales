@@ -417,11 +417,15 @@ const P = {
         : 'Multiplayer is not switched on for this copy yet (no key in <b>js/mp-config.js</b>). For now you play solo.'));
       return;
     }
-    const st = { online: ['good', 'Connected'], connecting: ['', 'Connecting…'], error: ['bad', `Not connected — ${esc(mp.error || 'error')}`], off: ['', 'Offline'] }[mp.status] || ['', mp.status];
+    const st = { online: ['good', 'Connected'], connecting: ['', 'Connecting…'], error: ['bad', `Reconnecting — ${esc(mp.error || 'connection lost')}`], off: ['', 'Offline'] }[mp.status] || ['', mp.status];
     const sv = SERVERS.find((x) => x.id === mp.server) || SERVERS[0];
     const head = h('div', 'mp-head', `<span class="mp-st ${st[0]}"><i></i>${st[1]}</span><span class="muted">Server</span><span class="chip sel">${ico(sv.icon, 'ico inl')}${esc(sv.name)}</span>`);
-    if (mp.status === 'error' || mp.status === 'off') { const r = h('button', 'btn small', 'Retry'); r.onclick = () => g.mpStart(); head.appendChild(r); }
+    const r = h('button', 'btn small' + (mp.status === 'online' ? ' gray' : ''), mp.status === 'online' ? 'Reconnect' : 'Retry'); r.title = 'Leave and join the server again';
+    r.onclick = () => { g.mpRejoin(); this.toast('Reconnecting to the server…'); }; head.appendChild(r);
     body.appendChild(head);
+    // what the connection is doing, in plain numbers (helps when two players cannot see each other)
+    const D = mp.diag, inPres = mp.channel?.presenceState ? Object.keys(mp.channel.presenceState()).length : 0, mins = D.since ? Math.max(0, Math.round((Date.now() - D.since) / 60000)) : null;
+    body.appendChild(h('div', 'mp-diag muted', `Line: ${esc(mp.channel?.state || 'none')}${mins != null ? ` for ${mins} min` : ''} · on the server: ${inPres} (you included) · players heard: ${mp.peers.size} · reconnects: ${Math.max(0, D.joins - 1) + D.drops}${D.err ? ` · last problem: ${esc(D.err)}` : ''}`));
     this.partyBlock(body);
     this.friendsBlock(body);
     const L = h('div', 'list');

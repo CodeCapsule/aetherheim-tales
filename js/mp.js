@@ -1,6 +1,10 @@
 // Real-time multiplayer for the public website. Everyone plays on one server, Pilipinas, which is one
 // Supabase Realtime channel: presence carries who is online (name, class, level, look, zone, party) and broadcasts
 // carry movement, chat and party messages (party.js). Monsters, loot and progress stay per player. No database tables are used.
+// Staying connected: the channel's own state is watched (a reconnect the library makes quietly still counts), our own
+// presence is put back if the server lost it, a page that comes back into view or a channel stuck for a while rejoins
+// from scratch, heartbeats run in a worker so a tab in the background is not dropped, and players also announce
+// themselves by broadcast ("hello"), so they find each other even if presence fails.
 // Inside the claude.ai page (window.claude present) or without a configured key, multiplayer stays off.
 import * as THREE from 'three';
 import { PETS, MOUNTS, CLASSES } from './data.js';
@@ -23,8 +27,11 @@ const SEND_MIN = 90, SEND_MAX = 600, SEND_IDLE = 15000; // ms between movement u
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 const _off = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _pt = new THREE.Vector3();
 const SERVER_KEY = 'aetherheim_server';
+const HELLO_SECS = 15; // a player alone announces itself this often (every 30 s with company)
+const PEER_TTL = 45; // a player only heard by broadcast (missing from presence) is dropped after this long in silence
+const STALL_SECS = 20; // a channel that is not joined for this long while the page is in view rejoins from scratch
 
-export const mp = { status: 'off', server: 'S1', id: null, client: null, channel: null, peers: new Map(), error: '', party: { id: null, pj: 0 } };
+export const mp = { status: 'off', server: 'S1', id: null, client: null, channel: null, peers: new Map(), error: '', party: { id: null, pj: 0 }, diag: { joins: 0, drops: 0, retracks: 0, hellos: 0, since: 0, err: '' } };
 export function mpEnabled() { return !!(MP_CONFIG.url && MP_CONFIG.key) && !(window.claude && typeof window.claude.use === 'function'); }
 // the saved choice from when there were several servers falls back to Pilipinas
 export function getServer() { try { const s = localStorage.getItem(SERVER_KEY); return SERVERS.some((x) => x.id === s) ? s : 'S1'; } catch { return 'S1'; } }
@@ -74,41 +81,110 @@ function cleanInfo(m) {
 const M = {
   // ============================================================ connection
   async mpStart() {
+    if (this.mpStarted) { this.mpRejoin(); return; } // Retry: rejoin, keeping who we are
+    this.mpStarted = true;
     this.rplayers = [];
     this.mpPresT = 0; this.mpLastSent = null; this.mpChatT = 0; this.mpPrev = null; this.mpVx = 0; this.mpVz = 0;
+    this.mpWatchT = 1; this.mpHelloT = 0; this.mpStallT = 0; this.mpMissing = 0;
     if (!mpEnabled()) { mp.status = 'off'; return; }
     mp.server = getServer();
     this.partyInit();
     mp.id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).replace(/-/g, '').slice(0, 16);
+    // back in view: say hello and check the line (the watchdog rejoins soon if the library has not reconnected)
+    addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !mp.channel) return;
+      if (mp.channel.state === 'joined') { this.mpTrack(); this.mpHelloSend(true); } else this.mpStallT = STALL_SECS - 5;
+    });
+    addEventListener('pagehide', () => { if (mp.status === 'online') mp.channel.send({ type: 'broadcast', event: 'b', payload: { i: mp.id } }).catch(() => {}); });
     mp.status = 'connecting'; this.ui.refreshOnline && this.ui.refreshOnline();
     try {
       const lib = await loadLib();
-      mp.client = mp.client || lib.createClient(MP_CONFIG.url, MP_CONFIG.key, { auth: { persistSession: false, autoRefreshToken: false } });
-      this.mpJoin();
-    } catch (e) { mp.status = 'error'; mp.error = e.message || 'connection failed'; this.ui.refreshOnline && this.ui.refreshOnline(); }
+      mp.client = mp.client || lib.createClient(MP_CONFIG.url, MP_CONFIG.key, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { worker: true } });
+      await this.mpJoin();
+    } catch (e) { mp.status = 'error'; mp.error = e.message || 'connection failed'; mp.diag.err = mp.error; this.ui.refreshOnline && this.ui.refreshOnline(); }
   },
-  mpJoin() {
+  // leave the channel (if any) and join it afresh
+  async mpJoin() {
+    if (mp.channel) { const old = mp.channel; mp.channel = null; try { await mp.client.removeChannel(old); } catch { /* already gone */ } }
+    mp.diag.joins++;
     const ch = mp.client.channel('aetherheim-' + mp.server.toLowerCase(), { config: { broadcast: { self: false, ack: false }, presence: { key: mp.id } } });
     mp.channel = ch;
-    ch.on('presence', { event: 'sync' }, () => this.mpSync())
-      .on('broadcast', { event: 'm' }, ({ payload }) => this.mpMove(payload))
-      .on('broadcast', { event: 'c' }, ({ payload }) => this.mpChat(payload))
-      .on('broadcast', { event: 'p' }, ({ payload }) => this.partyMsg(payload))
-      .on('broadcast', { event: 'z' }, ({ payload }) => this.dzMsg(payload))
-      .on('broadcast', { event: 't' }, ({ payload }) => this.tradeMsg(payload))
-      .on('broadcast', { event: 'f' }, ({ payload }) => this.socialMsg(payload))
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          const first = mp.status !== 'online';
-          mp.status = 'online'; mp.error = '';
-          await ch.track(this.mpInfo()).catch(() => {});
-          this.mpLastInfo = JSON.stringify(this.mpInfo(true));
-          if (first) this.ui.chat('system', `Connected to the <b>${esc(serverName(mp.server))}</b> server. Everyone online appears in your world.`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          mp.status = 'error'; mp.error = status === 'TIMED_OUT' ? 'the server did not answer' : 'the connection was refused';
-        } else if (status === 'CLOSED') mp.status = 'off';
-        this.ui.refreshOnline && this.ui.refreshOnline();
-      });
+    const on = (ev, fn) => ch.on('broadcast', { event: ev }, ({ payload }) => { if (mp.channel === ch) { this.mpHeard(payload); fn(payload); } });
+    ch.on('presence', { event: 'sync' }, () => { if (mp.channel === ch) this.mpSync(); });
+    on('m', (p) => this.mpMove(p)); on('c', (p) => this.mpChat(p)); on('p', (p) => this.partyMsg(p)); on('z', (p) => this.dzMsg(p));
+    on('t', (p) => this.tradeMsg(p)); on('f', (p) => this.socialMsg(p)); on('h', (p) => this.mpHello(p)); on('b', (p) => this.mpByeGot(p));
+    ch.subscribe((status, err) => {
+      if (mp.channel !== ch) return;
+      if (status === 'SUBSCRIBED') this.mpJoined();
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        mp.status = 'error'; mp.error = status === 'TIMED_OUT' ? 'the server did not answer' : 'the connection dropped, reconnecting';
+        mp.diag.drops++; mp.diag.err = `${status}${err?.message ? ': ' + err.message : ''}`.slice(0, 120);
+      } else if (status === 'CLOSED') mp.status = 'off';
+      this.ui.refreshOnline && this.ui.refreshOnline();
+    });
+  },
+  async mpRejoin() {
+    if (this.mpRejoining || !mpEnabled()) return;
+    this.mpRejoining = true; this.mpStallT = 0;
+    mp.status = 'connecting'; this.ui.refreshOnline && this.ui.refreshOnline();
+    try { if (mp.client) await this.mpJoin(); else { this.mpStarted = false; await this.mpStart(); } } catch (e) { mp.status = 'error'; mp.error = e.message || 'connection failed'; mp.diag.err = mp.error; }
+    finally { this.mpRejoining = false; this.ui.refreshOnline && this.ui.refreshOnline(); }
+  },
+  // the channel is joined (first time or again): be seen, and say "Connected" only once
+  mpJoined() {
+    mp.status = 'online'; mp.error = ''; mp.diag.since = Date.now(); this.mpStallT = 0; this.mpMissing = 0;
+    this.mpTrack(); this.mpHelloSend(true); this.mpLastSent = null;
+    if (!this.mpAnnounced) { this.mpAnnounced = true; this.ui.chat('system', `Connected to the <b>${esc(serverName(mp.server))}</b> server. Everyone online appears in your world.`); }
+    this.ui.refreshOnline && this.ui.refreshOnline();
+  },
+  mpTrack() {
+    if (!mp.channel) return;
+    this.mpLastInfo = JSON.stringify(this.mpInfo(true)); this.mpTrackT = performance.now();
+    mp.channel.track(this.mpInfo()).catch(() => {});
+  },
+  // "hello": who we are, by broadcast; ask = the others answer with theirs
+  mpHelloSend(ask) {
+    if (!mp.channel || mp.channel.state !== 'joined') return;
+    this.mpHelloT = mp.peers.size ? 30 : HELLO_SECS;
+    mp.channel.send({ type: 'broadcast', event: 'h', payload: { i: mp.id, a: ask ? 1 : 0, info: this.mpInfo() } }).catch(() => {});
+  },
+  mpHello(m) {
+    if (!m || typeof m !== 'object') return;
+    const key = str(m.i, 40); if (!key || key === mp.id) return;
+    const info = cleanInfo(m.info); if (!info) return;
+    info.id = key; mp.diag.hellos++;
+    this.mpAddPeer(key, info, false);
+    this.partySync(); this.ui.refreshOnline && this.ui.refreshOnline();
+    const now = performance.now();
+    if (m.a && now - (this.mpHelloReplyT || 0) > 2000) { this.mpHelloReplyT = now; this.mpHelloSend(false); }
+  },
+  mpByeGot(m) { const key = str(m?.i, 40), pr = mp.peers.get(key); if (pr && !pr.pres) this.mpDropPeer(key); },
+  // any message from a player keeps them listed; from someone we have not met yet, ask who they are
+  mpHeard(m) {
+    const key = m && typeof m === 'object' ? str(m.i, 40) : ''; if (!key || key === mp.id) return;
+    const pr = mp.peers.get(key), now = performance.now();
+    if (pr) pr.heard = now;
+    else if (now - (this.mpAskT || 0) > 3000) { this.mpAskT = now; this.mpHelloSend(true); }
+  },
+  // the line, once a second: the channel's real state, our presence, hellos and players gone quiet
+  mpWatch(dt) {
+    this.mpWatchT -= dt; if (this.mpWatchT > 0) return;
+    this.mpWatchT = 1;
+    const ch = mp.channel; if (!ch || !mp.client || this.mpRejoining) return;
+    const st = ch.state, now = performance.now();
+    if (st === 'joined' && mp.status !== 'online') this.mpJoined(); // the library rejoined without telling us
+    else if (st !== 'joined' && mp.status === 'online') { mp.status = st === 'joining' ? 'connecting' : 'error'; mp.error = 'the connection dropped, reconnecting'; this.ui.refreshOnline && this.ui.refreshOnline(); }
+    if (st !== 'joined') {
+      if (document.visibilityState === 'visible' && ++this.mpStallT >= STALL_SECS) this.mpRejoin();
+      return;
+    }
+    this.mpStallT = 0;
+    // our own presence must be there; put it back if the server lost it, rejoin if that keeps failing
+    const mine = !!ch.presenceState()[mp.id];
+    if (mine) this.mpMissing = 0;
+    else if (now - (this.mpTrackT || 0) > 6000) { mp.diag.retracks++; if (++this.mpMissing >= 4) this.mpRejoin(); else this.mpTrack(); }
+    if (--this.mpHelloT <= 0) this.mpHelloSend(!mp.peers.size);
+    for (const [key, pr] of [...mp.peers]) if (!pr.pres && now - (pr.heard || 0) > PEER_TTL * 1000) this.mpDropPeer(key);
   },
   mpInfo(stable = false) {
     const S = this.S, p = this.player;
@@ -125,14 +201,14 @@ const M = {
   // publish presence right away (joining or leaving a party)
   mpTrackNow() {
     if (mp.status !== 'online' || !mp.channel) return;
-    this.mpLastInfo = JSON.stringify(this.mpInfo(true));
-    mp.channel.track(this.mpInfo()).catch(() => {});
+    this.mpTrack(); this.mpHelloSend(false);
   },
   // ============================================================ per frame
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
     this.partyUpdate(dt);
     this.tradeUpdate(dt); this.socialUpdate();
+    if (mp.channel) this.mpWatch(dt);
     if (mp.status !== 'online' || !mp.channel) return;
     const p = this.player;
     // presence: only when what others see changes (look, level, zone, mount, pet)
@@ -140,7 +216,7 @@ const M = {
     if (this.mpPresT <= 0) {
       this.mpPresT = 2;
       const sig = JSON.stringify(this.mpInfo(true));
-      if (sig !== this.mpLastInfo) { this.mpLastInfo = sig; mp.channel.track(this.mpInfo()).catch(() => {}); }
+      if (sig !== this.mpLastInfo) { this.mpTrack(); this.mpHelloSend(false); } // players who only hear our hellos see the change too
     }
     // own velocity in world units per real second: the others extrapolate with it
     const now = performance.now(), pv = this.mpPrev;
@@ -177,24 +253,34 @@ const M = {
   },
   // ============================================================ incoming
   mpSync() {
-    const state = mp.channel.presenceState(), seen = new Set();
+    const state = mp.channel.presenceState(), seen = new Set(), now = performance.now();
     for (const [key, metas] of Object.entries(state)) {
       if (key === mp.id || !metas || !metas.length) continue;
-      const info = cleanInfo(metas[metas.length - 1]); if (!info) continue;
-      info.id = key; seen.add(key);
-      this.prestigeFromPeer && this.prestigeFromPeer(info);
-      const old = mp.peers.get(key);
-      if (!old) { if (!this.friendOnline(info)) this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
-      mp.peers.set(key, { ...(old || {}), info, net: old?.net || { x: info.x, z: info.z, y: 0, s: 0, w: info.map === 'world' ? 1 : 0, t: performance.now() } });
-      this.mpEnsure(key);
+      try { // one odd player never hides the rest
+        const info = cleanInfo(metas[metas.length - 1]); if (!info) continue;
+        info.id = key; seen.add(key);
+        this.prestigeFromPeer && this.prestigeFromPeer(info);
+        this.mpAddPeer(key, info, true);
+      } catch (e) { mp.diag.err = ('sync: ' + (e.message || e)).slice(0, 120); console.error(e); }
     }
-    for (const key of [...mp.peers.keys()]) if (!seen.has(key)) {
-      const pr = mp.peers.get(key); mp.peers.delete(key);
-      this.mpRemove(key); this.dzPeerGone(key); this.tradePeerGone(key); this.socialPeerGone(key);
-      this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
-    }
+    // gone from presence: dropped at once if presence knew them, after a silence if we only heard their hellos
+    for (const [key, pr] of [...mp.peers]) if (!seen.has(key) && (pr.pres || now - (pr.heard || 0) > PEER_TTL * 1000)) this.mpDropPeer(key);
     this.partySync();
     this.ui.refreshOnline && this.ui.refreshOnline();
+  },
+  // a player seen in presence (pres) or heard by hello
+  mpAddPeer(key, info, pres) {
+    const old = mp.peers.get(key);
+    if (!old) { if (!this.friendOnline(info)) this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
+    mp.peers.set(key, { ...(old || {}), info, pres: pres || !!old?.pres, heard: performance.now(), net: old?.net || { x: info.x, z: info.z, y: 0, s: 0, w: info.map === 'world' ? 1 : 0, t: performance.now() } });
+    this.mpEnsure(key);
+  },
+  mpDropPeer(key) {
+    const pr = mp.peers.get(key); if (!pr) return;
+    mp.peers.delete(key);
+    this.mpRemove(key); this.dzPeerGone(key); this.tradePeerGone(key); this.socialPeerGone(key);
+    this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
+    this.partySync(); this.ui.refreshOnline && this.ui.refreshOnline();
   },
   mpMove(m) {
     if (!m || typeof m !== 'object') return;

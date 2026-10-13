@@ -211,6 +211,13 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   separate for each player, and a player inside a dungeon or guild war is hidden until they come back. It runs on a free
   Supabase Realtime channel (broadcast and presence, no database tables): put the project URL and its **publishable**
   key in `js/mp-config.js`. With no key, or inside the claude.ai page, the game plays solo as before.
+  The connection looks after itself: heartbeats run in a background worker so a tab you are not looking at stays online,
+  a reconnect is noticed even when the library makes it quietly, your presence is put back if the server loses it, a
+  page that comes back into view (a phone you unlocked) rejoins if its line dropped, and players also announce
+  themselves by broadcast, so they still find each other if presence fails. The Online panel shows the line's state
+  (how many are on the server, players heard, reconnects, the last problem) and a **Reconnect** button. A phone in
+  your pocket or a browser in the background goes quiet after a while; it reappears for the others as soon as you
+  come back to it.
 - **Player menu, friends and inspect**: click another player (or their target frame) for a menu: **Add Friend**,
   **Inspect Character**, **Invite to Party** and **Trade**. A friend request asks the other player first; friends are
   kept in your save and listed at the top of the Online panel with who is on now, and you are told when one comes
