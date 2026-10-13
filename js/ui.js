@@ -868,6 +868,7 @@ export class UI {
         if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : it.type === 'food' ? 'Eat' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
         if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
         if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
+        if (!it || it.type !== 'quest') { const bd = h('button', 'btn gray small', 'Drop'); bd.title = 'Drop it on the ground: anyone nearby can pick it up'; bd.onclick = () => this.bagDropAsk(this.sel.bagIdx); acts.appendChild(bd); }
         strip.appendChild(acts);
         if (b.eq) { strip.classList.add('gear'); strip.appendChild(this.gearCard(b.eq)); }
       } else strip.innerHTML = '<span class="muted">Tap an item to see its stats, then use, equip or sell it · double-click uses it</span>';
@@ -878,6 +879,15 @@ export class UI {
     const foot = h('div', 'bag-foot', `<div class="bag-money"><div><span class="gem"></span>Diamonds<b>${fmt(S.diamonds)}</b></div><div><span class="coin"></span>Gold<b>${fmt(S.gold)}</b></div></div>`);
     const mall = h('button', 'bag-mall', `${ico('mall')}<span>Mall</span>`); mall.onclick = () => this.togglePanel('mall'); foot.appendChild(mall);
     body.appendChild(foot);
+  }
+  // drop a bag item on the ground (drops.js); a stack asks how many
+  bagDropAsk(i) {
+    const g = this.g, b = g.S.bag[i]; if (!b) return;
+    const done = (n) => { if (g.bagDrop(i, n)) { this.sel.bagIdx = null; this.renderPanel(); } };
+    if (b.eq || b.qty <= 1) { done(null); return; }
+    this.modal(`Drop ${ITEMS[b.id].name}`, 'Anyone nearby can pick it up. If nobody does, it comes back to your bag after 5 minutes.', [
+      { label: 'Drop 1', fn: () => done(1) }, { label: `Drop all (${b.qty})`, cls: 'green', fn: () => done(b.qty) }, { label: 'Cancel', cls: 'gray' },
+    ]);
   }
   // a bag item that beats what you wear in its slot: a green arrow (grey while you cannot wear it yet)
   upgradeMark(eq) {

@@ -19,8 +19,8 @@ const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const num = (v, lo, hi, d = 0) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 
 const A = {
-  // monsters several players fight together: the world boss, and field monsters while you are in a party
-  aggroShared(m) { return !!(m && (m.wb || (m.uid && mp.party.id && mp.status === 'online' && partyMembers().length > 1))); },
+  // monsters several players fight together: the world boss, a Game Master's monsters, and field monsters while you are in a party
+  aggroShared(m) { return !!(m && (m.wb || (m.uid && mp.party.id && mp.status === 'online' && partyMembers().length > 1) || (m.gmId && mp.status === 'online' && mp.peers.size > 0))); },
   threatAdd(m, dmg) { if (dmg > 0) m.threat = (m.threat || 0) + dmg * (THREAT_MULT[this.S.cls] || 1); },
   threatNote(m, key, th) { if (key && th > 0) (m.rthreat ||= new Map()).set(key, { th, t: this.time }); },
   threatTopRemote(m) { let t = 0; for (const r of m.rthreat?.values() || []) if (this.time - r.t <= FRESH) t = Math.max(t, r.th); return t; },

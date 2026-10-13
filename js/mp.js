@@ -114,6 +114,8 @@ const M = {
     on('m', (p) => this.mpMove(p)); on('c', (p) => this.mpChat(p)); on('p', (p) => this.partyMsg(p)); on('z', (p) => this.dzMsg(p));
     on('t', (p) => this.tradeMsg(p)); on('f', (p) => this.socialMsg(p)); on('h', (p) => this.mpHello(p)); on('b', (p) => this.mpByeGot(p));
     on('w', (p) => this.wbNetMsg(p)); // the world boss's health and threat (aggro.js)
+    on('g', (p) => this.gmNetMsg(p)); // a Game Master's monsters (gmnet.js)
+    on('d', (p) => this.dropMsg(p)); // items dropped on the ground (drops.js)
     ch.subscribe((status, err) => {
       if (mp.channel !== ch) return;
       if (status === 'SUBSCRIBED') this.mpJoined();
@@ -207,7 +209,7 @@ const M = {
   // ============================================================ per frame
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
-    this.partyUpdate(dt); this.wbNetUpdate(dt);
+    this.partyUpdate(dt); this.wbNetUpdate(dt); this.gmNetUpdate(dt);
     this.tradeUpdate(dt); this.socialUpdate();
     if (mp.channel) this.mpWatch(dt);
     if (mp.status !== 'online' || !mp.channel) return;
@@ -279,7 +281,7 @@ const M = {
   mpDropPeer(key) {
     const pr = mp.peers.get(key); if (!pr) return;
     mp.peers.delete(key);
-    this.mpRemove(key); this.dzPeerGone(key); this.tradePeerGone(key); this.socialPeerGone(key);
+    this.mpRemove(key); this.dzPeerGone(key); this.tradePeerGone(key); this.socialPeerGone(key); this.gmNetPeerGone(key); this.dropsPeerGone(key);
     this.ui.chat('system', `<b>${esc(pr.info.name)}</b> went offline.`);
     this.partySync(); this.ui.refreshOnline && this.ui.refreshOnline();
   },

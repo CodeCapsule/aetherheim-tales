@@ -209,6 +209,11 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
+- **Dropping items**: the Bag's **Drop** button puts the selected item on the ground in front of you (a stack asks
+  for one or all). Everyone nearby sees it with your name, and the first player to walk over it takes it (your browser
+  hands it to the first one who reaches it, so it can never be taken twice). To take your own back, walk away and back
+  over it. Nobody takes it in 5 minutes: it returns to your bag (leaving the game returns it too). Quest items, locked
+  gear and bound (Legendary and up) gear cannot be dropped; up to 12 drops at a time (40 for the Game Master).
 - **Game Master hero**: **Play as Game Master** on the title screen asks for the GM passcode once per device (the game
   keeps only its SHA-256 hash, in `js/gm-config.js`), then creates or continues a Game Master hero with its own save,
   so your normal hero is never touched. Its editor (the crown button in the menu, or the ` key) has five tabs:
@@ -219,10 +224,13 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
     the 21 named items) at any level, +0 to +15, with any element, then equip it or put it in the bag; change the
     enhancement and element of what you wear or take it off. A rarity never comes below its level (Legendary 100, Red
     140), so a lower level is raised.
-  - **Items**: give any item or material (searchable), plus packs of potions, enhancement stones, crystals and gold.
+  - **Items**: give any item or material (searchable), plus packs of potions, enhancement stones, crystals and gold;
+    gear and items can also go straight onto the ground for players to pick up.
   - **Monsters**: spawn 1-20 of any monster at any level in front of you (harmless and stay-in-place options; they do
     not respawn), defeat everything near you or remove them; raise the drop chance (x1 to x20) and queue up to 10
-    guaranteed drops (gear of a rarity, or any item) for your next kills.
+    guaranteed drops (gear of a rarity, or any item) for your next kills. Every player online sees the GM's monsters
+    (with a GM tag) and fights them together: health, threat and the kill are shared, each player who hit one earns
+    their own reward, players who arrive later see them too, and they go when the GM removes them or leaves.
   - **World**: teleport to any zone, the Storm Altar or another player; set the time of day and the weather (on your
     screen); summon the world boss for 8 minutes; lock Game Master on this device again.
   Everyone sees a gold GM tag and «Game Master» over it and [GM] before its chat. It stays out of the economy and
@@ -373,6 +381,8 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
 | `js/gm.js`, `js/gm-config.js` | The Game Master hero: passcode, separate save, the GM editor and its powers |
+| `js/gmnet.js` | The Game Master's monsters on every player's screen: shared health, threat, kills and removal |
+| `js/drops.js` | Items dropped from the bag onto the ground for anyone to pick up |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |
 | `js/social.js` | The player menu, friends (requests, list, online notices) and inspecting another player |

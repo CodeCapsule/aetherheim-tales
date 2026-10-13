@@ -14,6 +14,7 @@ import { ELEMENTS, ELEMENT_IDS } from './data-elements.js';
 import { WEATHER } from './sky.js';
 import { MASTERY_MAX } from './progress.js';
 import { mp } from './mp.js';
+import { gmMobOk } from './gmnet.js';
 import { ico } from './icons.js';
 
 export const GM_SAVE_KEY = 'hiraya_gm_save_v1';
@@ -131,6 +132,11 @@ const G = {
     else return;
     this.gmChanged(`${ITEMS[id]?.name || MATERIALS[id].name} x${qty}`);
   },
+  // an item on the ground in front of you for anyone to take (drops.js)
+  gmDropItem(id, qty) {
+    qty = clamp(Math.round(+qty || 1), 1, ITEMS[id] ? 999 : 9999);
+    if ((ITEMS[id] || MATERIALS[id]) && this.groundDrop({ id, qty })) this.ui.toast(`${ITEMS[id]?.name || MATERIALS[id].name} x${qty} is on the ground for anyone to take`, 'good');
+  },
   // monsters right in front of you; GM monsters do not respawn
   gmSpawn(type, lvl, n = 1, o = {}) {
     const d = MONSTERS[type]; if (!d) return 0;
@@ -146,6 +152,7 @@ const G = {
       e.gmSpawn = true; e.yaw = e.yawT = Math.atan2(p.pos.x - x, p.pos.z - z);
       if (o.harmless) e.atk = 0;
       if (o.still) e.wanderT = 1e9;
+      this.gmMobAdd(e, o); // everyone sees it (gmnet.js)
       this.fx.spawnPuff(e.pos, 0xffd36b);
       made++;
     }
@@ -153,7 +160,7 @@ const G = {
     this.ui.toast(`Spawned ${made} ${d.name}${made > 1 ? 's' : ''} (Lv ${L})`, 'good');
     return made;
   },
-  gmClearSpawns() { let n = 0; for (const m of [...this.monsters]) if (m.gmSpawn && !m.removed) { this.removeEnt(m); n++; } this.ui.toast(`Removed ${n} monster${n === 1 ? '' : 's'}`); },
+  gmClearSpawns() { let n = 0; for (const m of [...this.monsters]) if (m.gmSpawn && !m.removed) { this.removeEnt(m); this.gmMobMap?.delete(m.gmId); n++; } this.gmListDirty = true; this.ui.toast(`Removed ${n} monster${n === 1 ? '' : 's'}`); },
   gmKillNear(r = 20) {
     const p = this.player; let n = 0;
     for (const m of [...this.monsters]) if (!m.dead && (m.map || this.world) === (this.map || this.world) && flat(m.pos, p.pos) <= r && !m.war) { m.tagged = true; this.damage(p, m, 0, { fixed: m.hp + 1 }); n++; }
@@ -252,6 +259,7 @@ const U = {
     const acts = h('div', 'gm-row'); sec.appendChild(acts);
     this.gmBtn(acts, 'Make and equip', () => { const eq = make(); if (eq) g.gmEquip(eq); }, 'btn small green');
     this.gmBtn(acts, 'Put in bag', () => { const eq = make(); if (!eq) return; if (g.addEquip(eq)) g.gmChanged(`${eq.name} is in your bag`); else this.toast('Your bag is full', 'warn'); });
+    this.gmBtn(acts, 'Drop on the ground', () => { const eq = make(); if (eq && g.groundDrop({ eq })) this.toast(`${eq.name} is on the ground for anyone to take`, 'good'); });
     const eqs = this.gmSec(body, 'Equipped', 'Change enhancement or element, or take a piece off');
     const L = h('div', 'list'); eqs.appendChild(L);
     for (const s of SLOTS) {
@@ -278,6 +286,7 @@ const U = {
     const qty = this.gmField(row, 'Amount', this.gmInput(o.qty, { min: 1, max: 9999 }));
     q.oninput = () => { o.q = q.value; this.renderPanel(); const n = this.panel?.querySelector('.gm-in[type="search"]'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
     this.gmBtn(row, 'Give', () => { o.id = sel.value; o.qty = +qty.value; g.gmGive(sel.value, qty.value); }, 'btn small green');
+    this.gmBtn(row, 'Drop on the ground', () => { o.id = sel.value; o.qty = +qty.value; g.gmDropItem(sel.value, qty.value); });
     const packs = this.gmSec(body, 'Quick packs');
     const pr = h('div', 'gm-row'); packs.appendChild(pr);
     this.gmBtn(pr, 'Potions x50', () => { for (const id of ['hp_potion', 'mp_potion']) g.gmGive(id, 50); });
@@ -288,9 +297,9 @@ const U = {
 
   gmMobsTab(body) {
     const g = this.g, S = g.S, o = this.sel.gmMob = this.sel.gmMob || { type: null, lvl: S.level, n: 1, harmless: false, still: true };
-    const types = Object.entries(MONSTERS).filter(([, d]) => !d.war && !d.structure && !d.trial && d.name).sort((a, b) => (a[1].boss ? 2 : a[1].elite ? 1 : 0) - (b[1].boss ? 2 : b[1].elite ? 1 : 0) || (a[1].lvl?.[0] || 0) - (b[1].lvl?.[0] || 0));
+    const types = Object.entries(MONSTERS).filter(([, d]) => gmMobOk(d)).sort((a, b) => (a[1].boss ? 2 : a[1].elite ? 1 : 0) - (b[1].boss ? 2 : b[1].elite ? 1 : 0) || (a[1].lvl?.[0] || 0) - (b[1].lvl?.[0] || 0));
     if (!o.type || !MONSTERS[o.type]) o.type = types[0][0];
-    const sec = this.gmSec(body, 'Spawn monsters', 'They appear in front of you and do not respawn');
+    const sec = this.gmSec(body, 'Spawn monsters', 'They appear in front of you for everyone online and do not respawn');
     const grid = h('div', 'gm-grid'); sec.appendChild(grid);
     const ty = this.gmField(grid, `Monster (${types.length})`, this.gmSelect(types.map(([id, d]) => [id, `${d.boss ? '[Boss] ' : d.elite ? '[Elite] ' : ''}${d.name}${d.lvl ? ` (Lv ${d.lvl[0]}-${d.lvl[1]})` : ''}`]), o.type));
     const lv = this.gmField(grid, 'Level', this.gmInput(o.lvl, { min: 1, max: MAX_LEVEL + 10 }));

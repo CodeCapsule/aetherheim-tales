@@ -20,6 +20,8 @@ import { installParty } from './party.js';
 import { installWeaponFx, elementHitFx } from './weaponfx.js';
 import { installAggro } from './aggro.js';
 import { installGm, GM_SAVE_KEY } from './gm.js';
+import { installGmNet } from './gmnet.js';
+import { installDrops } from './drops.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -145,6 +147,7 @@ export class Game {
     this.initProgress();
     this.createPlayer();
     this.dzInit();
+    this.gmNetInit(); this.dropsInit();
     let p = S.pos || { x: 0, z: 9 };
     if (Math.abs(p.x) > 380 || Math.abs(p.z) > 380) p = { x: 0, z: 9 };
     this.player.pos.set(p.x, this.world.heightAt(p.x, p.z), p.z);
@@ -693,7 +696,7 @@ export class Game {
     }
     if (dst.wb) this.wbHit(src, dst, dmg);
     if (dst.kind === 'monster') {
-      if (mine) { dst.tagged = true; this.lastCombat = this.time; this.threatAdd(dst, dmg); if (dst.uid && dmg > 0 && dst.hp > 0) this.partyMobHit(dst); }
+      if (mine) { dst.tagged = true; this.lastCombat = this.time; this.threatAdd(dst, dmg); if (dst.uid && dmg > 0 && dst.hp > 0) this.partyMobHit(dst); if (dst.gmId && dmg > 0 && dst.hp > 0) this.gmMobHit(dst); }
       if (!dst.target || dst.target.dead) dst.target = src.kind === 'pet' ? this.player : src;
       dst.returning = false;
     }
@@ -812,6 +815,7 @@ export class Game {
     m.respawnT = m.dungeon || m.summoned || m.wb || d.structure ? Infinity : d.war ? 7 : d.boss ? 90 : m.uid ? 9 + mobRng(m, 13)() * 6 : rnd(9, 15);
     m.dots = [];
     if (m.uid) { if (m.tagged) this.partyMobKill(m); m.gen++; } // party members see it die too
+    if (m.gmId) this.gmMobKill(m); // a Game Master's monster falls for everyone (gmnet.js)
     if (p.target === m) { this.setTarget(null); }
     if (this.pet && this.pet.target === m) this.pet.target = null;
     if (m.dungeon && this.dg && m === this.dg.boss) this.completeDungeon();
@@ -876,17 +880,19 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- ground loot
-  dropLoot(item, from) {
-    const W = this.map, it = item.eq ? null : ITEMS[item.id];
-    const q = item.eq ? item.eq.quality : (it.quality || 0), R = RARITY[q];
-    const name = item.eq ? item.eq.name : it.name + (item.qty > 1 ? ` x${item.qty}` : '');
+  // o: show {name, q, icon} (a drop seen over the network), at (exactly there), src (where it flies from), by (a line
+  // under its name), map, quiet (no sound or banner)
+  dropLoot(item, from, o = {}) {
+    const W = o.map || this.map, it = item.eq || o.show ? null : ITEMS[item.id];
+    const q = o.show ? o.show.q : item.eq ? item.eq.quality : (it.quality || 0), R = RARITY[q];
+    const name = o.show ? o.show.name : item.eq ? item.eq.name : it.name + (item.qty > 1 ? ` x${item.qty}` : '');
     const a = Math.random() * Math.PI * 2, r = 0.9 + Math.random() * 1.8;
     let x = from.x + Math.cos(a) * r, z = from.z + Math.sin(a) * r;
-    if (W.isBlocked(x, z)) { x = from.x; z = from.z; }
+    if (o.at || W.isBlocked(x, z)) { x = from.x; z = from.z; }
     const g = new THREE.Group(); g.position.set(x, W.heightAt(x, z), z);
     const mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false });
     const spr = new THREE.Sprite(mat); spr.scale.setScalar(1.05); spr.position.y = 0.95; spr.renderOrder = 4; g.add(spr);
-    iconCanvas(item.eq ? item.eq.icon : item.id).then((c) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; mat.map = t; mat.needsUpdate = true; });
+    iconCanvas(o.show ? o.show.icon : item.eq ? item.eq.icon : item.id).then((c) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; mat.map = t; mat.needsUpdate = true; });
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: R.color, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.75 }));
     halo.scale.setScalar(1.6 + q * 0.25); halo.position.y = 0.95; g.add(halo);
     if (!this.lootDisc) this.lootDisc = new THREE.CircleGeometry(1, 32);
@@ -899,10 +905,12 @@ export class Game {
       beam.scale.set(0.28 + q * 0.07, hgt, 0.28 + q * 0.07); beam.position.y = hgt / 2; g.add(beam);
     }
     this.scene.add(g);
-    const L = { kind: 'loot', item, q, name, model: g, pos: g.position, spr, ring, beam, t: 0, height: 1.3, radius: 1, map: W, dead: false, from: new THREE.Vector3(from.x, from.y + 1.4, from.z), ground: g.position.clone() };
+    const src = o.src || from;
+    const L = { kind: 'loot', item, q, name, model: g, pos: g.position, spr, ring, beam, t: 0, height: 1.3, radius: 1, map: W, dead: false, from: new THREE.Vector3(src.x, (src.y ?? g.position.y) + 1.4, src.z), ground: g.position.clone() };
     g.position.copy(L.from);
-    this.nameplate(L, `<div class="n" style="color:${R.color}">${esc(name)}</div>`, 'loot');
+    this.nameplate(L, `<div class="n" style="color:${R.color}">${esc(name)}</div>${o.by ? `<div class="t">${esc(o.by)}</div>` : ''}`, 'loot');
     this.loots.push(L);
+    if (o.quiet) return L;
     if (q >= 3) this.sfx.play(q >= 5 ? 'legend' : 'rare');
     if (item.eq && q >= 4) {
       const label = q === 5 ? 'LEGENDARY!' : 'UNIQUE!';
@@ -923,6 +931,7 @@ export class Game {
       if (L.q >= 4 && Math.random() < dt * 10) this.fx.emit(L.pos.clone().setY(L.pos.y + 0.6), { count: 1, color: RARITY[L.q].color, speed: 0.6, life: 1, size: 0.4, up: 2.5, jitter: 1 });
       if (L.map !== this.map || p.dead) continue;
       const d = flat(p.pos, L.pos);
+      if (L.net) { this.dropNear(L, d); continue; } // dropped from someone's bag (drops.js)
       if (!L.flying && d < 2.2) { this.pickupLoot(L); continue; }
       if (!L.flying && S.settings.autoLoot && L.t > 1.1 && d < 16 && this.time - (L.failT ?? -99) > 4) L.flying = true;
       if (L.flying) {
@@ -1592,7 +1601,7 @@ export class Game {
     this.updateCombat(dt);
     this.updateSoul(dt); this.updateFog(); this.updateNavigation(dt); this.gearTick(dt);
     this.skyUpdate(dt);
-    this.dzUpdate(dt);
+    this.dzUpdate(dt); this.dropsUpdate(dt);
     this.updateSprite(dt);
     for (const m of this.monsters) this.updateMonster(m, dt);
     for (const n of this.npcs) this.updateNPC(n, dt);
@@ -2387,6 +2396,8 @@ installParty(Game);
 installWeaponFx(Game);
 installAggro(Game);
 installGm(Game);
+installGmNet(Game);
+installDrops(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);
