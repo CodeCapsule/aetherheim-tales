@@ -19,6 +19,7 @@ import { installMp } from './mp.js';
 import { installParty } from './party.js';
 import { installWeaponFx, elementHitFx } from './weaponfx.js';
 import { installAggro } from './aggro.js';
+import { installGm, GM_SAVE_KEY } from './gm.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -233,7 +234,8 @@ export class Game {
     const t = TITLES[Math.min(TITLES.length - 1, S.title)];
     if (S.titles && !S.titles.includes(S.title)) S.titles.push(S.title);
     const g = S.guild ? `<div class="g">&lt;${esc(S.guild.name)}&gt;</div>` : '';
-    this.player.np.innerHTML = `${g}<div class="t">«${esc(t)}»</div><div class="n">${esc(S.name)}</div><div class="hb"><i></i></div>`;
+    const tt = S.gm ? '<div class="t gmt">«Game Master»</div>' : `<div class="t">«${esc(t)}»</div>`;
+    this.player.np.innerHTML = `${g}${tt}<div class="n">${S.gm ? '<span class="gmtag">GM</span>' : ''}${esc(S.name)}</div><div class="hb"><i></i></div>`;
     this.player.npHb = this.player.np.querySelector('.hb i');
   }
   rebuildPlayerModel() {
@@ -377,6 +379,7 @@ export class Game {
     const mountBR = S.mounts.reduce((a, id) => a + (MOUNTS.find((m) => m.id === id)?.br || 0), 0);
     const ratio = p.maxHp > 1 ? p.hp / p.maxHp : 1, mratio = p.maxMp > 1 ? p.mp / p.maxMp : 1;
     if (this.trial) ({ hp, mp, atk, def, crit, critDmg, speed } = this.trialStats(ps)); // the same for every hero of the class
+    else if (S.gm) ({ hp, mp, atk, def, crit, critDmg, speed } = this.gmStatMods({ hp, mp, atk, def, crit, critDmg, speed })); // stats set in the GM editor
     p.maxHp = Math.round(hp); p.maxMp = Math.round(mp); p.atk = atk; p.def = def; p.crit = crit; p.critDmg = critDmg; p.baseSpeed = speed; p.level = L;
     p.hp = fill ? p.maxHp : Math.max(1, Math.round(p.maxHp * ratio)); p.mp = fill ? p.maxMp : Math.round(p.maxMp * mratio);
     this.healMod = heal; this.cdr = cdr;
@@ -397,7 +400,7 @@ export class Game {
   }
   petIs(kind) { return this.petFx?.kind === kind; }
   stat(k) { return this.mods.stats[k] || 0; }
-  mpCost(sk) { let c = sk.mp * (1 - Math.min(60, this.stat('manaCost')) / 100); if (this.hasFx('mana_font')) c *= 0.7; return Math.round(c); }
+  mpCost(sk) { if (this.gmFlag('freemp')) return 0; let c = sk.mp * (1 - Math.min(60, this.stat('manaCost')) / 100); if (this.hasFx('mana_font')) c *= 0.7; return Math.round(c); }
   buffMod(e, key) { let m = 1; for (const b of e.buffs) if (b.mods && b.mods[key] && key !== 'crit') m *= b.mods[key]; return m; }
   atkOf(e) { return e.atk * this.buffMod(e, 'atk'); }
   defOf(e) { return e.def * this.buffMod(e, 'def') * (e === this.player ? this.defStanceMult() : e.kind === 'monster' ? this.monsterDefMult(e) : 1); }
@@ -498,6 +501,7 @@ export class Game {
       case 'y': if (this.ui.sel.fgTab === 'gems') this.ui.sel.fgTab = 'enhance'; this.ui.togglePanel('forge'); break;
       case 'x': this.ui.togglePanel('codex'); break;
       case 'j': this.ui.togglePanel('season'); break;
+      case '`': if (this.S.gm) this.ui.togglePanel('gm'); break;
       case 'z': if (['alchemy', 'smithing', 'red'].includes(this.ui.sel.lifeTab)) this.ui.sel.lifeTab = 'gather'; this.ui.togglePanel('life'); break;
       case 'v': this.ui.togglePanel('wardrobe'); break;
     }
@@ -632,6 +636,10 @@ export class Game {
   damage(src, dst, mult, o = {}) {
     if (dst.dead) return 0;
     if (dst.kind === 'rp') return this.pvpStrike(src, dst, mult, o);
+    if (this.S.gm) { // Game Master powers
+      if (dst === this.player && this.gmFlag('god')) { if (src.kind === 'monster' && (!src.target || src.target.dead)) src.target = dst; return 0; }
+      if (dst.kind === 'monster' && (src === this.player || src.kind === 'pet') && this.gmFlag('ohk') && !dst.war) o = { ...o, fixed: dst.hp + (dst.shield || 0) + 1 };
+    }
     const canCrit = o.canCrit !== false && o.fixed == null && o.pct == null;
     // trial attacks are a share of your max HP (stats are normalized there), still dodged, blocked and parried as usual
     let base = o.pct != null ? dst.maxHp * o.pct * (src.atkBuffT > this.time ? 1.25 : 1) : this.atkOf(src) * mult * rnd(0.9, 1.1);
@@ -831,7 +839,7 @@ export class Game {
       if (!b) { b = { id: 'soulharvest', icon: 'a5', stacks: 0, mods: { atk: 1, critDmg: 0 } }; p.buffs.push(b); }
       b.stacks = Math.min(5, b.stacks + 1); b.mods.atk = 1 + 0.04 * b.stacks; b.mods.critDmg = 0.04 * b.stacks; b.until = this.time + 10;
     }
-    if (!d.structure && !d.war) { this.rollDrops(m); this.tailorDrop(m); this.dzKill(m); this.sixWorldDrop(m); this.crystalDrop(m); }
+    if (!d.structure && !d.war) { this.rollDrops(m); this.tailorDrop(m); this.dzKill(m); this.sixWorldDrop(m); this.crystalDrop(m); this.gmOnKill(m); }
     // beasts sometimes leave meat for the campfire
     if (BEASTS.test(d.model) && !d.boss && Math.random() < 0.3) { this.addMat('raw_meat', 1, true); this.lootMsg('Raw Meat', '#ffffff'); }
     if (this.hasFx('anc_bloodthirst')) this.ancBloodthirst();
@@ -845,17 +853,18 @@ export class Game {
     const luck = this.petIs('luck') ? this.petFx.v : 0; // Lucky Paw: more gear drops and better rarity
     const ctx = { lvl: m.level || 1, elite: !!d.elite, boss: !!d.boss, dungeon: !!m.dungeon, luck: Math.min(0.6, this.stat('goldFind') / 200 + ((this.elixirMods && this.elixirMods().luck) || 0) + luck / 200) };
     const rolls = d.boss ? (m.dungeon ? 1 : 2) : 1;
-    const chance = (d.boss ? 1 : d.elite ? 0.55 : m.dungeon ? 0.24 : 0.12) * (1 + luck / 100);
+    const chance = (d.boss ? 1 : d.elite ? 0.55 : m.dungeon ? 0.24 : 0.12) * (1 + luck / 100) * this.gmDropMult();
     for (let i = 0; i < rolls; i++) {
       if (Math.random() > chance) continue;
       this.dropLoot({ eq: this.makeEquip(null, Math.max(1, m.level), rollRarity(ctx)) }, m.pos);
     }
-    if (!m.dungeon) for (const nd of namedBySource(m.type)) if (Math.random() < 0.15) this.dropLoot({ eq: genNamed(nd.id, { lvl: m.level, cls: S.cls, uid: S.uid++ }) }, m.pos);
+    const X = this.gmDropMult(); // Game Master drop chance
+    if (!m.dungeon) for (const nd of namedBySource(m.type)) if (Math.random() < 0.15 * X) this.dropLoot({ eq: genNamed(nd.id, { lvl: m.level, cls: S.cls, uid: S.uid++ }) }, m.pos);
     const pt = m.level >= 60 ? 3 : m.level >= 25 ? 2 : 1;
-    if (Math.random() < 0.08) this.dropLoot({ id: pt === 1 ? 'hp_potion' : 'potion_hp' + pt, qty: 1 }, m.pos);
-    if (Math.random() < 0.05) this.dropLoot({ id: pt === 1 ? 'mp_potion' : 'potion_mp' + pt, qty: 1 }, m.pos);
+    if (Math.random() < 0.08 * X) this.dropLoot({ id: pt === 1 ? 'hp_potion' : 'potion_hp' + pt, qty: 1 }, m.pos);
+    if (Math.random() < 0.05 * X) this.dropLoot({ id: pt === 1 ? 'mp_potion' : 'potion_mp' + pt, qty: 1 }, m.pos);
     for (const dr of d.drops || []) {
-      if (Math.random() > dr.chance) continue;
+      if (Math.random() > dr.chance * X) continue;
       if (dr.id.startsWith('pet_') && dr.id !== 'pet_egg') {
         if (S.pets[dr.id]) continue;
         this.gainPet(dr.id, true);
@@ -1530,7 +1539,7 @@ export class Game {
     text = text.trim().slice(0, 80); if (!text) return;
     const pm = /^\/p(arty)?\s+/i.exec(text);
     if (pm || this.ui.chatFilter === 'party') { this.partySay(pm ? text.slice(pm[0].length) : text); return; }
-    this.ui.chat('world', esc(text), this.S.name);
+    this.ui.chat('world', esc(text), (this.S.gm ? '[GM] ' : '') + this.S.name);
     if (this.mpSendChat) this.mpSendChat(text);
   }
 
@@ -1867,7 +1876,7 @@ export class Game {
       if (!m.wb) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.25 * dt); // the world boss keeps its wounds until it retreats
       if (r === true || flat(m.pos, home) < 1 || r === 'blocked') { m.returning = false; if (!m.wb) m.hp = m.maxHp; }
     } else {
-      if (!m.target && d.aggressive && !this.player.dead && !this.pflag('stealth')) {
+      if (!m.target && d.aggressive && !this.player.dead && !this.pflag('stealth') && !this.gmFlag('hidden')) {
         const ar = d.boss ? 13 : 9;
         if (flat(m.pos, this.player.pos) < ar && !(this.zone && this.zone.safe)) m.target = this.player;
       }
@@ -2362,7 +2371,7 @@ export class Game {
     this.saveFog(); S.lastSeen = Date.now();
     if (this.dg || this.war || this.trial) { const r = this.overworldReturn || { x: 0, z: 9 }; S.pos = { x: r.x, z: r.z }; }
     else if (p && !p.dead) S.pos = { x: Math.round(p.pos.x * 10) / 10, z: Math.round(p.pos.z * 10) / 10 };
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch { /* storage unavailable */ }
+    try { localStorage.setItem(S.gm ? GM_SAVE_KEY : SAVE_KEY, JSON.stringify(S)); } catch { /* storage unavailable */ } // the Game Master hero has its own save
   }
 }
 
@@ -2377,6 +2386,7 @@ installMp(Game);
 installParty(Game);
 installWeaponFx(Game);
 installAggro(Game);
+installGm(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);

@@ -209,6 +209,25 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
+- **Game Master hero**: **Play as Game Master** on the title screen asks for the GM passcode once per device (the game
+  keeps only its SHA-256 hash, in `js/gm-config.js`), then creates or continues a Game Master hero with its own save,
+  so your normal hero is never touched. Its editor (the crown button in the menu, or the ` key) has five tabs:
+  - **Hero**: set the level (1-200) and gold and diamonds; override Max HP, Max MP, Attack, Defense, Crit, Crit Damage
+    and move speed (an empty box keeps the normal value); powers: god mode, one-hit kills, no cooldowns, free skills and
+    monsters ignore you; full heal, max masteries and max skill ranks.
+  - **Gear**: make any piece (a rarity from Common to Red, a six-piece set piece including the Ancient sets, or any of
+    the 21 named items) at any level, +0 to +15, with any element, then equip it or put it in the bag; change the
+    enhancement and element of what you wear or take it off. A rarity never comes below its level (Legendary 100, Red
+    140), so a lower level is raised.
+  - **Items**: give any item or material (searchable), plus packs of potions, enhancement stones, crystals and gold.
+  - **Monsters**: spawn 1-20 of any monster at any level in front of you (harmless and stay-in-place options; they do
+    not respawn), defeat everything near you or remove them; raise the drop chance (x1 to x20) and queue up to 10
+    guaranteed drops (gear of a rarity, or any item) for your next kills.
+  - **World**: teleport to any zone, the Storm Altar or another player; set the time of day and the weather (on your
+    screen); summon the world boss for 8 minutes; lock Game Master on this device again.
+  Everyone sees a gold GM tag and «Game Master» over it and [GM] before its chat. It stays out of the economy and
+  competition: no trading, no PvP, no Hall of Firsts, and its world boss does not affect anyone else's. To change the
+  passcode, put the SHA-256 hash of the new one in `js/gm-config.js` (the file says how).
 - **Title screen**: the world turns behind a winged Hiraya Tales Online crest. The server panel shows the one server,
   **Pilipinas** (its emblem is the eight-rayed sun and three stars), with its status and how many heroes are on it right
   now (Low, Medium, High), read live from the multiplayer service without joining it. **Enter Game** continues your hero; a new hero is
@@ -327,6 +346,7 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 | Panels | C character, B bag, K skills, P pets, U mounts, Z professions, L quests, M map, O settings |
 | Live systems | H missions, X codex, J season pass; Y forge, N market, G guild and V wardrobe walk you to their NPC |
 | Other | Tab next target, F talk, Enter chat, Esc close |
+| Game Master | ` opens the GM editor (Game Master hero only) |
 
 Progress saves to the browser's local storage. Daily and weekly resets, world boss times and seasons follow the real clock (UTC).
 The only other players in the world are real ones on the server (see Play together). Guildmates, guild war rivals,
@@ -352,6 +372,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/data-elements.js`, `js/weaponfx.js` | The seven weapon elements; the class weapon glows (+6 to +15) and element effects, for you and other players |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
+| `js/gm.js`, `js/gm-config.js` | The Game Master hero: passcode, separate save, the GM editor and its powers |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |
 | `js/social.js` | The player menu, friends (requests, list, online notices) and inspecting another player |

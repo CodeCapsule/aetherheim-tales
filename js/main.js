@@ -17,6 +17,7 @@ import { connectLive, live, onLive } from './live.js';
 import { AdminPanel } from './admin.js';
 import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from './mp.js';
 import { fitTouch, UIZ } from './touchfit.js';
+import { gmUnlocked, gmUnlock, loadGmSave, initGmSave } from './gm.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -32,9 +33,10 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 let renderer, scene, camera, world, fx, ui, sfx, portraits, sun, lights, game = null;
 let mode = 'title', preview = null, previewYaw = 0.4, hotSave = null, admin = null;
 
+const validSave = (s) => !!s && [1, 2, 3].includes(s.v) && !!CLASSES[s.cls];
 function loadSave() {
-  if (hotSave) return hotSave;
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && [1, 2, 3].includes(s.v) && CLASSES[s.cls] ? migrateSave(s) : null; } catch { return null; }
+  if (hotSave && !hotSave.gm) return hotSave;
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return validSave(s) ? migrateSave(s) : null; } catch { return null; }
 }
 
 async function init() {
@@ -92,7 +94,7 @@ async function init() {
   requestAnimationFrame(loop);
   loading.hidden = true;
   const save = loadSave();
-  if (hotSave) { startGame(migrateSave(hotSave)); return; }
+  if (hotSave) { const S = migrateSave(hotSave); if (S.gm) initGmSave(S); startGame(S); return; }
   showTitle(save);
 }
 
@@ -165,6 +167,42 @@ function showTitle(save) {
   } else { enter.className = 'btn-gold'; enter.innerHTML = `${SWORDS}<span>Enter Game</span>`; }
   cont.onclick = () => { sfx.ensure(); sfx.play('open'); startGame(save); };
   enter.onclick = () => { sfx.ensure(); sfx.play('open'); showCreate(); };
+  // the Game Master hero (its own save), behind the GM passcode
+  const box = document.querySelector('#scr-title .srv-panel');
+  if (box && !$('btn-gm')) {
+    const b = document.createElement('button'); b.id = 'btn-gm'; b.className = 'adm-link gm-link';
+    b.innerHTML = `${ico('crown', 'ico inl')} Play as Game Master`;
+    b.onclick = () => { sfx.ensure(); sfx.play('open'); if (gmUnlocked()) gmEnter(); else gmGate(); };
+    box.appendChild(b);
+  }
+}
+
+// ---------------------------------------------------------------- Game Master
+function gmEnter() {
+  const S = loadGmSave(validSave, migrateSave);
+  if (S) startGame(S); else showCreate({ gm: true });
+}
+// the passcode prompt (once per device; the game keeps only the passcode's hash)
+function gmGate() {
+  if ($('gm-gate')) return;
+  const el = document.createElement('div'); el.id = 'gm-gate'; el.className = 'gm-gate';
+  el.innerHTML = `<form class="frame" autocomplete="off"><div class="gg-t">${ico('crown', 'ico inl')} Game Master</div>
+    <label for="gm-pass">Enter the Game Master passcode</label><input id="gm-pass" type="password" spellcheck="false" autocapitalize="characters">
+    <div class="gg-err" role="alert"></div><div class="gg-b"><button type="button" class="btn gray" data-x>Cancel</button><button type="submit" class="btn green">Unlock</button></div></form>`;
+  document.body.appendChild(el);
+  const f = el.querySelector('form'), inp = el.querySelector('input'), err = el.querySelector('.gg-err'), ok = f.querySelector('[type=submit]');
+  const close = () => el.remove();
+  el.querySelector('[data-x]').onclick = () => { sfx.play('click'); close(); };
+  el.onpointerdown = (e) => { if (e.target === el) close(); };
+  f.onsubmit = async (e) => {
+    e.preventDefault(); if (ok.disabled) return;
+    ok.disabled = true;
+    const yes = await gmUnlock(inp.value);
+    if (yes) { sfx.play('quest'); close(); gmEnter(); return; }
+    sfx.play('error'); err.textContent = 'That passcode is not right.'; f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); inp.select();
+    setTimeout(() => { ok.disabled = false; }, 1200);
+  };
+  inp.focus();
 }
 
 // live link on the title screen: GM console entry (owner/editors, or any local copy), announcement and notices
@@ -193,9 +231,10 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;',
 const SYL_A = ['Ae', 'Lu', 'Ri', 'Sel', 'Fae', 'Ka', 'Mi', 'No', 'Va', 'Ely', 'Thal', 'Zy', 'Ori', 'Cel', 'Yu', 'Ne'];
 const SYL_B = ['ra', 'na', 'lia', 'ris', 'wen', 'vyn', 'dor', 'mir', 'iel', 'ka', 'sha', 'nor', 'ssa', 'thas', 'rin', 'le'];
 const randName = () => SYL_A[(Math.random() * SYL_A.length) | 0] + SYL_B[(Math.random() * SYL_B.length) | 0] + (Math.random() < 0.3 ? SYL_B[(Math.random() * SYL_B.length) | 0] : '');
-function showCreate() {
+function showCreate(o = {}) {
   mode = 'create'; stopPeek();
   $('scr-title').hidden = true; $('scr-create').hidden = false;
+  document.querySelector('#scr-create .create-title').textContent = o.gm ? 'CREATE YOUR GAME MASTER' : 'CREATE YOUR HERO';
   const st = { cls: 'knight', app: randomApp('human') };
   st.app.helm = true;
   const stage = new THREE.Group(); stage.position.set(0, world.heightAt(0, -136) + 0.3, -136); scene.add(stage);
@@ -231,6 +270,7 @@ function showCreate() {
     sfx.play('quest');
     const app = cleanApp(st.app);
     const S = newSave({ name, cls: st.cls, gender: app.body === 'a' ? 'm' : 'f', hair: app.hair, eye: app.eye, app });
+    if (o.gm) initGmSave(S); // a Game Master hero, saved apart from your normal hero
     scene.remove(stage); preview = null;
     $('scr-create').hidden = true;
     startGame(S);

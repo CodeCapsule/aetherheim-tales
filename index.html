@@ -945,6 +945,35 @@ button { font-family: inherit; }
 /* ---- Game Master console ---- */
 .adm-link { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 10px; padding: 7px; border-radius: 6px; border: 1px dashed rgba(243, 199, 91, .55); background: rgba(243, 199, 91, .08); color: var(--gold); font-family: inherit; font-weight: 900; font-size: 13px; cursor: pointer; }
 .adm-link:hover { background: rgba(243, 199, 91, .18); } .adm-link .ico { width: 18px; height: 18px; }
+/* Game Master: the title-screen button, the passcode prompt, the editor panel and the GM tag */
+.gm-link { border-style: solid; }
+.gm-gate { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; background: rgba(4, 8, 20, .62); }
+.gm-gate form { width: min(360px, calc(100vw - 32px)); padding: 18px; display: grid; gap: 8px; }
+.gm-gate .gg-t { display: flex; align-items: center; gap: 6px; color: var(--gold); font-weight: 900; font-size: 18px; }
+.gm-gate .gg-t .ico { width: 22px; height: 22px; }
+.gm-gate label { color: var(--muted); font-size: 13px; font-weight: 700; }
+.gm-gate input { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(243, 199, 91, .5); background: rgba(0, 0, 0, .35); color: var(--ink); letter-spacing: 1px; }
+.gm-gate .gg-err { min-height: 16px; color: #ff7a6a; font-size: 12px; font-weight: 800; }
+.gm-gate .gg-b { display: flex; justify-content: flex-end; gap: 8px; }
+.gm-gate form.shake { animation: gg-shake .35s; }
+@keyframes gg-shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.gm-body .gm-sec { margin: 0 0 12px; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(243, 199, 91, .18); }
+.gm-body .gm-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; color: var(--gold); font-weight: 900; }
+.gm-body .gm-h small { color: var(--muted); font-size: 11px; font-weight: 700; }
+.gm-body .gm-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; margin-top: 6px; }
+.gm-body .gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.gm-body .gm-f { display: grid; gap: 3px; min-width: 0; color: var(--muted); font-size: 11px; font-weight: 800; }
+.gm-body .gm-row .gm-f { flex: 1 1 120px; }
+.gm-body .gm-f em { margin-left: 4px; color: #9ad8ff; font-style: normal; font-weight: 700; }
+.gm-body .gm-in { width: 100%; min-width: 0; padding: 5px 7px; border-radius: 6px; border: 1px solid rgba(243, 199, 91, .35); background: rgba(0, 0, 0, .35); color: var(--ink); font: inherit; font-size: 13px; }
+.gm-body select.gm-in option { background: #1a2240; color: #fff; }
+.gm-body .gm-eq { gap: 6px; flex-wrap: wrap; }
+.gm-body .gm-eq .tx { flex: 1 1 160px; }
+.gm-body .gm-eq select.gm-in { width: auto; }
+.gmtag { display: inline-block; margin-right: 4px; padding: 0 4px; border-radius: 4px; background: linear-gradient(180deg, #ffe27a, #d8901a); color: #4a2400; font-size: 9px; font-weight: 900; line-height: 14px; vertical-align: 1px; text-shadow: none; }
+.np .t.gmt { color: #ffd84a; }
+.gm-body .chip.sel { color: #fff; text-shadow: 0 1px 0 #6a3a00; }
+.gm-body .gm-row > .muted { align-self: center; font-size: 12px; font-weight: 800; }
 #title-live { width: min(520px, 100%); display: flex; flex-direction: column; gap: 6px; }
 #title-live .tl { padding: 7px 12px; border-radius: 8px; font-size: 13px; color: var(--ink); background: rgba(10, 16, 40, .78); border: 1px solid rgba(243, 199, 91, .45); display: flex; gap: 8px; align-items: center; }
 #title-live .tl .ico { width: 18px; height: 18px; flex: none; } #title-live .maint { border-color: #ff8a5a; background: rgba(90, 24, 10, .8); } #title-live .boost { border-color: #7aff9a; }

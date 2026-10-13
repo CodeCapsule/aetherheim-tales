@@ -843,6 +843,7 @@ const T = {
     if (!quiet && this.ui.panelName === 'prestige') this.ui.refreshPanel();
   },
   prestigeClaim(key) {
+    if (this.S.gm) return; // a Game Master claims no firsts
     const t = Date.now(), first = !this.prestige[key];
     this.prestigeNote(key, this.S.name, t);
     if (first) this.ui.chat('announce', `<b>[Hall of Firsts]</b> ${esc(this.S.name)} is the first on this server to ${key[0] === 't' ? `clear ${esc(trialLabel(+key.slice(1)))}` : 'own this Ancient item'}!`);
@@ -853,11 +854,12 @@ const T = {
   // presence info: our own first-clear times, so others can fill their boards
   prestigeInfo() {
     const out = {};
+    if (this.S.gm) return out;
     for (const [n, r] of Object.entries(this.S.trials || {})) if (r && !r.legacy && r.t) out['t' + n] = r.t;
     for (const [k, t] of Object.entries(this.S.ancientFirst || {})) out[k] = t;
     return out;
   },
-  prestigeFromPeer(info) { for (const [k, t] of Object.entries(info.pr || {})) this.prestigeNote(k, info.name, t, true); },
+  prestigeFromPeer(info) { if (info.gm) return; for (const [k, t] of Object.entries(info.pr || {})) this.prestigeNote(k, info.name, t, true); },
 };
 
 export function installTrials(Game) { Object.assign(Game.prototype, T); }

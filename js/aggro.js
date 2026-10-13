@@ -63,13 +63,13 @@ const A = {
     this.wbNetSend(0);
   },
   wbNetSend(kill) {
-    const W = this.wb; if (!W || mp.status !== 'online' || !mp.channel) return;
+    const W = this.wb; if (!W || this.S.gm || mp.status !== 'online' || !mp.channel) return;
     const e = W.e;
     mp.channel.send({ type: 'broadcast', event: 'w', payload: { i: mp.id, s: W.slot, f: kill ? 0 : Math.round(Math.max(0, e.hp / e.maxHp) * 1e4) / 1e4, th: Math.round(e.threat || 0), k: kill ? 1 : 0 } }).catch(() => {});
   },
   wbNetMsg(m) {
     const W = this.wb; if (!W || !m || typeof m !== 'object' || (m.s | 0) !== W.slot) return;
-    const key = String(m.i ?? '').slice(0, 40); if (!mp.peers.has(key)) return;
+    const key = String(m.i ?? '').slice(0, 40); if (!mp.peers.has(key) || mp.peers.get(key).info.gm || this.S.gm) return; // a Game Master's world boss is its own
     const e = W.e; if (e.dead || e.removed) return;
     this.threatNote(e, key, num(m.th, 0, 1e15, 0));
     const f = num(m.f, 0, 1, 1);

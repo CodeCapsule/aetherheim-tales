@@ -82,8 +82,10 @@ const S = {
     this.skyTmp = { sun: new THREE.Vector3(), cloud: new THREE.Color(), flash: C('#e8f0ff') };
   },
   // what the HUD shows: time, day or night, the weather and the season
+  // the time of day and weather: the real clock, unless the Game Master set them (gm.js)
+  skyPhase() { const t = this.S?.gm ? this.S.gmEdit?.time : null; return t != null ? t : dayPhase(); },
   skyInfo() {
-    const p = dayPhase(), mins = Math.floor(p * 24 * 60), h = sunHeight(p);
+    const p = this.skyPhase(), mins = Math.floor(p * 24 * 60), h = sunHeight(p);
     return { time: `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`, night: h < 0, weather: WEATHER[this.wxKindHere()], season: seasonOf(new Date(Date.now())).name };
   },
   // the weather where you stand: rain falls as snow in the frost highlands, and snow melts in the ember canyon
@@ -101,10 +103,10 @@ const S = {
     this.skyLit = outside; // the camera places the shadow light from skyLightDir only in the open world
     if (!outside) { this.stars.visible = this.moon.visible = false; return; }
     this.stars.visible = this.moon.visible = true;
-    const W = this.world, L = this.lights, sc = this.scene, p = dayPhase(), e = sunHeight(p);
+    const W = this.world, L = this.lights, sc = this.scene, p = this.skyPhase(), e = sunHeight(p);
     const day = smooth(-0.1, 0.22, e), tw = Math.exp(-((e / 0.16) ** 2));
     // weather: a new slot fades in over ~20 s
-    this.wx.kind = weatherAt();
+    this.wx.kind = (this.S?.gm && WEATHER[this.S.gmEdit?.weather] && this.S.gmEdit.weather) || weatherAt();
     const here = this.wxKindHere();
     if (here !== this.wx.shown) { this.wx.mix -= dt / 10; if (this.wx.mix <= 0) { this.wx.shown = here; this.wx.mix = 0; } } else this.wx.mix = Math.min(1, this.wx.mix + dt / 10);
     const Wd = WEATHER[this.wx.shown], k = this.wx.mix, gloom = (Wd.gloom || 0) * k;

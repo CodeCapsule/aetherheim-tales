@@ -12,6 +12,7 @@ import { installPartyUI, partyMembers } from './party.js';
 import { installTradeUI } from './trade.js';
 import { installSocialUI } from './social.js';
 import { installGuideUI } from './guide.js';
+import { installGmUI } from './gm.js';
 import { CHAPTERS } from './data-story.js';
 import { setOfDungeon } from './data-sets.js';
 import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
@@ -103,7 +104,8 @@ export class UI {
     // character menu (bottom right): pinned on wide screens / pinned everywhere; the rest sit behind More
     const menu = $('hud-menu'); menu.innerHTML = ''; menu.className = 'qa';
     const items = [['char', 'Hero', 'C', 'Character'], ['bag', 'Bag', 'B'], ['skills', 'Skills', 'K'], ['pets', 'Pets', 'P'], ['mounts', 'Mounts', 'U'], ['life', 'Gathering', 'Z', 'Professions', 'professions'], ['collect', 'Relics', '', 'Relic Collection', 'collection'], ['codex', 'Codex', 'X'], ['quests', 'Quests', 'L'], ['map', 'Map', 'M', 'World Map'], ['settings', 'Settings', 'O']];
-    const MENU_PIN = ['char', 'bag', 'skills', 'pets', 'quests'], MENU_PIN_WIDE = ['map', 'life'];
+    if (g.S.gm) items.unshift(['gm', 'GM', '`', 'Game Master', 'crown']); // the Game Master's editor (gm.js)
+    const MENU_PIN = ['gm', 'char', 'bag', 'skills', 'pets', 'quests'], MENU_PIN_WIDE = ['map', 'life'];
     this.menuBtns = {};
     for (const [n, label, k, full = label, icn = n] of items) {
       const cls = 'mbtn' + (DOCK_MENU.includes(n) ? ' indock' : '') + (MENU_PIN.includes(n) ? '' : MENU_PIN_WIDE.includes(n) ? ' x2' : ' x');
@@ -740,8 +742,8 @@ export class UI {
     const dot = this.menuBtns[name]?.querySelector('.dotn'); if (dot) dot.remove();
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
-      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts' };
-    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520 };
+      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts', gm: 'Game Master' };
+    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520, gm: 660 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(var(--lw, 1vw) * 100 - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -1334,6 +1336,7 @@ installPartyUI(UI);
 installTradeUI(UI);
 installSocialUI(UI);
 installGuideUI(UI);
+installGmUI(UI);
 
 // the dungeon's set: pieces you own and its bonuses
 function setBlock(dungeonId, S) {

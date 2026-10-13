@@ -172,6 +172,7 @@ const CB = {
 
   // ================================================================ cooldowns, charges, costs
   cdOf(sk) {
+    if (!sk.basic && this.gmFlag('nocd')) return 0.05; // Game Master: skills are ready again at once
     if (sk.basic) {
       const as = (1 + (this.ps('aspd') + this.condV('aspd')) / 100) * this.buffMod(this.player, 'aspd');
       return (sk.cd / as / (1 + this.stat('atkSpeed') / 100)) * (this.hasFx('swift') ? 0.88 : 1);

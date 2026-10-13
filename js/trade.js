@@ -94,6 +94,7 @@ const T = {
     const pr = mp.peers.get(key);
     if (mp.status !== 'online' || !pr) { this.ui.toast('That player is not online', 'warn'); return; }
     const name = pr.info.name;
+    if (this.S.gm || pr.info.gm) { this.ui.toast('Game Masters cannot trade', 'warn'); return; }
     if (this.tr) { this.ui.toast('Finish your current trade first', 'warn'); return; }
     if (this.tradeAway()) { this.ui.toast('You can only trade out in the world', 'warn'); return; }
     if (this.tradeDist(key) > TRADE_RANGE) { this.ui.toast(`Move closer to ${name} to trade (within ${TRADE_RANGE} m)`, 'warn'); return; }
@@ -262,6 +263,7 @@ const T = {
     if (!pr || !tid) return;
     const name = pr.info.name, t = m.t, tr = this.tr;
     if (t === 'req') {
+      if (this.S.gm || pr.info.gm) { this.tradeSend('busy', { to: from, tid, why: 'gm' }); return; } // Game Masters stay out of the economy
       if (tr || (ts.req && ts.req.until > Date.now() && ts.req.from !== from)) { this.tradeSend('busy', { to: from, tid, why: 'busy' }); return; }
       if (this.tradeAway()) { this.tradeSend('busy', { to: from, tid, why: 'away' }); return; }
       ts.req = { from, tid, until: Date.now() + REQ_SECS * 1000 };
@@ -277,7 +279,7 @@ const T = {
       const s = ts.sent.get(from); if (!s || s.tid !== tid) return;
       ts.sent.delete(from);
       if (t === 'acc') { if (!this.tr) this.tradeOpen(from, tid); else this.tradeSend('cancel', { to: from, tid }); }
-      else this.ui.toast(t === 'dec' ? `${name} declined the trade` : m.why === 'away' ? `${name} is not out in the world` : m.why === 'far' ? `${name} is too far away to trade` : `${name} is busy right now`, 'warn');
+      else this.ui.toast(t === 'dec' ? `${name} declined the trade` : m.why === 'away' ? `${name} is not out in the world` : m.why === 'far' ? `${name} is too far away to trade` : m.why === 'gm' ? 'Game Masters cannot trade' : `${name} is busy right now`, 'warn');
       return;
     }
     // a trade we already completed: the other side missed our 'done'

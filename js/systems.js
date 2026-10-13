@@ -651,6 +651,8 @@ const M = {
   // ============================================================ world boss
   wbType() { return this.event ? this.event.boss : 'behemoth'; },
   wbState(now = Date.now()) {
+    const F = this.wbForce; // summoned by the Game Master (gm.js)
+    if (F && now < F.until) return { slot: F.slot, active: true, endsIn: (F.until - now) / 1000, nextIn: WORLD_BOSS.every };
     const s = now / 1000, slot = Math.floor(s / WORLD_BOSS.every), into = s - slot * WORLD_BOSS.every;
     const active = into < WORLD_BOSS.lasts;
     return { slot, active, endsIn: WORLD_BOSS.lasts - into, nextIn: WORLD_BOSS.every - into };
