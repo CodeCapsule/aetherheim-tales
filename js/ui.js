@@ -406,6 +406,9 @@ export class UI {
     const t = p.target;
     if (t !== this.tgShown || (t && t.dead)) this.refreshTarget();
     if (t && !t.dead) { $('tg-hp').style.width = (t.hp / t.maxHp) * 100 + '%'; this.txt($('tg-hp-t'), `${fmt(Math.max(0, t.hp))} / ${fmt(t.maxHp)}`); }
+    // fought together: who it is attacking (aggro.js)
+    const ag = t && !t.dead && t.kind === 'monster' && g.aggroShared(t) ? g.aggroName(t) : null, agEl = $('tg-aggro');
+    this.txt(agEl, ag ? `⚔ Attacking: ${ag}` : ''); agEl.classList.toggle('me', ag === 'You');
     // stamina on the roll button
     const sta = Math.round(p.sta ?? 100);
     if (sta !== this.staShown) { this.staShown = sta; $('btn-roll').style.setProperty('--sta', sta + '%'); }

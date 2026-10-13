@@ -18,6 +18,7 @@ import { installLive, liveBoost } from './live.js';
 import { installMp } from './mp.js';
 import { installParty } from './party.js';
 import { installWeaponFx, elementHitFx } from './weaponfx.js';
+import { installAggro } from './aggro.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -305,7 +306,7 @@ export class Game {
     e.maxHp = e.hp = st.hp; e.atk = st.atk; e.def = st.def; e.crit = d.boss ? 8 : 4;
     e.pos.set(x, W.heightAt(x, z), z);
     e.home = { x, z };
-    e.dead = false; e.state = 'idle'; e.target = null; e.returning = false; e.tagged = false; e.stun = 0; e.dots = []; e.pull = null;
+    e.dead = false; e.state = 'idle'; e.target = null; e.returning = false; e.tagged = false; e.stun = 0; e.dots = []; e.pull = null; e.threat = 0; e.rthreat = null; e.aggroKey = null;
     e.model.visible = true; e.inner.position.y = 0; e.inner.scale.setScalar(e.baseScale || 1);
     e.wanderT = 1 + R() * 4; e.attackCD = 1; e.skillT = 6;
     e.yaw = e.yawT = R() * Math.PI * 2;
@@ -684,7 +685,7 @@ export class Game {
     }
     if (dst.wb) this.wbHit(src, dst, dmg);
     if (dst.kind === 'monster') {
-      if (mine) { dst.tagged = true; this.lastCombat = this.time; if (dst.uid && dmg > 0 && dst.hp > 0) this.partyMobHit(dst); }
+      if (mine) { dst.tagged = true; this.lastCombat = this.time; this.threatAdd(dst, dmg); if (dst.uid && dmg > 0 && dst.hp > 0) this.partyMobHit(dst); }
       if (!dst.target || dst.target.dead) dst.target = src.kind === 'pet' ? this.player : src;
       dst.returning = false;
     }
@@ -1857,6 +1858,7 @@ export class Game {
     if (m.target === this.player && this.pflag('stealth') && !(m.tauntT > this.time)) m.target = null;
     if (m.stun > 0) { m.stun -= dt; m.moving = false; if (Math.random() < dt * 8) this.fx.emit(m.pos.clone().setY(m.pos.y + m.height + 0.2), { count: 1, color: 0xffe07a, speed: 1, life: 0.5, size: 0.4 }); return; }
     if (m.trialAI) { this.updateTrialMonster(m, dt); return; } // trials.js
+    if (this.aggroShared(m)) this.aggroUpdate(m); // fought together: everyone's copy goes for the same player (aggro.js)
     const home = m.home;
     let moving = false;
     if (m.target && (m.target.dead || (!m.noLeash && flat(m.pos, home) > (d.boss ? 30 : 38)) || (m.target === this.player && this.player.dead))) { m.target = null; m.returning = true; }
@@ -1997,7 +1999,9 @@ export class Game {
       const col = d.model === 'pumpkinking' ? '#ff9a2e' : '#9ad8ff', hex = d.model === 'pumpkinking' ? 0xffa040 : 0x9ad8ff;
       warn(d.model === 'pumpkinking' ? 'Lanterns blaze overhead — keep moving!' : 'Thunder gathers overhead — keep moving!');
       m.state = 'cast'; m.actT = m.actDur = 1.4;
-      const targets = this.bossTargets(m).filter((e) => flat(e.pos, m.pos) < 30).sort(() => Math.random() - 0.5).slice(0, enraged ? 6 : 4);
+      // it strikes at whoever it is fighting and the players close to it; those keeping their distance are safe
+      const near = [t, this.player, ...(this.rplayers || []).filter((e) => !e.netHidden)].filter((e, i, a) => e && !e.dead && a.indexOf(e) === i && (e === t || flat(e.pos, m.pos) < 14));
+      const targets = [near[0], ...near.slice(1).sort(() => Math.random() - 0.5)].slice(0, enraged ? 6 : 4);
       targets.forEach((e, i) => {
         const c = e.pos.clone(); c.y = gy(c.x, c.z);
         this.fx.circle(c, col, 3, 1.5);
@@ -2372,6 +2376,7 @@ installLive(Game);
 installMp(Game);
 installParty(Game);
 installWeaponFx(Game);
+installAggro(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);

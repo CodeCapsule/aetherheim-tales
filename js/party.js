@@ -17,7 +17,7 @@ const PARTY_RANGE = 60; // members this close to a kill (world units, open world
 const PARTY_BONUS = 0.1; // +10% total EXP per extra member nearby
 const INVITE_SECS = 30;
 const XP_FLUSH = 1.2; // seconds between EXP share messages (kills in between are added up)
-const ALONE_SECS = 20; // a party with nobody else in it for this long disbands
+const ALONE_SECS = 150; // a party with nobody else online in it for this long disbands (phones put away come back)
 const STORE = 'aetherheim_party';
 const MOB_FLUSH = 0.2; // seconds between shared-monster messages (hits in between are merged, one row per monster)
 const MOB_ROWS = 24;
@@ -210,7 +210,7 @@ const G = {
     if (!this.partyMobsOn() || (this.partyMobs.size >= MOB_ROWS && !this.partyMobs.has(m.uid))) return;
     const row = this.partyMobs.get(m.uid);
     if (row && row.k) return; // already queued as a kill
-    this.partyMobs.set(m.uid, { u: m.uid, g: m.gen, ty: m.type, f: Math.round(Math.max(0, m.hp / m.maxHp) * 1e4) / 1e4, x: Math.round(m.pos.x * 10) / 10, z: Math.round(m.pos.z * 10) / 10 });
+    this.partyMobs.set(m.uid, { u: m.uid, g: m.gen, ty: m.type, f: Math.round(Math.max(0, m.hp / m.maxHp) * 1e4) / 1e4, x: Math.round(m.pos.x * 10) / 10, z: Math.round(m.pos.z * 10) / 10, th: Math.round(m.threat || 0) });
   },
   // we killed it (game.js killMonster, before the life count goes up): it dies for the party too, and comes back when ours does
   partyMobKill(m) {
@@ -222,7 +222,7 @@ const G = {
     this.partyMobT -= dt;
     if (this.partyMobT > 0) return;
     this.partyMobT = MOB_FLUSH;
-    if (this.partyMobsOn()) this.partySend('mob', { party: mp.party.id, h: [...this.partyMobs.values()].map((r) => [r.u, r.g, r.ty, r.f, r.x, r.z, r.k || 0]) });
+    if (this.partyMobsOn()) this.partySend('mob', { party: mp.party.id, h: [...this.partyMobs.values()].map((r) => [r.u, r.g, r.ty, r.f, r.x, r.z, r.k || 0, r.th || 0]) });
     this.partyMobs.clear();
   },
   mobById(uid) {
@@ -243,6 +243,7 @@ const G = {
       if (g > e.gen) e.gen = g;
       if (e.dead) continue;
       if (k) { this.partyMobDie(e, k, away || p.dead ? Infinity : Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z)); continue; }
+      this.threatNote(e, from, num(row[7], 0, 1e15, 0)); // who it should go for (aggro.js)
       e.hp = Math.min(e.hp, Math.max(1, Math.ceil(f * e.maxHp)));
       // nobody is fighting it here: it walks over to the fight on their screen (and stays there)
       if (!e.target && Math.hypot(x - e.spawn.x, z - e.spawn.z) <= (e.spawn.r || 0) + 45) {

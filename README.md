@@ -162,7 +162,15 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   defend yours.
 - **World bosses**: every 15 minutes a world boss descends on the Storm Altar north-east of Breezy Meadow (the
   Thunderhoof Behemoth, or a festival boss such as the Pumpkin King). Bring it down before it retreats: rewards depend on
-  how fast you win, counted from your first hit, and the boss keeps its wounds if you fall and come back.
+  how fast you win, counted from your first hit, and the boss keeps its wounds if you fall and come back. Everyone at
+  the altar fights the same boss: every hit anyone lands brings it down for all, it falls for everyone at once, and
+  each player earns their own reward for their own damage.
+- **Aggro (who the monster attacks)**: when several players fight the world boss, or a party fights a monster, it goes
+  for the same player on every screen: the one with the most threat. Threat is the damage you deal (Guardians make
+  three times as much, so the tank holds it) and a taunt puts you on top; falling wipes your threat, and the monster turns to the next player. Another player only takes it over by beating
+  that by 10% up close or 30% from range, so the others can fight from a distance without being attacked. It only
+  swings at the player it is after; its lantern and lightning strikes fall on that player and on whoever stands close
+  to it. The target frame shows whom it is attacking (`⚔ Attacking: name`).
 - **Trading and crafting**: monsters drop materials and gems into a separate pouch. Gorm's Forge crafts potions, tickets,
   pet eggs, gem pouches and Rare to Unique gear (with a Masterwork chance). The Market lists merchant goods at prices that
   drift through the day; list your own items and they sell over time (cheaper sells faster, 5% tax).
@@ -232,7 +240,8 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   Party members within 60 m of a kill share its EXP: the kill's EXP is split between everyone nearby, plus 10% per extra
   member, and each member's own level gap and EXP boosts apply to their share. The party frame under your wallet
   shows members' levels and HP (dimmed when too far to share), `/p message` or the Party chat tab talks to the party,
-  the earliest member leads and can remove players, and reloading the page keeps you in your party.
+  the earliest member leads and can remove players, and reloading the page keeps you in your party. A party with
+  nobody else online in it for two and a half minutes disbands (time enough to pick a phone back up).
   Party members see the same monsters: every monster in the open world has the same spawn point, level and respawn
   timing in every browser, and party members send what they do to them a few times a second. A monster your partner
   is fighting walks over to them on your screen and loses the same HP; when they kill it, it dies on your screen at
@@ -339,6 +348,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/economy.js` | Bag expansion, Sell All, NPC shops and the Auction House |
 | `js/sky.js` | Day and night (sky colours, sun, moon, stars, lamps) and seasonal weather (rain, storms, snow, petals, leaves) |
 | `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill, Soul Forge, element infusion and crystal drops |
+| `js/aggro.js` | Shared aggro (threat, the tank, taunts) for monsters fought together, and the world boss's shared health |
 | `js/data-elements.js`, `js/weaponfx.js` | The seven weapon elements; the class weapon glows (+6 to +15) and element effects, for you and other players |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |

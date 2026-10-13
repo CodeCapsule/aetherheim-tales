@@ -690,11 +690,13 @@ const M = {
   wbHit(src, dst, dmg) {
     const W = this.wb; if (!W || W.e !== dst || dmg <= 0 || !(src === this.player || src.kind === 'pet')) return;
     W.dmg += dmg; if (!W.first) W.first = this.time;
+    this.wbNetDirty = true; // the others hear its health and our threat (aggro.js)
   },
   wbFightSecs() { const W = this.wb; return W && W.first ? (W.finished || this.time) - W.first : 0; },
   onWorldBossKilled(m) {
     const W = this.wb, S = this.S; if (!W || W.e !== m) return;
     W.finished = this.time; S.wb.done = true;
+    if (!this.wbRemoteKill) this.wbNetSend(1); // it falls for everyone
     const myDmg = W.dmg, secs = this.wbFightSecs();
     if (myDmg <= 0) { this.ui.refreshQuest(); return; }
     const tier = WB_REWARDS.find((t) => secs <= t.upTo);

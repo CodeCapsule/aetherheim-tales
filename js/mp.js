@@ -113,6 +113,7 @@ const M = {
     ch.on('presence', { event: 'sync' }, () => { if (mp.channel === ch) this.mpSync(); });
     on('m', (p) => this.mpMove(p)); on('c', (p) => this.mpChat(p)); on('p', (p) => this.partyMsg(p)); on('z', (p) => this.dzMsg(p));
     on('t', (p) => this.tradeMsg(p)); on('f', (p) => this.socialMsg(p)); on('h', (p) => this.mpHello(p)); on('b', (p) => this.mpByeGot(p));
+    on('w', (p) => this.wbNetMsg(p)); // the world boss's health and threat (aggro.js)
     ch.subscribe((status, err) => {
       if (mp.channel !== ch) return;
       if (status === 'SUBSCRIBED') this.mpJoined();
@@ -206,7 +207,7 @@ const M = {
   // ============================================================ per frame
   mpUpdate(dt) {
     for (const e of this.rplayers || []) this.mpAnimate(e, dt);
-    this.partyUpdate(dt);
+    this.partyUpdate(dt); this.wbNetUpdate(dt);
     this.tradeUpdate(dt); this.socialUpdate();
     if (mp.channel) this.mpWatch(dt);
     if (mp.status !== 'online' || !mp.channel) return;

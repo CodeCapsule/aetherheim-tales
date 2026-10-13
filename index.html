@@ -576,6 +576,9 @@ button { font-family: inherit; }
 .qtag.dungeon { background: #8a3ac8; }
 .dg-meta { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-top: 2px; }
 #tg-name .tg-dr { margin-left: 6px; font-size: 10.5px; color: #ffb35a; font-weight: 700; }
+.tg-ag { font-size: 11px; line-height: 1.2; margin-top: 2px; color: #ffd0a0; min-height: 0; }
+.tg-ag:empty { display: none; }
+.tg-ag.me { color: #ff8a7a; }
 .qtag.trial { background: linear-gradient(90deg, #a8701a, #e8c070); color: #2a1a08; }
 .journal { display: grid; gap: 5px; } .journal .jr { padding: 6px 9px; border-radius: 8px; background: rgba(8, 12, 30, .45); font-size: 12.5px; line-height: 1.45; font-style: italic; } .journal .jr small { display: block; font-style: normal; color: var(--muted); font-size: 10.5px; }
 .carto .row .tx { font-size: 12px; }
@@ -1702,7 +1705,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
 
     <div id="hud-target" hidden>
       <div class="tp"><img id="tg-img" alt=""></div>
-      <div><div class="tn stroke" id="tg-name"></div><div class="bar hp"><i id="tg-hp"></i><span id="tg-hp-t"></span></div></div>
+      <div><div class="tn stroke" id="tg-name"></div><div class="bar hp"><i id="tg-hp"></i><span id="tg-hp-t"></span></div><div class="tg-ag stroke" id="tg-aggro"></div></div>
     </div>
     <div id="hud-autopath" class="stroke" hidden>Auto-pathing…</div>
     <div id="hud-autobattle" class="stroke" hidden>Auto Battle</div>
