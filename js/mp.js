@@ -13,6 +13,8 @@ import { buildHumanoid } from './models.js';
 import { cleanApp } from './models-hero.js';
 import { lookFor } from './life.js';
 import { isElement } from './data-elements.js';
+import { BUILD } from './build.js';
+import { checkUpdate } from './update.js';
 
 const LIB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -74,7 +76,7 @@ function cleanInfo(m) {
     x: num(m.x, -400, 400, 0), z: num(m.z, -400, 400, 9),
     party: /^[a-z0-9]{4,16}$/.test(m.party) ? m.party : null, pj: num(m.pj, 0, 1e13, 0),
     aura: /^#[0-9a-f]{6}$/i.test(m.aura) ? m.aura : null, pr: cleanFirsts(m.pr), gt: num(m.gt, 0, 7, 0) | 0, dawn: !!m.dawn,
-    wg: num(m.wg, 0, 4, 0) | 0, we: isElement(m.we) ? m.we : null, gm: !!m.gm,
+    wg: num(m.wg, 0, 4, 0) | 0, we: isElement(m.we) ? m.we : null, gm: !!m.gm, bv: num(m.bv, 0, 1e14, 0),
   };
 }
 
@@ -196,7 +198,7 @@ const M = {
       id: mp.id, name: S.name, cls: S.cls, gender: S.gender, hair: S.hair, eye: S.eye, app: S.app, level: S.level, guild: S.guild?.name || null,
       wings: !!S.wings, wingColor: S.wingColor || null, costume: S.costume || {}, mount: this.mounted ? S.activeMount : null, pet: S.activePet || null,
       zone: this.trial ? 'Breakthrough Trial' : this.dg ? this.dg.def.name : this.war ? 'Guild War' : (this.zone?.name || 'Carlyle'), map: where, br: this.br || 0,
-      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, ...(this.weaponLook ? this.weaponLook() : {}), dawn: !!(this.hasFx && this.hasFx('six_dawn6')), gm: !!S.gm,
+      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, ...(this.weaponLook ? this.weaponLook() : {}), dawn: !!(this.hasFx && this.hasFx('six_dawn6')), gm: !!S.gm, bv: BUILD,
     };
     if (!stable) { info.x = Math.round(p.pos.x * 10) / 10; info.z = Math.round(p.pos.z * 10) / 10; }
     return info;
@@ -276,7 +278,17 @@ const M = {
     const old = mp.peers.get(key);
     if (!old) { if (!this.friendOnline(info)) this.ui.chat('system', `<b>${esc(info.name)}</b> (Lv ${info.level} ${esc(CLASSES[info.cls].name)}) is online.`); this.mpLastSent = null; } // tell the newcomer where we are
     mp.peers.set(key, { ...(old || {}), info, pres: pres || !!old?.pres, heard: performance.now(), net: old?.net || { x: info.x, z: info.z, y: 0, s: 0, w: info.map === 'world' ? 1 : 0, t: performance.now() } });
+    if (!old) this.mpVersionNote(info);
     this.mpEnsure(key);
+  },
+  // a player on another version of the game (an old copy does not know newer things, like a Game Master's monsters)
+  mpVersionNote(info) {
+    if (!BUILD) return; // a local copy
+    if (info.bv > BUILD) { checkUpdate(true); return; } // we are the old one: the Update bar
+    if (info.bv < BUILD && !(this.mpOldNoted ||= new Set()).has(info.id)) {
+      this.mpOldNoted.add(info.id);
+      this.ui.chat('system', `<b>${esc(info.name)}</b> is playing an older version of the game: ask them to reload the page (or close and reopen it) so you both see the same monsters and items.`);
+    }
   },
   mpDropPeer(key) {
     const pr = mp.peers.get(key); if (!pr) return;

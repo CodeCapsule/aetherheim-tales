@@ -18,6 +18,7 @@ import { AdminPanel } from './admin.js';
 import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from './mp.js';
 import { fitTouch, UIZ } from './touchfit.js';
 import { gmUnlocked, gmUnlock, loadGmSave, initGmSave } from './gm.js';
+import { watchUpdates } from './update.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -74,6 +75,7 @@ async function init() {
   ui = new UI();
   admin = new AdminPanel(() => (game ? game.S : loadSave()));
   ui.openAdmin = () => admin.open();
+  watchUpdates(() => game && game.save()); // a newer version is out: the Update bar
   ui.adminAllowed = () => admin.allowed();
   onLive(() => refreshTitleLive());
   connectLive().then(() => { if (location.hash === '#admin' && admin.allowed()) admin.open(); });

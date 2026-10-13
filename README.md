@@ -209,6 +209,11 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   activity feed (level ups, dungeon clears, deaths, rare loot), client errors and the server clock. From it the owner can
   post an announcement, start an EXP/Gold event, show a maintenance notice and send gifts to everyone or to one player.
   Players with view-only access cannot report, so share the game as Contributor to see them.
+- **Always the newest version**: every published version loads its scripts with the version in their address, so a
+  reload never mixes in old cached files. When a newer version comes out while you play (checked every few minutes and
+  when you come back to the tab), an **Update** bar appears: it saves your game and reloads. A player still on an older
+  copy is pointed out in the chat to the others, since an old copy cannot see newer things (like a Game Master's
+  monsters or items dropped on the ground).
 - **Dropping items**: the Bag's **Drop** button puts the selected item on the ground in front of you (a stack asks
   for one or all). Everyone nearby sees it with your name, and the first player to walk over it takes it (your browser
   hands it to the first one who reaches it, so it can never be taken twice). To take your own back, walk away and back
@@ -383,6 +388,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/gm.js`, `js/gm-config.js` | The Game Master hero: passcode, separate save, the GM editor and its powers |
 | `js/gmnet.js` | The Game Master's monsters on every player's screen: shared health, threat, kills and removal |
 | `js/drops.js` | Items dropped from the bag onto the ground for anyone to pick up |
+| `js/build.js`, `js/update.js` | The published version and the Update bar |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |
 | `js/social.js` | The player menu, friends (requests, list, online notices) and inspecting another player |
