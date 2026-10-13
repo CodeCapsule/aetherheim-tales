@@ -169,9 +169,23 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 - **Enhancement +1 to +15**: the Forge's Enhance tab levels up any piece of gear with Enhancement Stones (normal for
   +1 to +5, Greater to +10, Divine to +15) and gold. Success drops from 100% to 12% at +15; each failure adds +5% to the
   next try (up to +25%), and from +7 a failure drops the item one level unless a Protection Charm is used. Lucky Charms
-  add +15%. Base stats grow 7% per level with bonus steps at +5, +10 and +15 (x2.6 at +15), affixes grow from +10, and
-  enhanced weapons glow blue (+7), violet (+10) and blazing (+15). Stones drop from monsters and dungeon chests, are sold
-  by Hilda and refine 5 into 1 of the next tier.
+  add +15%. Base stats grow 7% per level with bonus steps at +5, +10 and +15 (x2.6 at +15), and affixes grow from +10.
+  Stones drop from monsters and dungeon chests, are sold by Hilda and refine 5 into 1 of the next tier.
+- **Weapon glows**: from +6 your weapon glows in your class's own style, and everyone around sees it: Guardians a
+  rising golden Radiance, Berserkers a heartbeat of blood-red with dripping sparks, Shadowblades a flickering violet
+  Nightshade with shadow wisps, Rangers green leaves spiralling up the bow, Elementalists a Prismatic staff that cycles
+  through every colour, Tideweavers waves of aqua light with bubbles, Summoners Spirit wisps orbiting the tome, and
+  Spellblades Runic pulses with a ring of runes running up the blade. It gets a soft aura at +9, a flare at the tip at
+  +12 and a white-hot core at +15.
+- **Element infusion**: Gorm's forge has an **Infuse** tab. Three crystals of an element and some gold infuse a weapon
+  with it (infusing again replaces it), adding a bonus, the element's effect on the blade and a burst on every hit:
+  **Fire** (flames, +12% critical damage), **Lightning** (crackling arcs, +4% critical chance), **Frost** (falling frost,
+  +6% defense), **Wind** (a whirl of wind, +6% move speed and +4% attack speed), **Earth** (falling earth, +6% max HP),
+  **Light** (a holy glow, +2% to all stats and +6% healing) and **Shadow** (rising smoke, +3% lifesteal). Crystals drop
+  from monsters: the element of the land you hunt in (Breezy Meadow: Wind; Mossveil Forest and Elder Ruins: Earth;
+  Storm Altar, Whispering Marsh and Crystal Wilds: Lightning; Sunpetal Plains and Starfall Plateau: Light; Ember
+  Canyon: Fire; Frostpeak: Frost; Shadow Fen: Shadow); elites and bosses drop any element. An element and a class
+  glow can shine together.
 - **Gems with unique stats**: besides Ruby, Sapphire, Emerald and Topaz, eight Arcane gems carry the rare stats
   (Amethyst crit damage, Onyx lifesteal, Opal cooldowns, Aquamarine speed, Garnet thorns, Jade regeneration, Moonstone
   EXP, Citrine gold find). Every gem combines 3 into 1 up to the fifth level (Celestial). **Soulstones** socket like gems
@@ -247,7 +261,9 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   own auctions.
 - **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. The Bag is a compact window
   (`Bag 22 / 48`) with tabs (All, Gear, Consume, Quest, Valuable, Others, Mats), six slots a row, a strip for the selected
-  item (Equip or Use, Sell, Lock), **Sort** (gear first by rarity, then consumables, quest items and valuables) and
+  item (Equip or Use, Sell, Lock; for gear also its Battle Rating, whether it beats what you wear, every stat that would
+  change and its full stat list, so phones see everything a tooltip shows), a green arrow on gear better than what you
+  wear (grey while you cannot wear it yet), **Sort** (gear first by rarity, then consumables, quest items and valuables) and
   **Sell All**, which sells everything up to a chosen rarity in one go (locked gear is always kept). Your Diamonds and
   Gold sit at the bottom beside a **Mall** button. Equipped gear is in the Character window (C).
 - **MMO systems**: Battle Rating, bag, auto-hit, auto potions, titles, daily sign-in, online gifts, a gold/diamond mall
@@ -274,7 +290,9 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   Skills, Quests); scroll it, or tap the arrow under it, for Events, Map, Gathering, Pets and the rest. The **Menu**
   tab above it folds the column away to free the screen (remembered on that device; a red dot shows when something
   inside wants you). The target frame and the quest tracker sit beside the column, or along the right edge while it
-  is folded. Landscape puts the four buttons in a row beside the minimap and the quest tracker on the left. Phones whose browser asks for the desktop site (the "Desktop site" switch) used to get a
+  is folded. Landscape puts the four buttons in a row beside the minimap and the quest tracker on the left. Chat stays
+  hidden until you tap its message button: in landscape it opens as a small box at the bottom centre, between the
+  buttons beside the joystick and the skills (narrower phones lift it just above those buttons). Phones whose browser asks for the desktop site (the "Desktop site" switch) used to get a
   tiny desktop layout with no joystick: the game now spots a touch screen laid out wider than the phone and scales its
   interface back to the phone's real width, so the touch layout appears either way.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
@@ -313,7 +331,8 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/life.js` | Gathering nodes, farming, alchemy, smithing, elixirs, costumes, relic collection and Red gear |
 | `js/economy.js` | Bag expansion, Sell All, NPC shops and the Auction House |
 | `js/sky.js` | Day and night (sky colours, sun, moon, stars, lamps) and seasonal weather (rain, storms, snow, petals, leaves) |
-| `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill and Soul Forge |
+| `js/upgrade.js` | Enhancement +1 to +15, arcane gems, Soulstones, Socket Drill, Soul Forge, element infusion and crystal drops |
+| `js/data-elements.js`, `js/weaponfx.js` | The seven weapon elements; the class weapon glows (+6 to +15) and element effects, for you and other players |
 | `js/live.js` | Live link to the artifact's shared database: player status, announcements, events, gifts |
 | `js/admin.js` | Game Master Console |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |

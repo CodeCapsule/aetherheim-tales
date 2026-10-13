@@ -11,6 +11,8 @@ import { RARITY, NAMED_LIST, EFFECTS, iconKey, enhMult, enhAffixMult } from './l
 import { missionDef, matName } from './systems.js';
 import { fmt, esc } from './game.js';
 import { ico } from './icons.js';
+import { ELEMENTS, ELEMENT_IDS, INFUSE_CRYSTALS, crystalId, isElement } from './data-elements.js';
+import { CLASS_GLOW, GLOW_NAME, GLOW_STEP, glowTier } from './weaponfx.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -391,8 +393,9 @@ const P = {
     // Gorm runs the forge; Opal's Gem Workshop is the same window with only the Gems tab
     const gems = this.station?.npc === 'opal';
     if (gems) this.sel.fgTab = 'gems'; else if (this.sel.fgTab === 'gems') this.sel.fgTab = 'enhance';
-    const tab = this.tabs(body, 'fgTab', gems ? [['gems', 'Gems']] : [['enhance', 'Enhance'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['salvage', 'Salvage'], ['repair', 'Repair']]);
+    const tab = this.tabs(body, 'fgTab', gems ? [['gems', 'Gems']] : [['enhance', 'Enhance'], ['infuse', 'Infuse'], ['craft', 'Craft'], ['upgrade', 'Upgrade'], ['salvage', 'Salvage'], ['repair', 'Repair']]);
     if (tab === 'enhance') this.forgeEnhance(body);
+    else if (tab === 'infuse') this.forgeInfuse(body);
     else if (tab === 'repair') {
       // durability: worn gear loses 10% each time you fall; broken gear gives no stats
       const list = g.repairList();
@@ -502,6 +505,33 @@ const P = {
       const pr = info.querySelector('#en-prot'); if (pr) pr.onchange = (ev) => { o.protect = ev.target.checked; this.renderPanel(); };
     }
     this.refinery(body);
+  },
+  // ------------------------------------------------------------ forge: element infusion (weapons)
+  forgeInfuse(body) {
+    const g = this.g, S = g.S;
+    if (g.refItem(this.sel.forgeRef || {})?.slot !== 'weapon') this.sel.forgeRef = S.equip.weapon ? { where: 'equip', slot: 'weapon' } : null;
+    let eq = this.forgePicker(body, (e) => e.slot === 'weapon');
+    if (eq && eq.slot !== 'weapon') eq = null;
+    const how = `Three crystals of an element infuse a weapon with it: a lasting bonus, a ${'<b>'}glow and sparks${'</b>'} on the blade that everyone sees, and an elemental burst on every hit. Infusing again replaces the element. Crystals drop from monsters: the element of the land you hunt in (Breezy Meadow: Wind · Mossveil Forest, Elder Ruins: Earth · Storm Altar, Whispering Marsh, Crystal Wilds: Lightning · Sunpetal Plains, Starfall Plateau: Light · Ember Canyon: Fire · Frostpeak: Frost · Shadow Fen: Shadow); elites and bosses drop any element.`;
+    if (!eq) { body.appendChild(h('div', 'note', 'Pick a weapon (equipped items are marked E). ' + how)); return; }
+    const ref = this.sel.forgeRef, cur = isElement(eq.el) ? ELEMENTS[eq.el] : null, tier = glowTier(eq.enh || 0), CG = CLASS_GLOW[S.cls] || CLASS_GLOW.knight;
+    const next = GLOW_STEP.find((v) => v > (eq.enh || 0));
+    body.appendChild(h('div', 'inf-head', `<div class="cell q${eq.quality}">${ico(eq.icon)}${eq.enh ? `<span class="enh">+${eq.enh}</span>` : ''}</div>
+      <div class="tx"><b style="color:${RARITY[eq.quality].color}">${esc(eq.name)}${eq.enh ? ` +${eq.enh}` : ''}</b>
+      <div>${cur ? `Element: <b style="color:${cur.color}">${cur.name}</b> · ${esc(cur.bonus)}` : '<span class="muted">No element yet</span>'}</div>
+      <div class="muted">${tier ? `Glow: <b style="color:#ffe7a8">${GLOW_NAME[tier]} ${CG.name}</b>${next ? ` · brighter at +${next}` : ' · at its brightest'}` : `${CG.name} glow from +6 (Enhance tab)`}</div></div>`));
+    const grid = h('div', 'inf-grid');
+    for (const el of ELEMENT_IDS) {
+      const E = ELEMENTS[el], have = g.matCount(crystalId(el)), cost = g.infuseCost(eq, el), on = eq.el === el;
+      const card = h('div', 'inf-card' + (on ? ' on' : ''), `<div class="ic">${ico(crystalId(el))}</div><div class="tx"><b style="color:${E.color}">${E.name}</b><small>${esc(E.bonus)}</small><div class="cost">${costChips(g, cost)}</div></div>`);
+      card.style.setProperty('--el', E.color);
+      const b = h('button', 'btn small' + (on ? ' gray' : ' green'), on ? 'Infused' : 'Infuse'); b.disabled = on || !g.canAfford(cost);
+      b.title = on ? 'This weapon already carries ' + E.name : have < INFUSE_CRYSTALS ? `Needs ${INFUSE_CRYSTALS} ${E.crystal}s (you have ${have})` : `Infuse with ${E.name}`;
+      b.onclick = () => g.infuseWeapon(ref, el);
+      card.appendChild(b); grid.appendChild(card);
+    }
+    body.appendChild(grid);
+    body.appendChild(h('div', 'note', how));
   },
   refinery(body) {
     const g = this.g;

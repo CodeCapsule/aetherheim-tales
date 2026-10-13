@@ -10,6 +10,7 @@ import { ANCIENT_SETS, SETS } from './data-sets.js';
 import { RARITY, genSet, normalizeItem, EFFECTS, MINOR_PASSIVES, DUR_MAX } from './loot.js';
 import { SKILL_BY_ID } from './data-classes.js';
 import { MATERIALS } from './systems-data.js';
+import { isElement } from './data-elements.js';
 import { mp } from './mp.js';
 import { toon, glowTexture } from './toon.js';
 
@@ -34,6 +35,7 @@ export function cleanEq(eq, cls) {
     dur: num(eq.dur, 0, DUR_MAX, DUR_MAX) | 0, minor: own(MINOR_PASSIVES, eq.minor) ? eq.minor : null,
   };
   if (own(SKILL_BY_ID, eq.awaken)) out.awaken = eq.awaken;
+  if (isElement(eq.el)) out.el = eq.el;
   if (eq.bound) out.bound = true;
   if (eq.xs) out.xs = num(eq.xs, 0, 2, 0) | 0;
   return normalizeItem(out, cls);

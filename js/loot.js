@@ -3,6 +3,7 @@ import { SLOTS, WEAPON_NAMES, SLOT_BASE, SLOT_INFO, DUNGEONS } from './data.js';
 import { SETS, SET_EFFECTS, SET_COLOR, ANCIENT_COLOR, SIX_SETS } from './data-sets.js';
 import { CLASS_SKILLS, SKILL_BY_ID } from './data-classes.js';
 import { SOCKETS, GEMS, GEM_LV, parseGem, parseSoul, SOULS, SOCKET_MAX } from './systems-data.js';
+import { ELEMENTS, isElement } from './data-elements.js';
 
 // Eight tiers. min = the lowest level a tier drops at, and the weapon mastery needed to equip it (mastery lock).
 export const RARITY = [
@@ -263,6 +264,7 @@ export function normalizeItem(eq, cls) {
   if (typeof eq.name === 'string' && eq.name.includes('Aetherheim')) eq.name = eq.name.replace('Aetherheim', 'Hiraya'); // the world's old name
   if (!eq.stats || typeof eq.stats !== 'object') eq.stats = {};
   eq.enh = eq.enh | 0;
+  if (eq.el != null && (!isElement(eq.el) || eq.slot !== 'weapon')) delete eq.el;
   eq.quality = Math.max(0, Math.min(7, eq.quality | 0));
   if (eq.dur == null) eq.dur = DUR_MAX;
   if (eq.quality >= BOUND_TIER) eq.bound = true;
@@ -279,7 +281,7 @@ export function normalizeItem(eq, cls) {
 
 const ZERO = () => ({ atk: 0, def: 0, hp: 0, crit: 0, critDmg: 0, speed: 0, lifesteal: 0, cdr: 0, expGain: 0, goldFind: 0, thorns: 0, regen: 0, manaCost: 0,
   atkPct: 0, defPct: 0, hpPct: 0, allPct: 0, bossPct: 0, firePct: 0, poisonPct: 0, rangedPct: 0, healPct: 0, atkSpeed: 0, regenPct: 0, skillRange: 0, discovery: 0, masteryPct: 0, dmgTaken: 0 });
-function itemStats(eq) {
+export function itemStats(eq) {
   const out = ZERO();
   if (!eq || eq.dur === 0) return out; // broken: no stats until repaired
   const k = enhMult(eq.enh || 0), ka = enhAffixMult(eq.enh || 0);
@@ -288,6 +290,7 @@ function itemStats(eq) {
   out.crit += eq.stats?.crit || 0;
   for (const a of eq.affixes || []) { const def = AFFIXES[a.id]; if (def && Number.isFinite(a.v)) out[def.stat] += a.v * ka; }
   for (const gid of eq.gems || []) { const g = parseGem(gid); if (g) out[GEMS[g.type].stat] += GEMS[g.type].vals[g.lv - 1]; }
+  if (isElement(eq.el)) for (const [k, v] of Object.entries(ELEMENTS[eq.el].mods)) out[k] += v; // infused weapon
   return out;
 }
 
@@ -325,6 +328,7 @@ export function itemScore(eq) {
   if (eq.effect && EFFECTS[eq.effect]) score += EFFECTS[eq.effect].tier === 'legendary' ? 900 : 350;
   if (eq.set) score += 250;
   if (eq.awaken) score += 700;
+  if (isElement(eq.el)) score += 250;
   for (const gid of eq.gems || []) { const fx = parseSoul(gid); if (fx && EFFECTS[fx]) score += EFFECTS[fx].tier === 'legendary' ? 900 : 350; }
   return Math.round(score);
 }
@@ -345,6 +349,7 @@ export function itemLines(eq, equipMap = null, ctx = null) {
   for (const s of ['atk', 'def', 'hp']) if (eq.stats?.[s]) lines.push({ text: `${STAT_LABEL[s]} +${Math.round(eq.stats[s] * k)}`, color: '#ffffff' });
   if (eq.stats?.crit) lines.push({ text: `Critical +${r1(eq.stats.crit)}%`, color: '#ffffff' });
   if (eq.enh) lines.push({ text: `Enhanced +${eq.enh}: base stats x${k.toFixed(2)}${ka > 1 ? `, affixes x${ka.toFixed(2)}` : ''}`, color: eq.enh >= 15 ? '#ff7a4a' : eq.enh >= 10 ? '#d8a0ff' : '#8ad0ff' });
+  if (isElement(eq.el)) lines.push({ text: `✦ ${ELEMENTS[eq.el].name} Infusion: ${ELEMENTS[eq.el].bonus}`, color: ELEMENTS[eq.el].color });
   for (const a of eq.affixes || []) { const def = AFFIXES[a.id]; if (def) lines.push({ text: def.label(r1(a.v * ka)), color: '#7aff7a' }); }
   if (eq.minor && MINOR_PASSIVES[eq.minor]) lines.push({ text: `Passive · ${MINOR_PASSIVES[eq.minor].name}: ${MINOR_PASSIVES[eq.minor].label}`, color: '#d8a0ff' });
   if (eq.awaken && SKILL_BY_ID[eq.awaken]) lines.push({ text: `Awakened skill · ${SKILL_BY_ID[eq.awaken].name}: +50% damage, 30% shorter cooldown, +30% reach`, color: '#ff7a6a' });

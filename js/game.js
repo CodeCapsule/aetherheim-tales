@@ -17,6 +17,7 @@ import { installUpgrade, stoneFor } from './upgrade.js';
 import { installLive, liveBoost } from './live.js';
 import { installMp } from './mp.js';
 import { installParty } from './party.js';
+import { installWeaponFx, elementHitFx } from './weaponfx.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -384,6 +385,7 @@ export class Game {
     this.br = this.calcBR ? this.calcBR() : Math.round(p.maxHp * 0.55 + atk * 9 + def * 7);
     void petBR; void spBR; void mountBR; void extras;
     if (this.refreshGearGlow && this.player) this.refreshGearGlow();
+    if (this.refreshWeaponFx && this.player) this.refreshWeaponFx();
     this.ui.refreshPlayer && this.ui.refreshPlayer();
   }
   hasFx(id) { return this.mods.effects.has(id); }
@@ -718,8 +720,9 @@ export class Game {
 
   // On-hit item effects for the player's own direct hits (procs never trigger procs).
   onPlayerHit(dst, dmg, crit, sk = null) {
-    const p = this.player;
+    const p = this.player, wpn = this.S.equip.weapon;
     this.cbOnHit(dst, dmg, crit, sk);
+    if (wpn?.el && wpn.dur !== 0) elementHitFx(this.fx, dst.pos, wpn.el); // an infused weapon's burst
     if (this.hasFx('anc_void') && !dst.dead && (this.procCD.void || 0) <= this.time) {
       this.procCD.void = this.time + 8; const c = dst.pos.clone();
       this.fx.ring(c, 0x9a4aff, 5, 0.5); this.fx.emit(c.clone().setY(c.y + 1), { count: 40, colors: [0x9a4aff, 0x3a1a6a, 0xffffff], speed: 6, life: 0.6, size: 0.6 });
@@ -827,7 +830,7 @@ export class Game {
       if (!b) { b = { id: 'soulharvest', icon: 'a5', stacks: 0, mods: { atk: 1, critDmg: 0 } }; p.buffs.push(b); }
       b.stacks = Math.min(5, b.stacks + 1); b.mods.atk = 1 + 0.04 * b.stacks; b.mods.critDmg = 0.04 * b.stacks; b.until = this.time + 10;
     }
-    if (!d.structure && !d.war) { this.rollDrops(m); this.tailorDrop(m); this.dzKill(m); this.sixWorldDrop(m); }
+    if (!d.structure && !d.war) { this.rollDrops(m); this.tailorDrop(m); this.dzKill(m); this.sixWorldDrop(m); this.crystalDrop(m); }
     // beasts sometimes leave meat for the campfire
     if (BEASTS.test(d.model) && !d.boss && Math.random() < 0.3) { this.addMat('raw_meat', 1, true); this.lootMsg('Raw Meat', '#ffffff'); }
     if (this.hasFx('anc_bloodthirst')) this.ancBloodthirst();
@@ -1585,7 +1588,7 @@ export class Game {
     for (const n of this.npcs) this.updateNPC(n, dt);
     this.updateLoot(dt);
     this.updateDungeon(dt);
-    this.updateTrial(dt); this.animateAuras();
+    this.updateTrial(dt); this.animateAuras(); this.animateWeaponFx();
     this.updateSystems(dt);
     this.animateAll(dt);
     this.updateCamera(dt);
@@ -1699,12 +1702,7 @@ export class Game {
       const hp = new THREE.Vector3(); p.humanoid.userData.parts.handR.getWorldPosition(hp);
       this.fx.emit(hp, { count: 1, color: RARITY[wq].color, speed: 0.5, life: 0.7, size: 0.45, up: 1.2, jitter: 0.6 });
     }
-    // enhanced weapons glow: blue from +7, violet from +10, blazing from +15
-    const we = S.equip.weapon?.enh || 0;
-    if (we >= 7 && p.humanoid && Math.random() < dt * (we >= 15 ? 26 : we >= 10 ? 14 : 7)) {
-      const hp = new THREE.Vector3(); p.humanoid.userData.parts.handR.getWorldPosition(hp);
-      this.fx.emit(hp, { count: we >= 15 ? 2 : 1, colors: we >= 15 ? [0xff5a2a, 0xffc04a] : [we >= 10 ? 0xc46bff : 0x5ab8ff], speed: 0.7, life: 0.6, size: we >= 15 ? 0.6 : 0.45, up: 1.6, jitter: 0.5 });
-    }
+    // enhanced and infused weapons glow on the blade itself: weaponfx.js
   }
 
   autoBattle() {
@@ -2373,6 +2371,7 @@ installUpgrade(Game);
 installLive(Game);
 installMp(Game);
 installParty(Game);
+installWeaponFx(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);

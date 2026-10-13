@@ -7,8 +7,9 @@ import { EXTRA2_ICONS } from './icons/extra2.js';
 import { UPGRADE_ICONS } from './icons/upgrade.js';
 import { CLASS_ICONS } from './icons/classes.js';
 import { TRIAL_ICONS } from './icons/trials.js';
+import { ELEMENT_ICONS } from './icons/elements.js';
 
-const ALL = { ...UI_ICONS, ...ITEM_ICONS, ...SKILL_ICONS, ...EXTRA_ICONS, ...EXTRA2_ICONS, ...UPGRADE_ICONS, ...CLASS_ICONS, ...TRIAL_ICONS };
+const ALL = { ...UI_ICONS, ...ITEM_ICONS, ...SKILL_ICONS, ...EXTRA_ICONS, ...EXTRA2_ICONS, ...UPGRADE_ICONS, ...CLASS_ICONS, ...TRIAL_ICONS, ...ELEMENT_ICONS };
 
 // Neutral rune-stone shown if a key is ever missing, so nothing renders as a broken image.
 const FALLBACK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="fb-g" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#8ab0ff"/><stop offset="1" stop-color="#2a3a8a"/></radialGradient></defs><path d="M32 5 L56 20 L56 44 L32 59 L8 44 L8 20 Z" fill="url(#fb-g)" stroke="#1b1430" stroke-width="3" stroke-linejoin="round"/><path d="M32 18 L42 32 L32 46 L22 32 Z" fill="#e8f0ff" stroke="#1b1430" stroke-width="2.5" stroke-linejoin="round"/></svg>';

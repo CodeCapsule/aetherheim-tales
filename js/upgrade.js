@@ -6,6 +6,7 @@ import {
   ENH_MAX, ENH_RATE, ENH_STONES, ENH_FAIL_BONUS, ENH_FAIL_MAX, ENH_LUCK, enhCost, enhRisk, REFINE,
 } from './systems-data.js';
 import { RARITY, EFFECTS, fitSockets } from './loot.js';
+import { ELEMENTS, ELEMENT_IDS, ZONE_ELEMENT, INFUSE_CRYSTALS, CRYSTAL_DROP, crystalId, infuseGold, isElement } from './data-elements.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
@@ -147,6 +148,37 @@ const U = {
     this.ui.chat('announce', `<b>[Announcement]</b> ${esc(this.S.name)} obtained the <span style="color:#ff9ae8">[${esc(MATERIALS[id].name)}]</span>${from ? ` from the ${esc(from)}` : ''}!`);
     this.logEvent && this.logEvent('soul', MATERIALS[id].name, true);
     this.ui.refreshPanel(); this.save();
+  },
+  // ============================================================ element infusion (Gorm): three crystals and some gold
+  infuseCost(eq, el) { return { gold: infuseGold(eq), mats: { [crystalId(el)]: INFUSE_CRYSTALS } }; },
+  infuseWeapon(ref, el) {
+    const eq = this.refItem(ref);
+    if (!eq || eq.slot !== 'weapon') { this.ui.toast('Only weapons can be infused', 'warn'); return false; }
+    if (!isElement(el)) return false;
+    if (eq.el === el) { this.ui.toast(`Already infused with ${ELEMENTS[el].name}`, 'warn'); return false; }
+    const cost = this.infuseCost(eq, el);
+    if (!this.canAfford(cost)) { this.ui.toast(this.missingText(cost), 'warn'); this.sfx.play('error'); return false; }
+    this.pay(cost);
+    eq.el = el;
+    const p = this.player, E = ELEMENTS[el];
+    this.fx.pillar(p.pos, E.hex, 1.4, 7, 0.9); this.fx.ring(p.pos, E.hex, 4, 0.6);
+    this.fx.emit(p.pos.clone().setY(p.pos.y + 1.2), { count: 40, colors: E.parts, speed: 5, life: 0.8, size: 0.5, up: 2 });
+    this.sfx.play('upgrade');
+    this.ui.toast(`${eq.name} is infused with ${E.name}: ${E.bonus}`, 'good');
+    if (ref.where === 'equip') this.recalc();
+    this.ui.refreshPanel(); this.save();
+    return true;
+  },
+  // element crystals from kills: the element of the land you hunt in; elites and bosses drop any element
+  crystalDrop(m) {
+    const d = m.def0; if (m.summoned || m.trialMob || d.structure || d.war) return;
+    const boss = d.boss || m.wb, chance = boss ? CRYSTAL_DROP.boss : d.elite ? CRYSTAL_DROP.elite : CRYSTAL_DROP.mob;
+    if (Math.random() >= chance) return;
+    const land = !m.dungeon && ZONE_ELEMENT[this.zone?.name];
+    const el = !boss && !d.elite && land ? land : pick(ELEMENT_IDS);
+    const n = boss && Math.random() < 0.5 ? 2 : 1;
+    this.addMat(crystalId(el), n, true);
+    this.lootMsg(`${ELEMENTS[el].crystal}${n > 1 ? ' x' + n : ''}`, RARITY[3].color);
   },
   // bag items added by the upgrade systems; returns true when handled
   useUpgradeItem(id) {

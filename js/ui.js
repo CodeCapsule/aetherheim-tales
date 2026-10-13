@@ -3,7 +3,7 @@ import {
   CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
 } from './data.js';
 import { needExp, fmt, esc, PET_TIER, bagCat } from './game.js';
-import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, namedBySource } from './loot.js';
+import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, itemStats, namedBySource } from './loot.js';
 import { ico, iconCanvas } from './icons.js';
 import { installSystemsUI } from './ui-systems.js';
 import { installLifeUI } from './ui-life.js';
@@ -32,6 +32,7 @@ const RAR = ['Common', 'Rare', 'Special', 'Legendary'];
 const RARC = PET_TIER.map((t) => RARITY[t].color);
 const LEGEND_IDS = new Set(LEGENDARY_ITEMS.map((x) => x.id));
 const slotIcon = (slot, cls) => (slot === 'weapon' ? WEAPON_ICONS[cls] : SLOT_INFO[slot].icon);
+const fmt1 = (v) => (Math.round(v * 10) / 10).toLocaleString('en-US');
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 const TOWN_R = 56; // half-size of the World Map's town view (Sylvan Haven)
 const STAT_WORD = { hpPct: 'max HP', defPct: 'defense', atkPct: 'attack', mpPct: 'max mana', crit: 'critical chance', critDmg: 'critical damage', speedPct: 'move speed', aspd: 'attack speed', mregen: 'mana regeneration', healPct: 'healing', healRecv: 'healing received', skillDmg: 'skill damage', magicDmg: 'magic damage', rangedDmg: 'ranged damage', rangePct: 'range', poisonDmg: 'poison damage', burnDmg: 'burn damage', fireDmg: 'fire damage', block: 'block chance', dodge: 'dodge chance', ccRes: 'stun and knockdown resistance', lifesteal: 'lifesteal', area: 'area size', castSpeed: 'cast speed', stamina: 'stamina regeneration', dmg: 'damage', summonDmg: 'summon damage', summonHp: 'summon HP', summonAspd: 'summon attack speed', summonDur: 'summon duration', summonSlots: 'summon slot', summonCrit: 'of your critical chance for summons', statShare: 'of your stats for summons', atk: 'attack', def: 'defense' };
@@ -192,7 +193,7 @@ export class UI {
     $('hud-pet').onclick = () => this.togglePanel('pets');
     $('qt-tog').onclick = () => { const l = $('qt-list'); l.hidden = !l.hidden; $('qt-tog').textContent = l.hidden ? '+' : '−'; };
     $('qt-team').onclick = () => this.togglePanel('online');
-    $('chat-toggle').onclick = () => $('hud-chat').classList.toggle('open');
+    $('chat-toggle').onclick = () => { const on = $('hud-chat').classList.toggle('open'); $('chat-toggle').classList.toggle('on', on); };
     $('chat-tabs').querySelectorAll('button').forEach((b) => b.onclick = () => {
       $('chat-tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
       this.chatFilter = b.dataset.c; this.applyChatFilter();
@@ -844,7 +845,8 @@ export class UI {
         if (!e) { grid.appendChild(h('div', 'cell empty')); continue; }
         const [b, i] = e;
         const q = b.eq ? b.eq.quality : ITEMS[b.id].quality;
-        const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}` : `${ico(b.id)}${b.qty > 1 ? `<span class="cnt">${b.qty}</span>` : ''}`);
+        const up = b.eq ? this.upgradeMark(b.eq) : '';
+        const c = h('button', `cell q${q}`, b.eq ? `${ico(b.eq.icon)}${b.eq.enh ? `<span class="enh">+${b.eq.enh}</span>` : ''}${b.eq.lock ? '<span class="lockd"></span>' : ''}${up}` : `${ico(b.id)}${b.qty > 1 ? `<span class="cnt">${b.qty}</span>` : ''}`);
         if (this.sel.bagIdx === i) c.classList.add('picked');
         c.onclick = () => { this.sel.bagIdx = this.sel.bagIdx === i ? null : i; this.renderPanel(); };
         c.ondblclick = () => { this.sel.bagIdx = null; g.useBagItem(i); };
@@ -856,13 +858,14 @@ export class UI {
       const b = S.bag[this.sel.bagIdx], strip = h('div', 'bag-sel');
       if (b) {
         const it = b.eq ? null : ITEMS[b.id], q = b.eq ? b.eq.quality : it.quality;
-        strip.innerHTML = `<span class="cell q${q}">${ico(b.eq ? b.eq.icon : b.id)}</span><b style="color:${RARITY[q].color}">${esc(b.eq ? b.eq.name : it.name)}${b.eq?.enh ? ` +${b.eq.enh}` : ''}</b>`;
+        strip.innerHTML = `<span class="cell q${q}">${ico(b.eq ? b.eq.icon : b.id)}</span><div class="bs-name"><b style="color:${RARITY[q].color}">${esc(b.eq ? b.eq.name : it.name)}${b.eq?.enh ? ` +${b.eq.enh}` : ''}</b>${b.eq ? '' : `<small>${esc(it.desc || '')}</small>`}</div>`;
         const acts = h('div', 'acts');
         if (b.eq || it.type !== 'quest') { const bu = h('button', 'btn green small', b.eq ? 'Equip' : it.type === 'egg' ? 'Hatch' : it.type === 'food' ? 'Eat' : 'Use'); bu.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.useBagItem(i); }; acts.appendChild(bu); }
         if (!it || it.type !== 'quest') { const bs = h('button', 'btn gray small', 'Sell'); bs.onclick = () => { const i = this.sel.bagIdx; this.sel.bagIdx = null; g.sell(i); }; acts.appendChild(bs); }
         if (b.eq) { const bl = h('button', 'btn gray small', b.eq.lock ? 'Unlock' : 'Lock'); bl.onclick = () => g.toggleLock(this.sel.bagIdx); acts.appendChild(bl); }
         strip.appendChild(acts);
-      } else strip.innerHTML = '<span class="muted">Tap an item to use, equip or sell it · double-click uses it</span>';
+        if (b.eq) { strip.classList.add('gear'); strip.appendChild(this.gearCard(b.eq)); }
+      } else strip.innerHTML = '<span class="muted">Tap an item to see its stats, then use, equip or sell it · double-click uses it</span>';
       body.appendChild(strip);
       this.bagTools(body);
     }
@@ -870,6 +873,32 @@ export class UI {
     const foot = h('div', 'bag-foot', `<div class="bag-money"><div><span class="gem"></span>Diamonds<b>${fmt(S.diamonds)}</b></div><div><span class="coin"></span>Gold<b>${fmt(S.gold)}</b></div></div>`);
     const mall = h('button', 'bag-mall', `${ico('mall')}<span>Mall</span>`); mall.onclick = () => this.togglePanel('mall'); foot.appendChild(mall);
     body.appendChild(foot);
+  }
+  // a bag item that beats what you wear in its slot: a green arrow (grey while you cannot wear it yet)
+  upgradeMark(eq) {
+    const g = this.g, cur = g.S.equip[eq.slot];
+    if (cur && itemScore(eq) <= itemScore(cur)) return '';
+    const ok = eq.lvl <= g.S.level + 5 && !(g.equipBlock && g.equipBlock(eq));
+    return `<span class="upg${ok ? '' : ' no'}" title="${ok ? 'Better than what you wear' : 'Better, but you cannot wear it yet'}">▲</span>`;
+  }
+  // the selected bag item: its Battle Rating against what you wear, every stat that changes, and its full stat list
+  gearCard(eq) {
+    const g = this.g, S = g.S, cur = S.equip[eq.slot];
+    const lines = itemLines(eq, S.equip, g.gearCtx ? g.gearCtx() : null);
+    const sc = itemScore(eq), d = cur ? Math.round(sc - itemScore(cur)) : null;
+    const box = h('div', 'bs-card');
+    const verdict = d == null ? '<span class="up">Slot empty: a free upgrade</span>' : d > 0 ? `<span class="up">▲ ${fmt(d)} better than equipped</span>` : d < 0 ? `<span class="down">▼ ${fmt(-d)} weaker than equipped</span>` : '<span class="muted">Same as equipped</span>';
+    box.innerHTML = `<div class="bs-head"><span class="bs-sub">${esc(lines[1]?.text || '')}</span><span class="bs-br">BR <b>${fmt(sc)}</b></span></div><div class="bs-verdict">${verdict}</div>`;
+    // the stats that change if you swap (green gains, red losses)
+    if (cur) {
+      const a = itemStats(eq), b = itemStats(cur), NAMES = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: 'Crit %', critDmg: 'Crit Dmg %', speed: 'Speed %', lifesteal: 'Lifesteal %', cdr: 'Cooldown %', expGain: 'EXP %', goldFind: 'Gold %', thorns: 'Thorns %', regen: 'Regen', manaCost: 'MP Cost %', atkPct: 'Attack %', defPct: 'Defense %', hpPct: 'Max HP %', allPct: 'All Stats %', bossPct: 'Boss Dmg %', firePct: 'Fire Dmg %', healPct: 'Healing %', atkSpeed: 'Attack Speed %', regenPct: 'Regen %' };
+      const chips = Object.keys(NAMES).map((k) => [k, (a[k] || 0) - (b[k] || 0)]).filter(([, v]) => Math.abs(v) >= 0.05)
+        .map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${NAMES[k]} ${v > 0 ? '▲' : '▼'}${fmt1(Math.abs(v))}</span>`);
+      if (chips.length) box.appendChild(h('div', 'bs-diff', chips.join('')));
+      box.appendChild(h('div', 'bs-cur', `Equipped: <b style="color:${RARITY[cur.quality].color}">${esc(cur.name)}${cur.enh ? ` +${cur.enh}` : ''}</b> · BR ${fmt(itemScore(cur))}`));
+    }
+    box.appendChild(h('div', 'bs-lines', lines.slice(2).map((l) => `<div style="color:${l.color || 'var(--muted)'}">${esc(l.text)}</div>`).join('')));
+    return box;
   }
   compare(eq) {
     const cur = this.g.S.equip[eq.slot];

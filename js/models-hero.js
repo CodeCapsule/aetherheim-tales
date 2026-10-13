@@ -468,6 +468,9 @@ function buildHat(head, hy, ha, hb, hc, hat, o, out) {
 // ---------------------------------------------------------------- weapons
 function attachHeroWeapon(P, kind, out, o) {
   const w = new THREE.Group();
+  // where weapon glows and element effects run (weaponfx.js): a segment along each blade, in that object's own space
+  P.wfx = [];
+  const seg = (obj, a, b) => P.wfx.push({ o: obj, a, b });
   const steel = soft(0xdfe6f0, { emissive: 0x161a20 }), wood = 0x7a4a2a, grip = 0x4a2e1e;
   if (kind === 'sword' || kind === 'runesword') {
     const rune = kind === 'runesword';
@@ -478,7 +481,7 @@ function attachHeroWeapon(P, kind, out, o) {
     part(w, cyl(0.035, 0.035, 0.2, 8), grip, 0, 0.02, 0);
     part(w, sph(0.05), out.accent, 0, -0.1, 0);
     w.rotation.x = Math.PI / 2 - 0.25;
-    P.handR.add(w);
+    P.handR.add(w); seg(w, [0, 0.22, 0], [0, 1.06, 0]);
     if (!rune) { // heater shield
       const sh = grp(P.handL, 0.13, 0.1, 0.1, [0, 0.55, 0]);
       part(sh, blob(0.3, 0.34, 0.05, 2.6, -0.45), out.accent, 0, 0, 0);
@@ -494,7 +497,7 @@ function attachHeroWeapon(P, kind, out, o) {
     part(w, blob(0.07, 0.12, 0.07, 2.6), 0x8a8f9a, 0, 0.86, 0);
     part(w, cone(0.05, 0.16, 6), steel, 0, 1.1, 0);
     w.rotation.set(0.25, 0, -0.15); w.position.y = -0.1;
-    P.handR.add(w);
+    P.handR.add(w); seg(w, [-0.36, 0.86, 0], [0.36, 0.86, 0]); seg(w, [0, 0.55, 0], [0, 1.16, 0]);
   } else if (kind === 'daggers') {
     for (const h of [P.handR, P.handL]) {
       const d = new THREE.Group();
@@ -503,7 +506,7 @@ function attachHeroWeapon(P, kind, out, o) {
       part(d, blob(0.11, 0.03, 0.04, 2.6), out.accent, 0, 0.07, 0);
       part(d, cyl(0.03, 0.03, 0.14, 6), 0x2a2030, 0, 0, 0);
       d.rotation.x = Math.PI / 2 - 0.1;
-      h.add(d);
+      h.add(d); seg(d, [0, 0.12, 0], [0, 0.54, 0]);
     }
   } else if (kind === 'bow') {
     const b = grp(P.handL, 0.03, 0, 0.02);
@@ -513,6 +516,8 @@ function attachHeroWeapon(P, kind, out, o) {
     part(b, blob(0.05, 0.11, 0.05, 2.6), grip, 0, 0, 0);
     const str = part(b, cyl(0.007, 0.007, 2 * R * Math.sin(arc / 2), 4), 0xf4f0e0, 0, 0, R * Math.cos(arc / 2) - R);
     P.string = str;
+    const tip = R * Math.cos(arc / 2) - R, end = R * Math.sin(arc / 2);
+    seg(b, [0, -end, tip], [0, -0.1, -0.01]); seg(b, [0, 0.1, -0.01], [0, end, tip]);
     P.bow = b; P.weapon = b;
     return;
   } else if (kind === 'staff') {
@@ -522,7 +527,7 @@ function attachHeroWeapon(P, kind, out, o) {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: o.orbColor ?? 0xff7a2a, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.scale.setScalar(0.6); halo.position.y = 1.13; w.add(halo);
     w.rotation.x = 0.1;
-    P.handR.add(w);
+    P.handR.add(w); seg(w, [0, 0.62, 0], [0, 1.24, 0]);
   } else if (kind === 'scepter') {
     part(w, cyl(0.03, 0.035, 0.8, 8), out.trim, 0, 0.25, 0);
     const gem = new THREE.Mesh(G('heroGemL', () => new THREE.OctahedronGeometry(0.11)), glow(0x6fd8ff)); gem.position.y = 0.76; gem.scale.y = 1.5; w.add(gem);
@@ -530,7 +535,7 @@ function attachHeroWeapon(P, kind, out, o) {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x6fd8ff, blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.scale.setScalar(0.5); halo.position.y = 0.76; w.add(halo);
     w.rotation.x = Math.PI / 2 - 0.5;
-    P.handR.add(w);
+    P.handR.add(w); seg(w, [0, 0.3, 0], [0, 0.9, 0]);
     if (o.offOrb !== false) {
       const orb = new THREE.Mesh(sph(0.12), glow(0x8ae0ff)); orb.position.set(0, 0.22, 0.12);
       const h2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x6fd8ff, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -547,6 +552,7 @@ function attachHeroWeapon(P, kind, out, o) {
     const h3 = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x9aff7a, blending: THREE.AdditiveBlending, depthWrite: false }));
     h3.scale.setScalar(0.5); wisp.add(h3);
     P.handR.add(wisp); P.orb = wisp;
+    seg(bk, [-0.14, 0.05, 0], [0.14, 0.05, 0]); seg(wisp, [0, -0.06, 0], [0, 0.1, 0]);
     P.weapon = bk;
     return;
   } else if (kind === 'spear') {

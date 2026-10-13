@@ -8,6 +8,7 @@ import { MP_CONFIG } from './mp-config.js';
 import { buildHumanoid } from './models.js';
 import { cleanApp } from './models-hero.js';
 import { lookFor } from './life.js';
+import { isElement } from './data-elements.js';
 
 const LIB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -66,6 +67,7 @@ function cleanInfo(m) {
     x: num(m.x, -400, 400, 0), z: num(m.z, -400, 400, 9),
     party: /^[a-z0-9]{4,16}$/.test(m.party) ? m.party : null, pj: num(m.pj, 0, 1e13, 0),
     aura: /^#[0-9a-f]{6}$/i.test(m.aura) ? m.aura : null, pr: cleanFirsts(m.pr), gt: num(m.gt, 0, 7, 0) | 0, dawn: !!m.dawn,
+    wg: num(m.wg, 0, 4, 0) | 0, we: isElement(m.we) ? m.we : null,
   };
 }
 
@@ -115,7 +117,7 @@ const M = {
       id: mp.id, name: S.name, cls: S.cls, gender: S.gender, hair: S.hair, eye: S.eye, app: S.app, level: S.level, guild: S.guild?.name || null,
       wings: !!S.wings, wingColor: S.wingColor || null, costume: S.costume || {}, mount: this.mounted ? S.activeMount : null, pet: S.activePet || null,
       zone: this.trial ? 'Breakthrough Trial' : this.dg ? this.dg.def.name : this.war ? 'Guild War' : (this.zone?.name || 'Carlyle'), map: where, br: this.br || 0,
-      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, dawn: !!(this.hasFx && this.hasFx('six_dawn6')),
+      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, ...(this.weaponLook ? this.weaponLook() : {}), dawn: !!(this.hasFx && this.hasFx('six_dawn6')),
     };
     if (!stable) { info.x = Math.round(p.pos.x * 10) / 10; info.z = Math.round(p.pos.z * 10) / 10; }
     return info;
@@ -216,7 +218,7 @@ const M = {
   mpEnsure(key) {
     const pr = mp.peers.get(key); if (!pr) return;
     const info = pr.info;
-    const sig = JSON.stringify([info.cls, info.app, info.gender, info.hair, info.eye, info.wings, info.wingColor, info.costume, info.mount, info.pet, info.name, info.level, info.guild, info.aura, info.gt]);
+    const sig = JSON.stringify([info.cls, info.app, info.gender, info.hair, info.eye, info.wings, info.wingColor, info.costume, info.mount, info.pet, info.name, info.level, info.guild, info.aura, info.gt, info.wg, info.we]);
     let e = this.rplayers.find((x) => x.peerId === key);
     if (e && e.sig === sig) return;
     const keepPos = e ? { x: e.pos.x, z: e.pos.z, yaw: e.yaw } : null;
@@ -238,11 +240,13 @@ const M = {
     this.nameplate(e, `${g}<div class="n">${esc(info.name)}</div><div class="t">Lv ${info.level} ${esc(CLASSES[info.cls].name)}</div>`, 'rp');
     if (info.aura && this.applyAura) this.applyAura(e, info.aura);
     if (info.gt >= 5 && this.applyGearGlow) this.applyGearGlow(e, info.gt); // Legendary-and-up gear glows for everyone
+    if ((info.wg || info.we) && this.applyWeaponFx) this.applyWeaponFx(e, info.cls, info.wg, info.we); // weapon glow and element (weaponfx.js)
     this.rplayers.push(e);
   },
   mpRemove(key) {
     const e = this.rplayers.find((x) => x.peerId === key); if (!e) return;
     if (e.petModel) this.scene.remove(e.petModel);
+    if (e.wfx) { e.wfx.dispose(); e.wfx = null; }
     e.bubble?.remove();
     this.removeEnt(e);
     this.rplayers = this.rplayers.filter((x) => x !== e);

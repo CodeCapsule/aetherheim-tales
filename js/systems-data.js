@@ -3,6 +3,7 @@
 import { NEW_MATERIALS, RELICS, NEW_MONSTERS, DUNGEON_MONSTERS, GATHER } from './data-world.js';
 import { TAILOR_MATS } from './data-crafting.js';
 import { RAW_MEAT } from './data-trials.js';
+import { ELEMENTS, crystalId, INFUSE_CRYSTALS } from './data-elements.js';
 
 // ---------------------------------------------------------------- time keys (UTC, so every reset happens at 00:00 UTC)
 export const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
@@ -113,6 +114,8 @@ const MAT_DESC = { ore: 'Ore mined from a vein. Smelted into gear by Smithing.',
 for (const [id, [name, quality, price]] of Object.entries(NEW_MATERIALS)) MATERIALS[id] = { name, icon: id, quality, price, desc: MAT_DESC[id.split('_')[0]] || '' };
 for (const [id, [name, quality, price, desc]] of Object.entries(TAILOR_MATS)) MATERIALS[id] = { name, icon: id, quality, price, desc };
 MATERIALS.raw_meat = RAW_MEAT;
+// element crystals: three infuse a weapon with their element at Gorm's forge (data-elements.js)
+for (const [el, E] of Object.entries(ELEMENTS)) MATERIALS[crystalId(el)] = { name: E.crystal, icon: crystalId(el), quality: 3, price: 900, desc: `Gorm infuses a weapon with ${E.name} using ${INFUSE_CRYSTALS} of these: ${E.bonus}, and a ${E.name.toLowerCase()} glow.` };
 for (const [id, r] of Object.entries(RELICS)) MATERIALS[id] = { name: r.name, icon: id, quality: 5, price: 4000, relic: r.dungeon, desc: 'A dungeon collection relic. Register it in the Collection and combine a full set of four into Red gear at the Forge.' };
 
 // [material, chance, min, max] rolled when a tagged monster dies
