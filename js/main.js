@@ -19,6 +19,7 @@ import { getServer, setServer, mpEnabled, SERVERS, peekServers, stopPeek } from 
 import { fitTouch, UIZ } from './touchfit.js';
 import { gmUnlocked, gmUnlock, loadGmSave, initGmSave } from './gm.js';
 import { watchUpdates } from './update.js';
+import { initLandscape } from './landscape.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -42,6 +43,7 @@ function loadSave() {
 
 async function init() {
   fitTouch();
+  initLandscape(); // phones: full screen and sideways on the first tap
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);

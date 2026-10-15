@@ -26,6 +26,7 @@ import { trialLabel } from './data-trials.js';
 import { TOOL_KINDS, TOOL_METAL, NODE_WORD, toolId } from './data-crafting.js';
 import { DAY_MIN, WEATHER_MIN } from './sky.js';
 import { UIZ, vw, vh } from './touchfit.js';
+import { isPhone, landscapeOn, setLandscape } from './landscape.js';
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -1279,6 +1280,13 @@ export class UI {
       b.onclick = () => { g.setSetting(key, !S.settings[key]); this.refreshSound(); this.renderPanel(); };
       s.appendChild(b);
     };
+    // phones: full screen and sideways (kept on this device, not in the save)
+    if (isPhone()) {
+      s.appendChild(h('span', '', 'Play in landscape (full screen)'));
+      const b = h('button', 'switch' + (landscapeOn() ? ' on' : '')); b.setAttribute('aria-label', 'Play in landscape (full screen)'); b.setAttribute('aria-pressed', landscapeOn());
+      b.onclick = () => { setLandscape(!landscapeOn()); this.renderPanel(); };
+      s.appendChild(b);
+    }
     row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Weather effects (rain, snow, petals, leaves)', 'weather'); row('Sound & music', 'sound'); row('Sound captions (trial cues as text)', 'captions');
     body.appendChild(s);
     const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap';

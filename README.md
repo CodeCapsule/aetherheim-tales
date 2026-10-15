@@ -343,6 +343,11 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   buttons beside the joystick and the skills (narrower phones lift it just above those buttons). Phones whose browser asks for the desktop site (the "Desktop site" switch) used to get a
   tiny desktop layout with no joystick: the game now spots a touch screen laid out wider than the phone and scales its
   interface back to the phone's real width, so the touch layout appears either way.
+- **Phones play in landscape**: the first tap puts the game in full screen and turns it sideways (Android browsers such
+  as Chrome, Brave and Samsung Internet; a web page can only turn the screen while it is in full screen). Leaving full
+  screen with the Back button and tapping again goes back. iPhones cannot be turned by a web page, so held upright
+  they ask you to turn the phone (or play upright). Settings has a **Play in landscape** switch to turn it off on this
+  phone; tablets and computers are never changed.
 - **Icons**: every icon is a hand-made SVG in `js/icons/`, so nothing depends on the device's emoji font.
 
 ## Controls
@@ -419,3 +424,4 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/ui-life.js` | Professions, farm, Crimson Forge, collection, wardrobe, shop, auction and Online panels |
 | `js/main.js` | Boot, title screen, character creation and main loop |
 | `js/touchfit.js` | Phones asking for the desktop site: zooms the interface back to the phone width and rescales the breakpoints |
+| `js/landscape.js` | Phones: full screen and landscape on the first tap, the turn-your-phone hint, the Settings switch |
