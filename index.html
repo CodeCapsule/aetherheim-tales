@@ -477,6 +477,8 @@ button { font-family: inherit; }
 .rank-row .rk { font-family: var(--f-num); font-weight: 400; font-size: 16px; text-align: center; }
 .rank-row .rk.top1 { color: #ffd84a; } .rank-row .rk.top2 { color: #d8e0f0; } .rank-row .rk.top3 { color: #e8a060; }
 .settings { display: grid; grid-template-columns: 1fr auto; gap: 12px 18px; align-items: center; font-size: 14px; }
+.set-head { margin: 16px 0 8px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .12); font-weight: 800; color: #ffe7a8; } .set-head small { font-weight: 400; color: var(--muted); } .set-head .ico.inl { width: 18px; height: 18px; vertical-align: -4px; }
+.set-chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; } .set-chips .chip { padding: 3px 8px; font-size: 12px; }
 .switch { width: 52px; height: 26px; border-radius: 13px; border: 2px solid var(--gold-d); background: rgba(0, 0, 0, .5); position: relative; cursor: pointer; padding: 0; }
 .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #888; transition: left .15s, background .15s; }
 .switch.on::after { left: 28px; background: linear-gradient(180deg, #ffe07a, #f0a020); }
@@ -522,6 +524,40 @@ button { font-family: inherit; }
 .cell .ghost { display: block; width: 84%; height: 84%; opacity: .28; filter: grayscale(.6); }
 .cell .ghost .ico { width: 100%; height: 100%; }
 .sday .si .ico { width: 40px; height: 40px; margin: 0 auto; }
+/* ---- daily sign-in streak ---- */
+.si-streak { display: grid; gap: 4px; margin-bottom: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 216, 74, .08); border: 1px solid rgba(255, 216, 74, .3); font-size: 12px; }
+.si-streak > b { font-family: var(--f-num); font-size: 20px; color: #ffe27a; font-weight: 400; }
+.si-streak .bar { height: 8px; border-radius: 4px; background: rgba(0, 0, 0, .4); overflow: hidden; } .si-streak .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd84a, #ff8a2a); }
+/* ---- Combat Power and Attribute Stars ---- */
+.br-big small { font-size: 13px; color: #ffe7a8; margin-right: -4px; }
+.star-open { display: block; margin: -4px auto 8px; }
+.st-sum { font-size: 12px; margin-bottom: 8px; line-height: 1.5; }
+.st-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.st-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 64px; padding: 4px 2px; border-radius: 10px; cursor: pointer; color: #fff; font: inherit; font-size: 11px;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .12), rgba(20, 24, 50, .8)); border: 2px solid rgba(255, 255, 255, .15); }
+.st-cell .star { font-size: 22px; line-height: 1; } .st-cell b { font-size: 11px; } .st-cell small { font-size: 11px; color: #e8f0ff; } .st-cell .tp { font-style: normal; color: #ffe27a; letter-spacing: 1px; font-size: 10px; line-height: 1; }
+.st-cell.locked { opacity: .45; cursor: default; } .st-cell.locked .sn { font-family: var(--f-num); font-size: 16px; }
+.st-cell.ready { border-color: #ffd84a; box-shadow: 0 0 10px rgba(255, 216, 74, .55); animation: stPulse 1.6s ease-in-out infinite; } .st-cell.ready .star { color: #ffe27a; }
+.st-cell.on { border-color: rgba(255, 216, 74, .5); } .st-cell.sel { outline: 2px solid var(--gold); outline-offset: 1px; }
+@keyframes stPulse { 50% { box-shadow: 0 0 18px rgba(255, 216, 74, .9); } }
+.st-det2 { margin-top: 10px; } .st-roll { margin: 8px 0 4px; font-size: 13px; } .st-det2 .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.st-acts { display: grid; gap: 6px; margin-top: 8px; } .st-act { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+.st-act small { display: block; color: var(--muted); font-size: 11px; } .st-act .cost .ico.inl { width: 16px; height: 16px; vertical-align: -3px; }
+@media (max-width: 520px) { .st-grid { grid-template-columns: repeat(3, 1fr); } }
+/* ---- Star Wish ---- */
+.wish-board { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, auto); gap: 6px; }
+.wish-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 76px; padding: 4px; border-radius: 10px; text-align: center; font-size: 11px; line-height: 1.15;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .14), rgba(30, 24, 70, .85)); border: 2px solid rgba(255, 255, 255, .15); transition: transform .08s; }
+.wish-cell .ico, .wish-cell img { width: 36px; height: 36px; }
+.wish-cell.rare { border-color: rgba(196, 107, 255, .7); } .wish-cell.grand { border-color: #ffd84a; background: radial-gradient(circle at 50% 30%, rgba(255, 240, 180, .35), rgba(90, 50, 10, .9)); }
+.wish-cell.hl { transform: scale(1.06); border-color: #fff; box-shadow: 0 0 16px #fff6c0, inset 0 0 12px rgba(255, 246, 192, .7); }
+.wish-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; text-align: center; font-size: 12px; border-radius: 12px; background: rgba(0, 0, 0, .25); }
+.wish-mid .wm-t { display: flex; align-items: center; gap: 6px; font-size: 16px; } .wish-mid .wm-t .ico { width: 34px; height: 34px; }
+.wish-mid .wm-acts { display: flex; flex-direction: column; gap: 6px; }
+.wish-got { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 12px; } .wish-got > b { flex-basis: 100%; }
+.wish-got .wg { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 999px; background: rgba(255, 255, 255, .08); }
+.wish-got .wg .ico, .wish-got .wg img { width: 22px; height: 22px; } .wish-got .wg.rare { background: rgba(196, 107, 255, .3); } .wish-got .wg.grand { background: rgba(255, 216, 74, .4); }
+@media (max-width: 520px) { .wish-cell { min-height: 62px; font-size: 10px; } .wish-cell .ico, .wish-cell img { width: 28px; height: 28px; } }
 .class-card .ci .ico { width: 80%; height: 80%; }
 .dice .ico { width: 26px; height: 26px; margin: auto; }
 .big-rbtn .ico { width: 30px; height: 30px; }
@@ -938,6 +974,11 @@ button { font-family: inherit; }
 .enh-res { margin-top: 4px; font-family: var(--f-num); font-size: 16px; } .enh-box.ok .enh-res { color: #9affb0; } .enh-box.fail .enh-res { color: #ff8a7a; }
 .enh-ctl .ck { display: block; margin-top: 6px; font-size: 12px; } .enh-ctl .ck .ico { width: 18px; height: 18px; vertical-align: -4px; }
 .btn.big-ish { padding: 10px 22px; font-size: 16px; }
+.lucky-box { border-color: rgba(255, 216, 74, .35); } .lucky-box .ico.inl { width: 18px; height: 18px; vertical-align: -4px; } .lucky-box .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.free-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #2ab03a; color: #fff; font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.reforge-pick { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; margin: 4px 0; border-radius: 8px; background: rgba(196, 107, 255, .12); border: 1px solid rgba(196, 107, 255, .4); }
+.reforge-pick .rp-col { flex: 1 1 140px; font-size: 12px; } .reforge-pick .rp-col.new { color: #9affb0; } .reforge-pick .rp-col b { display: block; color: #ffe7a8; margin-bottom: 2px; }
+.reforge-pick .acts-row { flex-basis: 100%; display: flex; gap: 8px; }
 .refinery { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .1); }
 .refinery .ico.inl, .row .cost .ico.inl { width: 16px; height: 16px; vertical-align: -3px; }
 .socket.soul { box-shadow: 0 0 16px #ff9ae8, inset 0 0 12px rgba(255, 154, 232, .5); }
@@ -1325,7 +1366,7 @@ button { font-family: inherit; }
   #hud-chat.open .chat-log { max-height: calc(100vh - 270px); }
 }
 
-/* ---- party frame fixes: bars fit the panel, buffs share the BR line, compact party in landscape ---- */
+/* ---- party frame fixes: bars fit the panel, buffs share the CP line, compact party in landscape ---- */
 #hud-party .bar { width: auto; border-width: 0; box-shadow: none; }
 .pf-br { display: inline-flex; vertical-align: middle; }
 #pf-buffs { display: inline-flex; gap: 3px; margin: 0 0 0 6px; vertical-align: middle; max-width: 136px; overflow: hidden; }
@@ -1359,7 +1400,7 @@ button { font-family: inherit; }
 .bag-sel .bs-name { flex: 1 1 110px; min-width: 0; display: flex; flex-direction: column; }
 .bag-sel .bs-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .bag-sel .bs-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10.5px; }
-/* the selected gear: Battle Rating against what you wear, the stats that change, and the full stat list */
+/* the selected gear: Combat Power against what you wear, the stats that change, and the full stat list */
 .bag-sel.gear { flex-wrap: wrap; padding: 6px; }
 .bs-card { flex-basis: 100%; display: grid; gap: 4px; min-width: 0; font-size: 11.5px; }
 .bs-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #b6c2dc; }
@@ -1448,6 +1489,12 @@ button { font-family: inherit; }
 .sk-row.t-passive .sk-r { color: #9ae8ff; }
 .sk-acts { display: flex; flex-direction: column; gap: 6px; }
 .slot.ult { border-color: #ffd84a; box-shadow: 0 0 8px rgba(255, 216, 74, .45); }
+/* the Limit Break gauge fills slot 7 from the bottom; a full gauge pulses */
+.slot .lbg { position: absolute; left: 0; right: 0; bottom: 0; height: var(--lb, 0%); z-index: 0; pointer-events: none; background: linear-gradient(0deg, rgba(255, 190, 40, .75), rgba(255, 236, 150, .25)); transition: height .25s; }
+.slot .ic { z-index: 1; }
+.slot.lbslot .ic { filter: grayscale(.85) brightness(.75); } .slot.lbslot.lbfull .ic { filter: none; }
+.slot.lbfull { border-color: #fff3b0; animation: lbPulse 1s ease-in-out infinite; }
+@keyframes lbPulse { 50% { box-shadow: 0 0 18px #ffd84a, 0 0 4px #fff inset; } }
 .slot.empty { border-style: dashed; opacity: .75; }
 /* ---- character customizer ---- */
 .cz-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
@@ -1751,7 +1798,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
         <div class="pf-name stroke"><span id="pf-name"></span><span class="pf-vip">VIP 1</span></div>
         <div class="bar hp"><i id="pf-hp"></i><span id="pf-hp-t"></span></div>
         <div class="bar mp"><i id="pf-mp"></i><span id="pf-mp-t"></span></div>
-        <div class="pf-br"><span class="flame"></span>BR <b id="pf-br">0</b></div>
+        <div class="pf-br"><span class="flame"></span>CP <b id="pf-br">0</b></div>
         <div id="pf-buffs"></div>
       </div>
     </div>
@@ -1816,7 +1863,7 @@ html.uiz #hud, html.uiz #panels, html.uiz #dialog, html.uiz #modal, html.uiz #to
   <div id="modal" hidden></div>
   <div id="tooltip" class="frame" hidden></div>
 </div>
-<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "./js/admin.js": "./js/admin.js?v=1792037839490", "./js/aggro.js": "./js/aggro.js?v=1792037839490", "./js/build.js": "./js/build.js?v=1792037839490", "./js/combat-world.js": "./js/combat-world.js?v=1792037839490", "./js/combat.js": "./js/combat.js?v=1792037839490", "./js/customizer.js": "./js/customizer.js?v=1792037839490", "./js/data-classes.js": "./js/data-classes.js?v=1792037839490", "./js/data-crafting.js": "./js/data-crafting.js?v=1792037839490", "./js/data-dz.js": "./js/data-dz.js?v=1792037839490", "./js/data-elements.js": "./js/data-elements.js?v=1792037839490", "./js/data-guide.js": "./js/data-guide.js?v=1792037839490", "./js/data-nav.js": "./js/data-nav.js?v=1792037839490", "./js/data-pets.js": "./js/data-pets.js?v=1792037839490", "./js/data-sets.js": "./js/data-sets.js?v=1792037839490", "./js/data-story.js": "./js/data-story.js?v=1792037839490", "./js/data-trials.js": "./js/data-trials.js?v=1792037839490", "./js/data-world.js": "./js/data-world.js?v=1792037839490", "./js/data.js": "./js/data.js?v=1792037839490", "./js/drops.js": "./js/drops.js?v=1792037839490", "./js/dungeon.js": "./js/dungeon.js?v=1792037839490", "./js/dz.js": "./js/dz.js?v=1792037839490", "./js/economy.js": "./js/economy.js?v=1792037839490", "./js/fx.js": "./js/fx.js?v=1792037839490", "./js/game.js": "./js/game.js?v=1792037839490", "./js/gather.js": "./js/gather.js?v=1792037839490", "./js/gear.js": "./js/gear.js?v=1792037839490", "./js/gm-config.js": "./js/gm-config.js?v=1792037839490", "./js/gm.js": "./js/gm.js?v=1792037839490", "./js/gmnet.js": "./js/gmnet.js?v=1792037839490", "./js/guide.js": "./js/guide.js?v=1792037839490", "./js/icons.js": "./js/icons.js?v=1792037839490", "./js/icons/classes.js": "./js/icons/classes.js?v=1792037839490", "./js/icons/elements.js": "./js/icons/elements.js?v=1792037839490", "./js/icons/extra.js": "./js/icons/extra.js?v=1792037839490", "./js/icons/extra2.js": "./js/icons/extra2.js?v=1792037839490", "./js/icons/items.js": "./js/icons/items.js?v=1792037839490", "./js/icons/skills.js": "./js/icons/skills.js?v=1792037839490", "./js/icons/trials.js": "./js/icons/trials.js?v=1792037839490", "./js/icons/ui.js": "./js/icons/ui.js?v=1792037839490", "./js/icons/upgrade.js": "./js/icons/upgrade.js?v=1792037839490", "./js/landscape.js": "./js/landscape.js?v=1792037839490", "./js/life.js": "./js/life.js?v=1792037839490", "./js/live.js": "./js/live.js?v=1792037839490", "./js/loot.js": "./js/loot.js?v=1792037839490", "./js/main.js": "./js/main.js?v=1792037839490", "./js/models-dungeon.js": "./js/models-dungeon.js?v=1792037839490", "./js/models-event.js": "./js/models-event.js?v=1792037839490", "./js/models-extra.js": "./js/models-extra.js?v=1792037839490", "./js/models-hero.js": "./js/models-hero.js?v=1792037839490", "./js/models-monsters.js": "./js/models-monsters.js?v=1792037839490", "./js/models.js": "./js/models.js?v=1792037839490", "./js/mp-config.js": "./js/mp-config.js?v=1792037839490", "./js/mp.js": "./js/mp.js?v=1792037839490", "./js/nav-world.js": "./js/nav-world.js?v=1792037839490", "./js/nav.js": "./js/nav.js?v=1792037839490", "./js/party.js": "./js/party.js?v=1792037839490", "./js/portrait.js": "./js/portrait.js?v=1792037839490", "./js/progress.js": "./js/progress.js?v=1792037839490", "./js/sfx.js": "./js/sfx.js?v=1792037839490", "./js/sky.js": "./js/sky.js?v=1792037839490", "./js/social.js": "./js/social.js?v=1792037839490", "./js/systems-data.js": "./js/systems-data.js?v=1792037839490", "./js/systems.js": "./js/systems.js?v=1792037839490", "./js/tailor.js": "./js/tailor.js?v=1792037839490", "./js/toon.js": "./js/toon.js?v=1792037839490", "./js/touchfit.js": "./js/touchfit.js?v=1792037839490", "./js/trade.js": "./js/trade.js?v=1792037839490", "./js/trials.js": "./js/trials.js?v=1792037839490", "./js/ui-life.js": "./js/ui-life.js?v=1792037839490", "./js/ui-systems.js": "./js/ui-systems.js?v=1792037839490", "./js/ui-trials.js": "./js/ui-trials.js?v=1792037839490", "./js/ui.js": "./js/ui.js?v=1792037839490", "./js/update.js": "./js/update.js?v=1792037839490", "./js/upgrade.js": "./js/upgrade.js?v=1792037839490", "./js/weaponfx.js": "./js/weaponfx.js?v=1792037839490", "./js/world.js": "./js/world.js?v=1792037839490"}}</script>
-<script type="module" src="./js/main.js?v=1792037839490"></script>
+<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "./js/admin.js": "./js/admin.js?v=1792050448916", "./js/aggro.js": "./js/aggro.js?v=1792050448916", "./js/autofight.js": "./js/autofight.js?v=1792050448916", "./js/build.js": "./js/build.js?v=1792050448916", "./js/combat-world.js": "./js/combat-world.js?v=1792050448916", "./js/combat.js": "./js/combat.js?v=1792050448916", "./js/customizer.js": "./js/customizer.js?v=1792050448916", "./js/data-classes.js": "./js/data-classes.js?v=1792050448916", "./js/data-crafting.js": "./js/data-crafting.js?v=1792050448916", "./js/data-dz.js": "./js/data-dz.js?v=1792050448916", "./js/data-elements.js": "./js/data-elements.js?v=1792050448916", "./js/data-guide.js": "./js/data-guide.js?v=1792050448916", "./js/data-nav.js": "./js/data-nav.js?v=1792050448916", "./js/data-pets.js": "./js/data-pets.js?v=1792050448916", "./js/data-sets.js": "./js/data-sets.js?v=1792050448916", "./js/data-story.js": "./js/data-story.js?v=1792050448916", "./js/data-trials.js": "./js/data-trials.js?v=1792050448916", "./js/data-world.js": "./js/data-world.js?v=1792050448916", "./js/data.js": "./js/data.js?v=1792050448916", "./js/drops.js": "./js/drops.js?v=1792050448916", "./js/dungeon.js": "./js/dungeon.js?v=1792050448916", "./js/dz.js": "./js/dz.js?v=1792050448916", "./js/economy.js": "./js/economy.js?v=1792050448916", "./js/fx.js": "./js/fx.js?v=1792050448916", "./js/game.js": "./js/game.js?v=1792050448916", "./js/gather.js": "./js/gather.js?v=1792050448916", "./js/gear.js": "./js/gear.js?v=1792050448916", "./js/gm-config.js": "./js/gm-config.js?v=1792050448916", "./js/gm.js": "./js/gm.js?v=1792050448916", "./js/gmnet.js": "./js/gmnet.js?v=1792050448916", "./js/guide.js": "./js/guide.js?v=1792050448916", "./js/icons.js": "./js/icons.js?v=1792050448916", "./js/icons/classes.js": "./js/icons/classes.js?v=1792050448916", "./js/icons/elements.js": "./js/icons/elements.js?v=1792050448916", "./js/icons/extra.js": "./js/icons/extra.js?v=1792050448916", "./js/icons/extra2.js": "./js/icons/extra2.js?v=1792050448916", "./js/icons/items.js": "./js/icons/items.js?v=1792050448916", "./js/icons/skills.js": "./js/icons/skills.js?v=1792050448916", "./js/icons/trials.js": "./js/icons/trials.js?v=1792050448916", "./js/icons/ui.js": "./js/icons/ui.js?v=1792050448916", "./js/icons/upgrade.js": "./js/icons/upgrade.js?v=1792050448916", "./js/landscape.js": "./js/landscape.js?v=1792050448916", "./js/life.js": "./js/life.js?v=1792050448916", "./js/limit.js": "./js/limit.js?v=1792050448916", "./js/live.js": "./js/live.js?v=1792050448916", "./js/loot.js": "./js/loot.js?v=1792050448916", "./js/main.js": "./js/main.js?v=1792050448916", "./js/models-dungeon.js": "./js/models-dungeon.js?v=1792050448916", "./js/models-event.js": "./js/models-event.js?v=1792050448916", "./js/models-extra.js": "./js/models-extra.js?v=1792050448916", "./js/models-hero.js": "./js/models-hero.js?v=1792050448916", "./js/models-monsters.js": "./js/models-monsters.js?v=1792050448916", "./js/models.js": "./js/models.js?v=1792050448916", "./js/mp-config.js": "./js/mp-config.js?v=1792050448916", "./js/mp.js": "./js/mp.js?v=1792050448916", "./js/nav-world.js": "./js/nav-world.js?v=1792050448916", "./js/nav.js": "./js/nav.js?v=1792050448916", "./js/party.js": "./js/party.js?v=1792050448916", "./js/portrait.js": "./js/portrait.js?v=1792050448916", "./js/progress.js": "./js/progress.js?v=1792050448916", "./js/sfx.js": "./js/sfx.js?v=1792050448916", "./js/sky.js": "./js/sky.js?v=1792050448916", "./js/social.js": "./js/social.js?v=1792050448916", "./js/stars.js": "./js/stars.js?v=1792050448916", "./js/systems-data.js": "./js/systems-data.js?v=1792050448916", "./js/systems.js": "./js/systems.js?v=1792050448916", "./js/tailor.js": "./js/tailor.js?v=1792050448916", "./js/toon.js": "./js/toon.js?v=1792050448916", "./js/touchfit.js": "./js/touchfit.js?v=1792050448916", "./js/trade.js": "./js/trade.js?v=1792050448916", "./js/trials.js": "./js/trials.js?v=1792050448916", "./js/ui-life.js": "./js/ui-life.js?v=1792050448916", "./js/ui-systems.js": "./js/ui-systems.js?v=1792050448916", "./js/ui-trials.js": "./js/ui-trials.js?v=1792050448916", "./js/ui.js": "./js/ui.js?v=1792050448916", "./js/update.js": "./js/update.js?v=1792050448916", "./js/upgrade.js": "./js/upgrade.js?v=1792050448916", "./js/weaponfx.js": "./js/weaponfx.js?v=1792050448916", "./js/wish.js": "./js/wish.js?v=1792050448916", "./js/world.js": "./js/world.js?v=1792050448916"}}</script>
+<script type="module" src="./js/main.js?v=1792050448916"></script>
 </body>
 </html>

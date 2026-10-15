@@ -71,7 +71,7 @@ const P = {
       det.appendChild(h('div', 'needs', this.costLine(g.sigilCost(T.n))));
       const acts = h('div', 'acts');
       const cb = h('button', 'btn', 'Craft Sigil'); cb.disabled = !g.canAfford(g.sigilCost(T.n)); cb.onclick = () => g.craftSigil(T.n); acts.appendChild(cb);
-      const eb = h('button', 'btn green', 'Enter Trial'); eb.disabled = !!why; eb.title = why; eb.onclick = () => this.modal(`Enter ${trialLabel(T.n)}?`, `${T.challenge}. One attempt uses your sigil. Your stats become the fixed ${CLASSES[S.cls].name} values for Lv ${T.lv}; pets stay behind and auto-hit is off.`, [{ label: 'Enter', fn: () => { this.closePanels(); g.enterTrial(T.n); } }, { label: 'Not yet', cls: 'gray' }]);
+      const eb = h('button', 'btn green', 'Enter Trial'); eb.disabled = !!why; eb.title = why; eb.onclick = () => this.modal(`Enter ${trialLabel(T.n)}?`, `${T.challenge}. One attempt uses your sigil. Your stats become the fixed ${CLASSES[S.cls].name} values for Lv ${T.lv}; pets stay behind and auto-fight is off.`, [{ label: 'Enter', fn: () => { this.closePanels(); g.enterTrial(T.n); } }, { label: 'Not yet', cls: 'gray' }]);
       acts.appendChild(eb);
       det.appendChild(acts);
       if (why && why !== 'Needs a Trial Sigil') det.appendChild(h('div', 'muted', esc(why)));

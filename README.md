@@ -59,8 +59,18 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   Bolt, Flash Step, Runic Ward, Arcane Wave, Rune Nova.
 - **Action combat**: a low dodge roll (Shift) with invulnerable frames, where the first 0.2 s is a perfect dodge; Space
   jumps; Guardians block from the front (hold the right mouse button; a just-in-time block stops the hit); parries; aimed skills that land at the cursor
-  (or straight ahead); a stamina bar for rolls. Auto-hit (T) fights the nearest enemy from where you stand but never
-  moves, dodges or picks a path, and it is off inside dungeons and trials.
+  (or straight ahead); a stamina bar for rolls.
+- **Auto-fight (T or the Auto button)**: a hunting and questing helper for the open world (off in dungeons, trials and
+  guild wars). It walks to monsters within 15, 30 or 50 m of where you turned it on, fights them with your skills,
+  drinks potions at the HP share you choose, gathers the loot and comes back; whatever attacks you is fought first.
+  With **Quests** on it hunts the monsters your story quest or bounty asks for at their grounds, then walks back to the
+  quest giver, hands the quest in and takes the next one. Settings > Auto-fight turns each part on or off (with Hunt
+  off it only fights what is within reach, without moving) and can leave elites and bosses alone. Steering your hero
+  moves the hunting spot, and any move, click or skill of your own always works.
+- **Limit Break**: a gauge on skill slot 7 fills as you fight (hits you land, hits you take, kills; elites and bosses
+  fill it faster). Until the Lv 200 ultimate, slot 7 holds the Limit Break itself: with a full gauge it unleashes a
+  burst that strikes everything within 8 m for 900% attack, stuns for 1.5 s and lifts your attack 15% for 8 s. Once
+  you have an ultimate, a full gauge readies it at once even while it is cooling down. Trials leave the gauge alone.
 - **Earned levels**: the next level takes floor(500 x L^2.2) XP (about 57 million from 199 to 200). Killing the same
   monster type over and over pays 5% less each time (down to 10%, recovering while you hunt elsewhere); monsters 3-5
   levels below you give 60%, 6-9 levels 20% and 10+ nothing. First visits pay discovery XP: a new zone 2% of a level, a
@@ -71,7 +81,7 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 - **Masteries**: Weapon (hits and skills with your weapon type), Defense (blocks, dodges and parries; a perfect dodge
   counts three times) and Survival (exploring, gathering, crafting, cooking) run from 1 to 200. They never hold back a
   level-up; they unlock skill ranks above 5, higher gear tiers and map copying. They only grow against enemies within 5
-  levels, and auto-hit kills in the open world give half. The Hero window always shows XP left, your masteries and the
+  levels, and auto-fight kills in the open world give half. The Hero window always shows XP left, your masteries and the
   next trial.
 - **Breakthrough trials**: a wall stands at Lv 20, 40, 60 ... 180, with the Final Ascension at 200. At Thalia the Trial
   Warden (Sylvan Haven) you craft a Trial Sigil from your bracket's ore, wood, herbs and spirit dust. Each trial is a
@@ -157,8 +167,10 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 - **Six-piece sets** (helmet, armor, gloves, boots, necklace, ring; bonuses at 2, 4 and 6 pieces): Wayfarer's Garb,
   Ironbound Guard, Shadowstep, Emberheart, Tidewarden, Crown of the Fallen King, Bloodsworn Pact and Relics of the First
   Dawn, plus the beast sets Minotaur, Griffin, Basilisk, Hydra, Kraken, Cerberus, Phoenix, Fenrir and Jörmungandr. They
-  drop from field elites, world bosses, dungeon chests, hidden ruins and trials. Battle Rating is level x 100 + gear x
-  tier multiplier + average mastery x 50, and it is only a guide: content gates use level, mastery and trials.
+  drop from field elites, world bosses, dungeon chests, hidden ruins and trials.
+- **Combat Power (CP)**: level x 100 + gear x tier multiplier + average mastery x 50, plus your summoned pet, sprite,
+  every mount you own, your guild and Codex bonuses and your Attribute Stars. Hover it in the Hero window (C) to see each
+  part. It is only a guide: content gates use level, mastery and trials.
 - **Loot**: gear drops on the ground with a light beam in its rarity color. Unique and Legendary items are named and
   carry a special power, such as chain lightning, meteor strikes every 6th hit, phoenix rebirth or a healing nova. Loot
   auto-collects (toggle in Settings).
@@ -189,6 +201,14 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   next try (up to +25%), and from +7 a failure drops the item one level unless a Protection Charm is used. Lucky Charms
   add +15%. Base stats grow 7% per level with bonus steps at +5, +10 and +15 (x2.6 at +15), and affixes grow from +10.
   Stones drop from monsters and dungeon chests, are sold by Hilda and refine 5 into 1 of the next tier.
+- **Lucky Points and Perfect Enhancement**: every failed enhancement adds Lucky Points (1 at +2 up to 24 at +15).
+  Spend them under the Enhance button on a **Perfect Enhancement**, which cannot fail and needs no stones or gold
+  (10 points x the target level; **Perfect to +N** keeps going while the points last). Lucky Tickets (Hilda, 30
+  Diamonds; the Star Wish; the 10-day sign-in bonus) add 20 points each.
+- **Attribute Stars**: from Lv 34 a new star opens every 2 levels, 18 in all by Lv 68 (the Hero window's **Attribute
+  Stars** button). Awakening a star is free and rolls one stat (Attack, Max HP, Defense, Critical chance, Critical
+  damage, Dodge or Skill damage) with a value in its range. Upgrading a star (gold and Star Essence) raises the top of
+  its range through five tiers; a re-roll draws a new value, or a new stat, which you keep or discard.
 - **Weapon glows**: from +6 your weapon glows in your class's own style, and everyone around sees it: Guardians a
   rising golden Radiance, Berserkers a heartbeat of blood-red with dripping sparks, Shadowblades a flickering violet
   Nightshade with shadow wisps, Rangers green leaves spiralling up the bow, Elementalists a Prismatic staff that cycles
@@ -210,7 +230,8 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   (one per item) and grant a named power: the twelve Unique/Legendary powers plus three found only on Soulstones (Twin
   Fang, Executioner, Giant Slayer). The Socket Drill adds up to two extra sockets (five in total) and the Soul Forge fuses
   three Brilliant gems into a random Soulstone.
-- **Equipment progression**: gear can also be reforged (reroll affixes), re-tempered to your level,
+- **Equipment progression**: gear can also be reforged (reroll the bonus affixes of Uncommon gear and better; the
+  first reforge each day is free, and afterwards you **Keep new** or **Take back old**), re-tempered to your level,
   ascended up a rarity tier (Special gear awakens into a named Unique, Unique into a Legendary) and salvaged into Spirit
   Dust, Shards and Star Essence. The Legendary Codex tracks all 21 named items, grants a collection bonus and pays out at milestones.
 - **Game Master Console**: the server panel on the title screen has a Game Master Console link for the artifact's owner
@@ -271,7 +292,7 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 - **Player menu, friends and inspect**: click another player (or their target frame) for a menu: **Add Friend**,
   **Inspect Character**, **Invite to Party** and **Trade**. A friend request asks the other player first; friends are
   kept in your save and listed at the top of the Online panel with who is on now, and you are told when one comes
-  online. Inspect opens their worn gear (with full tooltips), Battle Rating and main stats.
+  online. Inspect opens their worn gear (with full tooltips), Combat Power and main stats.
 - **Trading between players**: ask a player within 25 m to trade. The trade window is styled like the Bag: the other
   player's offer and yours (up to 18 goods each, plus Gold), your inventory and worn armor, and a message line. Click a
   good to offer it (All, Half or 1 of a stack), **Lock** your offer when it is final, and press **Confirm** once both
@@ -288,9 +309,10 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   timing in every browser, and party members send what they do to them a few times a second. A monster your partner
   is fighting walks over to them on your screen and loses the same HP; when they kill it, it dies on your screen at
   once (counting for your kill quests and bounties if you are within 60 m) and comes back at the same moment for both
-  of you.
+  of you. Healers' party heals, heals over time, cleanses and shields reach members within reach, party buffs (banners,
+  barriers, Last Bastion) land on members within 20 m, and Ocean's Grace revives fallen members where they fell.
 - **Seasons, festivals and leaderboards**: each month is a season with a 30-tier Season Pass (free and premium tracks)
-  and a Season leaderboard that pays out when the month ends. Leaderboards also rank Battle Rating, Level, World Boss
+  and a Season leaderboard that pays out when the month ends. Leaderboards also rank Combat Power, Level, World Boss
   damage, dungeon speed, guild war wins and guilds. Festivals follow the calendar: the Harvest Moon (October to early
   November) brings Jackpuffs, the Pumpkin King, Moon Candy, pumpkin decorations in town and a festival shop with the
   Pumpkin Pip pet, orange fairy wings and a title. Winter Starlight (December) and Sakura Bloom (spring) work the same way.
@@ -319,13 +341,19 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   own auctions.
 - **Bag**: 48 slots, expandable to 160 with Bag Expansion Scrolls, gold or diamonds. The Bag is a compact window
   (`Bag 22 / 48`) with tabs (All, Gear, Consume, Quest, Valuable, Others, Mats), six slots a row, a strip for the selected
-  item (Equip or Use, Sell, Lock; for gear also its Battle Rating, whether it beats what you wear, every stat that would
+  item (Equip or Use, Sell, Lock; for gear also its Combat Power, whether it beats what you wear, every stat that would
   change and its full stat list, so phones see everything a tooltip shows), a green arrow on gear better than what you
   wear (grey while you cannot wear it yet), **Sort** (gear first by rarity, then consumables, quest items and valuables) and
   **Sell All**, which sells everything up to a chosen rarity in one go (locked gear is always kept). Your Diamonds and
   Gold sit at the bottom beside a **Mall** button. Equipped gear is in the Character window (C).
-- **MMO systems**: Battle Rating, bag, auto-hit, auto potions, titles, daily sign-in, online gifts, a gold/diamond mall
+- **MMO systems**: Combat Power, bag, auto-fight, auto potions, titles, daily sign-in, online gifts, a gold/diamond mall
   (no XP or progress for sale), world and guild chat, minimap and world map.
+- **Daily sign-in streak**: the seven-day rewards follow your streak of days in a row; missing a day starts it over at
+  Day 1, and every 10th day in a row adds 150 Diamonds, 2 Lucky Tickets and 3 Star Essence.
+- **Star Wish**: a daily lottery wheel in the activities (top right). Two free wishes every day, then 30 Diamonds a
+  wish or 270 for ten. Twelve prizes sit around the board (Gold, Lucky Points and Tickets, Enhancement Stones, Star
+  Essence, a Lucky Charm, a Pet Egg, Diamonds) and the grand prize is the **Starlight Unicorn**, about 1 in 300; the
+  100th wish without it always brings it, and a second one becomes 300 Diamonds.
 - **Action bar and menu**: on computers a slim gold-framed tray runs along the bottom with the skill row (keys 1-7 and
   the Q/E potions with their counts) and the EXP strip; two small pills sit above it, Mount, Auto, Roll and Block on the
   left and the tool belt on the right. The menu is a compact grid of round icons with their hotkeys right under the
@@ -370,7 +398,7 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 | Tool belt | 8 Axe, 9 Pickaxe, 0 Sickle (gather the nearest node) |
 | Dodge roll / jump / block | Shift / Space / hold the right mouse button (Guardians) |
 | Potions | Q (HP), E (MP) |
-| Mount / Auto-hit | R / T |
+| Mount / Auto-fight | R / T |
 | Panels | C character, B bag, K skills, P pets, U mounts, Z professions, L quests, M map, O settings |
 | Live systems | H missions, X codex, J season pass; Y forge, N market, G guild and V wardrobe walk you to their NPC |
 | Other | Tab next target, F talk, Enter chat, Esc close |
@@ -387,7 +415,7 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/data.js` | Monsters, pets, mounts, quests and other tables |
 | `js/data-classes.js`, `js/combat.js`, `js/combat-world.js` | Races, the eight classes and their skills; the skill book, loadout, rolls, blocks, parries and every skill's effect |
 | `js/models-hero.js`, `js/customizer.js` | Toy-style heroes and the character customizer (sliders, presets, share codes) |
-| `js/progress.js` | XP curve, masteries, trial walls, diminishing returns, discovery XP, soul markers, rested XP, explored-map grid, Battle Rating |
+| `js/progress.js` | XP curve, masteries, trial walls, diminishing returns, discovery XP, soul markers, rested XP, explored-map grid, Combat Power |
 | `js/data-trials.js`, `js/trials.js`, `js/ui-trials.js` | Breakthrough trials, sigils, cooking, auras and the Hall of Firsts |
 | `js/data-nav.js`, `js/nav-world.js` | Landmarks, waystones, spoken directions and journal, hidden ruins, lore books, survey maps, fair-play check |
 | `js/gear.js` | Mastery lock, durability and repairs, binding, gear glow, Ancient items, six-piece set powers and drops |
@@ -403,6 +431,10 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/gm.js`, `js/gm-config.js` | The Game Master hero: passcode, separate save, the GM editor and its powers |
 | `js/gmnet.js` | The Game Master's monsters on every player's screen: shared health, threat, kills and removal |
 | `js/drops.js` | Items dropped from the bag onto the ground for anyone to pick up |
+| `js/stars.js` | Attribute Stars: opening, awakening, tiers, re-rolls and their window |
+| `js/wish.js` | The Star Wish lottery: prizes, free and paid wishes, the sure Unicorn and the wheel |
+| `js/autofight.js` | Auto-fight: hunting, quest monsters, handing in quests, potions and its settings |
+| `js/limit.js` | The Limit Break gauge, the burst on slot 7 and readying the ultimate |
 | `js/build.js`, `js/update.js` | The published version and the Update bar |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |

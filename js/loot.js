@@ -407,6 +407,8 @@ export function fitSockets(eq) {
   return removed;
 }
 // Reroll every affix (same count). Named effects stay.
+// one bonus affix as text, at the item's enhancement level
+export const affixLabel = (a, enh = 0) => { const d = AFFIXES[a.id]; return d ? d.label(r1(a.v * enhAffixMult(enh))) : a.id; };
 export function reforgeItem(eq, rng = Math.random) {
   eq.affixes = rollAffixes(RARITY[eq.quality].affixes, eq.lvl, eq.quality, rng);
   return eq;

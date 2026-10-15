@@ -238,7 +238,7 @@ const U = {
     wrap.appendChild(port);
     wrap.appendChild(col(['boots', 'necklace', 'ring']));
     const st = h('div', 'stats-col');
-    st.appendChild(h('div', 'br-big', `<span class="flame"></span>${fmt(d.br)}`));
+    st.appendChild(h('div', 'br-big', `<span class="flame"></span><small>CP</small>${fmt(d.br)}`));
     st.appendChild(h('div', 'stats', `<span>Class</span><span>${esc(C?.name || '')}</span><span>Race</span><span>${esc(RACES[d.race]?.name || '—')}</span>
       <span>Max HP</span><span>${fmt(d.hp)}</span><span>Max MP</span><span>${fmt(d.mp)}</span><span>Attack</span><span>${fmt(d.atk)}</span><span>Defense</span><span>${fmt(d.def)}</span>
       <span>Critical</span><span>${d.crit.toFixed(1)}%</span><span>Guild</span><span>${d.guild ? esc(d.guild) : '—'}</span><span>Monsters slain</span><span>${fmt(d.kills)}</span>`));

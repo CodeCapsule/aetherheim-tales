@@ -1,6 +1,6 @@
 // Class skills in play: the skill book (ranks, awakening paths, loadout, respec), passive totals read by recalc,
 // casting every kind of active skill, the damage hooks game.js calls, class resources (runes, rage, stealth,
-// elements), action combat (dodge roll with a perfect-dodge window, shield block, parry) and the auto-hit rules.
+// elements), action combat (dodge roll with a perfect-dodge window, shield block, parry) and the auto-fight rules.
 // Monster status effects, summons, zones, traps and the special skills live in combat-world.js.
 import * as THREE from 'three';
 import { CLASSES, BASIC, CLASS_SKILLS, SKILL_BY_ID, MAX_RANK, skillPointsFor, rankMastery, rankMult, RACES } from './data-classes.js';
@@ -244,7 +244,9 @@ const CB = {
   useSkill(i) {
     const p = this.player; if (p.dead) return;
     const sk = this.skillList()[i];
-    if (!sk) { this.ui.toast(i === 7 ? 'Your ultimate unlocks at Lv 200' : 'Empty slot — choose a skill for it in the Skills window (K)', 'warn'); return; }
+    if (i === 7 && !sk) { this.limitBreak(); return; } // slot 7 holds the Limit Break until the ultimate (limit.js)
+    if (!sk) { this.ui.toast('Empty slot — choose a skill for it in the Skills window (K)', 'warn'); return; }
+    if (i === 7 && !this.skillReady(sk) && this.lbFull()) this.limitBreak(); // a full gauge readies the ultimate
     this.trySkill(sk);
   },
   trySkill(sk, auto = false) {
@@ -269,7 +271,7 @@ const CB = {
       }
       this.engage = true;
       if (flat(p.pos, t.pos) - t.radius > range) {
-        if (auto) return false; // auto-hit never moves your hero
+        if (auto) return false; // auto-fight walks in through the engage loop (autofight.js)
         this.pendingSkill = sk; p.path = []; return true;
       }
     }
@@ -564,20 +566,13 @@ const CB = {
     if (this.hasFx('set_shadowstep6')) this.perfectNext = this.time + 4;
   },
 
-  // ================================================================ auto-hit (open world only, never moves you)
+  // ================================================================ auto-fight (open world only; autofight.js picks targets)
   autoAllowed() { return !this.dg && !this.war && !this.trial; },
-  autoBattle() {
+  // the skills auto-fight uses on its target (the basic attack is the engage loop in game.js)
+  autoSkills(t) {
     const p = this.player;
-    if (!this.autoAllowed()) { this.auto = false; this.ui.setAutoBattle(false); return; }
-    const reach = (e, r) => flat(p.pos, e.pos) - e.radius <= r;
-    let t = p.target;
-    const basic = this.basicSkill(), range = this.skRange(basic);
-    if (!t || t.dead || t.kind !== 'monster' || !reach(t, range + 0.5)) {
-      t = this.nearestEnemy(range + 1.5);
-      if (t && reach(t, range + 0.5)) this.setTarget(t); else return;
-    }
-    this.engage = true;
     if (p.actT > 0 || this.casting) return;
+    if (this.lbFull() && !this.S.ult && flat(p.pos, t.pos) - t.radius < 6) { this.limitBreak(); return; }
     for (let i = 1; i <= 6; i++) {
       const sk = this.skillList()[i];
       if (!sk || ['dash', 'leap', 'blink'].includes(sk.k) || sk.charge) continue;

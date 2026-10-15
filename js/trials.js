@@ -1,5 +1,5 @@
 // Breakthrough trials: a solo instance at every 20-level wall (and the Final Ascension at 200) that tests one mechanic
-// with normalized stats, so gear and Battle Rating do not matter. A Trial Sigil, crafted at the Trial Warden from that
+// with normalized stats, so gear and Combat Power do not matter. A Trial Sigil, crafted at the Trial Warden from that
 // bracket's materials, opens one attempt; failing keeps your XP and mastery but uses the sigil. A clear grants a title,
 // an aura other players see, 3 skill points, and lets the waiting level-up through.
 // Also here: cooking at campfires (the only healing in the Hunger trial) and the server's first-clear board.
@@ -145,7 +145,7 @@ const T = {
     this.zone = map.zone; this.ui.setZone(map.zone);
     this['setup_' + T0.kind](tr);
     this.ui.banner(trialLabel(T0.n).toUpperCase(), T0.name, 'boss');
-    this.ui.chat('system', `<b>${esc(trialLabel(T0.n))}: ${esc(T0.name)}</b> · ${esc(T0.challenge)}. Your stats are set to the same values every ${esc(CLASSES[this.S.cls].name)} gets at Lv ${T0.lv}: only your skills and your play count. Auto-hit is off. Out-of-combat healing does not work here.`);
+    this.ui.chat('system', `<b>${esc(trialLabel(T0.n))}: ${esc(T0.name)}</b> · ${esc(T0.challenge)}. Your stats are set to the same values every ${esc(CLASSES[this.S.cls].name)} gets at Lv ${T0.lv}: only your skills and your play count. Auto-fight is off. Out-of-combat healing does not work here.`);
     this.ui.enterTrial();
     this.logEvent && this.logEvent('trial', `Entered ${trialLabel(T0.n)}`);
   },

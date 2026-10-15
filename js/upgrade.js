@@ -3,7 +3,7 @@
 // the Soul Forge). installUpgrade(Game) adds the methods.
 import {
   MATERIALS, GEMS, GEM_MAX, GEM_COMBINE, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, SOCKETS,
-  ENH_MAX, ENH_RATE, ENH_STONES, ENH_FAIL_BONUS, ENH_FAIL_MAX, ENH_LUCK, enhCost, enhRisk, REFINE,
+  ENH_MAX, ENH_RATE, ENH_STONES, ENH_FAIL_BONUS, ENH_FAIL_MAX, ENH_LUCK, enhCost, enhRisk, REFINE, LUCKY_GAIN, perfectCost,
 } from './systems-data.js';
 import { RARITY, EFFECTS, fitSockets } from './loot.js';
 import { ELEMENTS, ELEMENT_IDS, ZONE_ELEMENT, INFUSE_CRYSTALS, CRYSTAL_DROP, crystalId, infuseGold, isElement } from './data-elements.js';
@@ -55,18 +55,44 @@ const U = {
       this.logEvent && this.logEvent('enhance', `${eq.name} +${target}`, target >= 10);
     } else {
       eq.fs = Math.min(ENH_FAIL_MAX, (eq.fs || 0) + ENH_FAIL_BONUS);
+      const lp = LUCKY_GAIN[target - 1] || 0; S.lucky = (S.lucky || 0) + lp; // failures pay for a Perfect Enhancement
       let lost = enhRisk(target);
       if (lost && protect) { this.removeItem('enh_protect', 1); lost = 0; }
       eq.enh = Math.max(0, eq.enh - lost);
       res = { ok: false, lost, protectedUsed: protect, to: eq.enh };
       this.sfx.play('error'); this.fx.shake(0.15);
       this.fx.emit(at, { count: 24, color: 0x8a8a9a, speed: 3, life: 0.7, size: 0.45, up: 1, jitter: 1 });
-      this.ui.toast(lost ? `Failed — ${eq.name} dropped to +${eq.enh}. Next try +${Math.round(eq.fs * 100)}%` : `Failed${protect ? ' — the Protection Charm shattered instead' : ''}. Next try +${Math.round(eq.fs * 100)}%`, 'warn');
+      this.ui.toast((lost ? `Failed — ${eq.name} dropped to +${eq.enh}. Next try +${Math.round(eq.fs * 100)}%` : `Failed${protect ? ' — the Protection Charm shattered instead' : ''}. Next try +${Math.round(eq.fs * 100)}%`) + (lp ? ` · +${lp} Lucky Points` : ''), 'warn');
+      res.lucky = lp;
     }
     if (ref.where === 'equip') this.recalc();
     this.ui.enhResult = { ...res, t: performance.now(), uid: eq.uid };
     this.ui.refreshWallet(); this.ui.refreshPanel(); this.save();
     return res;
+  },
+  // Perfect Enhancement: 100% success paid with Lucky Points (no stones or gold); toMax keeps going while they last
+  perfectEnhance(ref, toMax = false) {
+    const S = this.S, eq = this.refItem(ref); if (!eq) return null;
+    eq.enh = eq.enh || 0;
+    if (eq.enh >= ENH_MAX) { this.ui.toast(`Already at +${ENH_MAX}`, 'warn'); return null; }
+    const from = eq.enh;
+    while (eq.enh < ENH_MAX && (S.lucky || 0) >= perfectCost(eq.enh + 1)) {
+      S.lucky -= perfectCost(eq.enh + 1); eq.enh++; eq.fs = 0;
+      if (!toMax) break;
+    }
+    if (eq.enh === from) { this.ui.toast(`A Perfect Enhancement to +${from + 1} needs ${perfectCost(from + 1)} Lucky Points (you have ${S.lucky || 0})`, 'warn'); this.sfx.play('error'); return null; }
+    const target = eq.enh, p = this.player;
+    this.track('enhance'); this.guideEvent('enhance');
+    this.sfx.play(target >= 10 ? 'legend' : 'level');
+    this.fx.pillar(p.pos, ENH_COLOR(target), 1.4 + target / 10, 8 + target / 2, 0.9);
+    this.ui.toast(`Perfect Enhancement! ${eq.name} is now +${target}`, 'good');
+    if (from < 10 && target >= 10 || from < 15 && target >= 15) this.ui.banner(`+${target}!`, eq.name, target >= 15 ? 'loot6' : 'loot5');
+    if (target >= 10 && from < target) this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} enhanced <span style="color:${RARITY[eq.quality].color}">[${esc(eq.name)}]</span> to <b>+${target}</b>!`);
+    if (target >= 15) this.unlockTitle('Peerless Smith');
+    if (ref.where === 'equip') this.recalc();
+    this.ui.enhResult = { ok: true, to: target, perfect: true, t: performance.now(), uid: eq.uid };
+    this.ui.refreshWallet(); this.ui.refreshPanel(); this.save();
+    return { ok: true, to: target };
   },
   refineStones(i, times = 1) {
     const r = REFINE[i]; if (!r) return;
@@ -182,6 +208,7 @@ const U = {
   },
   // bag items added by the upgrade systems; returns true when handled
   useUpgradeItem(id) {
+    if (id === 'lucky_ticket') { this.removeItem(id, 1); this.S.lucky = (this.S.lucky || 0) + 20; this.sfx.play('upgrade'); this.ui.toast(`+20 Lucky Points (${this.S.lucky})`, 'good'); this.ui.refreshPanel(); this.save(); return true; }
     if (id === 'soul_cache') { this.removeItem(id, 1); this.grantSoul(pick(Object.keys(SOULS)), 'Soulstone Chest'); return true; }
     if (id === 'enh_luck' || id === 'enh_protect') { this.ui.sel.fgTab = 'enhance'; this.ui.togglePanel('forge', true); return true; }
     if (id === 'socket_drill') { this.ui.sel.fgTab = 'gems'; this.ui.togglePanel('forge', true); return true; }

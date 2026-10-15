@@ -161,7 +161,7 @@ export class AdminPanel {
     let P = this.list();
     const bar = h('div', 'adm-bar-row');
     const q = h('input', 'adm-input'); q.placeholder = 'Search hero or guild'; q.value = this.q; q.oninput = () => { this.q = q.value; this.renderPlayersTable(tbl); };
-    const so = h('select', 'adm-input', [['lastSeen', 'Last seen'], ['level', 'Level'], ['br', 'Battle Rating'], ['gold', 'Gold'], ['playSecs', 'Play time']].map(([v, l]) => `<option value="${v}"${this.sort === v ? ' selected' : ''}>Sort: ${l}</option>`).join(''));
+    const so = h('select', 'adm-input', [['lastSeen', 'Last seen'], ['level', 'Level'], ['br', 'Combat Power'], ['gold', 'Gold'], ['playSecs', 'Play time']].map(([v, l]) => `<option value="${v}"${this.sort === v ? ' selected' : ''}>Sort: ${l}</option>`).join(''));
     so.onchange = () => { this.sort = so.value; this.renderPlayersTable(tbl); };
     bar.appendChild(q); bar.appendChild(so);
     bar.appendChild(h('span', 'muted', `${P.filter((p) => now - p.lastSeen < ONLINE_MS).length} online · ${P.length} total`));
@@ -178,7 +178,7 @@ export class AdminPanel {
     const now = Date.now(), q = this.q.trim().toLowerCase();
     let P = this.list().filter((p) => !q || `${p.name} ${p.guild || ''} ${this.names[p.id] || ''}`.toLowerCase().includes(q));
     P = [...P].sort((a, b) => (b[this.sort] || 0) - (a[this.sort] || 0));
-    tbl.innerHTML = `<table class="adm-table"><thead><tr><th></th><th>Hero</th><th>Class</th><th class="n">Lv</th><th class="n">BR</th><th>Zone</th><th class="n">Gold</th><th class="n">Played</th><th>Last seen</th></tr></thead><tbody></tbody></table>`;
+    tbl.innerHTML = `<table class="adm-table"><thead><tr><th></th><th>Hero</th><th>Class</th><th class="n">Lv</th><th class="n">CP</th><th>Zone</th><th class="n">Gold</th><th class="n">Played</th><th>Last seen</th></tr></thead><tbody></tbody></table>`;
     const tb = tbl.querySelector('tbody');
     if (!P.length) tb.innerHTML = '<tr><td colspan="9" class="muted">No players yet.</td></tr>';
     for (const p of P) {
@@ -194,7 +194,7 @@ export class AdminPanel {
     if (!p) { det.innerHTML = '<p class="muted">Select a player to see their gear, progress, recent activity and errors.</p>'; return; }
     det.innerHTML = `<h3>${esc(p.name)} <small>Lv ${p.level} ${esc(CLASSES[p.cls]?.name || '')}${p.guild ? ` · ${esc(p.guild)}` : ''}</small></h3>
       ${this.names[p.id] ? `<p class="muted">Account: ${esc(this.names[p.id])}</p>` : ''}
-      <dl class="adm-dl"><dt>Battle Rating</dt><dd>${fmt(p.br)}</dd><dt>Gold / Diamonds</dt><dd>${fmt(p.gold)} / ${fmt(p.diamonds)}</dd><dt>Location</dt><dd>${esc(p.zone || '')}${p.pos ? ` (${p.pos.join(', ')})` : ''}</dd>
+      <dl class="adm-dl"><dt>Combat Power</dt><dd>${fmt(p.br)}</dd><dt>Gold / Diamonds</dt><dd>${fmt(p.gold)} / ${fmt(p.diamonds)}</dd><dt>Location</dt><dd>${esc(p.zone || '')}${p.pos ? ` (${p.pos.join(', ')})` : ''}</dd>
       <dt>Play time</dt><dd>${hrs(p.playSecs || 0)}</dd><dt>Kills / Deaths</dt><dd>${fmt(p.kills)} / ${fmt(p.deaths)}</dd><dt>Dungeon clears</dt><dd>${fmt(p.dgClears)}</dd>
       <dt>Collections / Red</dt><dd>${p.collSets || 0} sets / ${p.red || 0} Red</dd><dt>Pets / Mounts</dt><dd>${p.pets || 0} / ${p.mounts || 0}</dd>
       <dt>Device</dt><dd>${esc(p.device || '')} · ${esc(p.version || '')}</dd><dt>First seen</dt><dd>${p.firstSeen ? new Date(p.firstSeen).toLocaleDateString() : '—'}</dd></dl>

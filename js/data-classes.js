@@ -76,7 +76,7 @@ export const CLASSES = {
 };
 export const CLASS_ORDER = ['knight', 'berserker', 'assassin', 'ranger', 'mage', 'priest', 'summoner', 'spellblade'];
 
-// Basic weapon attacks (not part of the skill list; always available, used by auto-hit)
+// Basic weapon attacks (not part of the skill list; always available, used by auto-fight)
 export const BASIC = {
   knight: { name: 'Sword Strike', k: 'strike', m: 1.0, cd: 1.0, g: 'sword' },
   berserker: { name: 'Axe Swing', k: 'strike', m: 1.2, cd: 1.25, g: 'axe', cleave: 2.2 },

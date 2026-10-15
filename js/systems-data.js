@@ -74,6 +74,10 @@ export const ENH_MAX = 15;
 export const ENH_RATE = [1, 1, 1, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.28, 0.22, 0.17, 0.12]; // chance to reach +1 ... +15
 export const ENH_STONES = ['enh_stone', 'enh_stone2', 'enh_stone3'];
 export const ENH_FAIL_BONUS = 0.05, ENH_FAIL_MAX = 0.25, ENH_LUCK = 0.15;
+// Lucky Points: a failed attempt at +N gives LUCKY_GAIN[N - 1]; a Perfect Enhancement to +N (100% success, no stones)
+// costs 10 x N of them
+export const LUCKY_GAIN = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 24];
+export const perfectCost = (target) => 10 * target;
 const enhTier = (target) => (target <= 5 ? 0 : target <= 10 ? 1 : 2);
 export function enhCost(eq) {
   const L = (eq.enh || 0) + 1, t = enhTier(L);
@@ -235,7 +239,7 @@ export const GUILD_LIST = [
   { name: 'Moonlight', lv: 6, color: '#9ad0ff', emblem: 'moon', leader: 'Lunaria', motto: 'Friendly guild for everyone~ daily donations please!', size: 34 },
   { name: 'Starfall', lv: 8, color: '#ffd84a', emblem: 'star', leader: 'Celestine', motto: 'Top raiders of Carlyle. Wars every night.', size: 42 },
   { name: 'Sakura', lv: 5, color: '#ff9ad0', emblem: 'flower', leader: 'SakuraBloom', motto: 'Cute pets, chill vibes, sakura forever.', size: 27 },
-  { name: 'Valhalla', lv: 7, color: '#ff7a5a', emblem: 'axe', leader: 'Valkyr', motto: 'Glory in battle. BR 6k+ preferred.', size: 38 },
+  { name: 'Valhalla', lv: 7, color: '#ff7a5a', emblem: 'axe', leader: 'Valkyr', motto: 'Glory in battle. CP 6k+ preferred.', size: 38 },
   { name: 'Dreamers', lv: 3, color: '#c8a0ff', emblem: 'cloud', leader: 'Pudding', motto: 'New players welcome! We help with dungeons.', size: 19 },
 ];
 export const GUILD_EXP = [0, 400, 1200, 2600, 5000, 8500, 13500, 20000, 29000, 41000]; // exp to reach level i+1 (index = current level - 1)

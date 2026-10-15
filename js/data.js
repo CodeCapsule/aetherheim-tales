@@ -244,6 +244,8 @@ export const SIGNIN = [
   { day: 6, label: '3,000 Gold', gold: 3000 },
   { day: 7, label: 'Mount: Panda', mount: 'mount_panda' },
 ];
+// every 10th day in a row without missing one
+export const SIGNIN_BONUS = { every: 10, label: '150 Diamonds, Lucky Ticket x2, Star Essence x3', diamonds: 150, items: [['lucky_ticket', 2]], mats: [['star_essence', 3]] };
 
 export const ONLINE_GIFTS = [
   { secs: 60, label: '300 Gold', gold: 300 },
@@ -274,9 +276,9 @@ export const TIPS = [
   'Click a quest in the tracker to auto-path there; your journal keeps the directions quest givers tell you.',
   'Your Axe, Pickaxe and Sickle sit on the tool belt above the skill bar: press 8, 9 or 0 to gather the nearest node.',
   'Press R to summon or dismiss your mount.',
-  'Auto-hit (T) fights from where you stand. Roll (Shift) through red telegraphs.',
-  'Pets fight by your side and add to your Battle Rating.',
-  'Enhance gear at Gorm the Blacksmith to raise your Battle Rating.',
+  'Auto-fight (T) hunts nearby monsters and your quest targets; set it up in Settings. Roll (Shift) through red telegraphs.',
+  'Pets fight by your side and add to your Combat Power.',
+  'Enhance gear at Gorm the Blacksmith to raise your Combat Power.',
   'Step out of red circles on the ground to avoid boss attacks!',
   'Claim your Daily Sign-In reward every day.',
 ];
@@ -298,7 +300,7 @@ NPCS.push({ id: 'thalia', icon: 'trial', name: 'Thalia', title: 'Trial Warden', 
 Object.assign(ITEMS, SIGIL_ITEMS, FOOD_ITEMS);
 for (const [id, d] of Object.entries(TRIAL_MONSTER_DEFS)) { const { from, look, ...rest } = d; MONSTERS[id] = { ...MONSTERS[from], ...rest, lvl: [1, 1], exp: 0, gold: [0, 0], drops: [], aggressive: true, dungeon: true, skills: rest.trialAI && rest.trialAI !== 'gauntlet' ? [] : MONSTERS[from].skills }; void look; }
 TITLES.push(...TRIALS.map((t) => t.title));
-// Battle Rating is level x 100 + gear + mastery x 50, so recommended values follow the dungeon's level
+// Combat Power is level x 100 + gear + mastery x 50, so recommended values follow the dungeon's level
 for (const d of DUNGEONS) d.recBR = Math.round(d.lv * 1.75) * 100;
 // ---- navigation: survey maps cartographers copy (one per zone) and the parchment they are drawn on
 ITEMS.blank_parchment = { name: 'Blank Parchment', icon: 'parchment', type: 'material', quality: 0, stack: 99, price: 60, desc: 'Copy a zone you have explored onto it from the World Map (Survival mastery 20+).' };

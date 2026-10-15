@@ -1,7 +1,7 @@
 // Core game: entities, input, camera, combat, AI, quests, inventory, loot, dungeons, pets, mounts and saving.
 import * as THREE from 'three';
 import {
-  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, CLASS_SPRITE, MOUNTS, ITEMS, NPCS, TELEPORTS, QUESTS, BOUNTY_TARGETS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS,
+  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, CLASS_SPRITE, MOUNTS, ITEMS, NPCS, TELEPORTS, QUESTS, BOUNTY_TARGETS, SIGNIN, SIGNIN_BONUS, ONLINE_GIFTS, MALL, DUNGEONS,
   TITLES,
 } from './data.js';
 import { ARENA, TELEPORT_CIRCLE } from './world.js';
@@ -22,6 +22,10 @@ import { installAggro } from './aggro.js';
 import { installGm, GM_SAVE_KEY } from './gm.js';
 import { installGmNet } from './gmnet.js';
 import { installDrops } from './drops.js';
+import { installStars } from './stars.js';
+import { installWish } from './wish.js';
+import { installLimit } from './limit.js';
+import { installAutoFight } from './autofight.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -48,7 +52,7 @@ import { STARTER_TOOLS } from './data-crafting.js';
 import { activeEvent } from './systems-data.js';
 import { Dungeon } from './dungeon.js';
 import {
-  RARITY, EFFECTS, rollRarity, genEquip, genNamed, genSet, namedBySource, normalizeItem, aggregateEquip, sellPrice, tierFor,
+  RARITY, rollRarity, genEquip, genNamed, genSet, namedBySource, normalizeItem, aggregateEquip, sellPrice, tierFor,
 } from './loot.js';
 import { ico, iconCanvas } from './icons.js';
 import { shadowTexture, textTexture, targetRingTexture, beamTexture, ringTexture, glowTexture } from './toon.js';
@@ -113,6 +117,9 @@ export function migrateSave(S) {
   initSystemsSave(S); initLifeSave(S); initEconomySave(S);
   S.friends = cleanFriends(S.friends);
   initGuideSave(S);
+  if (S.signin && S.signin.streak == null) S.signin.streak = (S.signin.count || 0) % 7; // the day shown before streaks
+  S.lucky = S.lucky || 0;
+  if (!S.wish || typeof S.wish !== 'object') S.wish = { day: '', free: 0, n: 0, pity: 0 };
   if (!S.quest || (!S.quest.id && S.quest.status === 'done' && !S.storyDone)) S.quest = { id: 'q11', status: 'available', prog: 0 }; // Chapter I used to end here
   S.v = 3;
   return S;
@@ -149,7 +156,7 @@ export class Game {
     this.initProgress();
     this.createPlayer();
     this.dzInit();
-    this.gmNetInit(); this.dropsInit();
+    this.gmNetInit(); this.dropsInit(); this.starsInit();
     let p = S.pos || { x: 0, z: 9 };
     if (Math.abs(p.x) > 380 || Math.abs(p.z) > 380) p = { x: 0, z: 9 };
     this.player.pos.set(p.x, this.world.heightAt(p.x, p.z), p.z);
@@ -181,7 +188,7 @@ export class Game {
     this.tradeInit();
     this.mpStart();
     this.ui.chat('system', 'Welcome to <b>Carlyle</b>! Click the quest in the tracker on the right to auto-path to your goal.');
-    this.ui.chat('system', 'Controls: click to move or attack · drag to turn the camera · scroll to zoom · 1–7 skills · Shift dodge roll · Space jump · R mount · T auto battle.');
+    this.ui.chat('system', 'Controls: click to move or attack · drag to turn the camera · scroll to zoom · 1–7 skills · Shift dodge roll · Space jump · R mount · T auto-fight.');
     this.ui.chat('system', 'Daily & Weekly <b>Missions</b> (H), <b>World Bosses</b> every 15 minutes, the <b>Season Pass</b> and leaderboards. <b>Professions</b> (Z): gather ore, herbs and wood and farm the homestead west of town.');
     this.ui.chat('system', 'Town services are run by their keepers in Sylvan Haven: <b>Gorm</b> (Forge), <b>Opal</b> (Gem Workshop), <b>Vera</b> (Alchemy), <b>Mira</b> (Market), <b>Grimsby</b> (Auction House), <b>Aldric</b> (Guilds) and <b>Coco</b> (Wardrobe). Thalia the Trial Warden guards the walls every 20 levels.');
     if (this.event) this.ui.chat('announce', `<b>[Festival]</b> The <span style="color:${this.event.color}">${esc(this.event.name)}</span> is on! ${esc(this.event.desc)}`);
@@ -371,6 +378,7 @@ export class Game {
     // passive class skills and race bonuses
     if (this.syncSkills().length && this.ui?.refreshSkills) this.ui.refreshSkills();
     const PA2 = this.pAgg = this.passiveAgg(), ps = PA2.stat;
+    this.addStarStats(ps); // Attribute Stars
     hp *= 1 + (ps.hpPct || 0) / 100; mp *= 1 + (ps.mpPct || 0) / 100; atk *= 1 + (ps.atkPct || 0) / 100; def *= 1 + (ps.defPct || 0) / 100;
     // gear percentages (set bonuses and Special passives)
     hp *= 1 + ((gs.hpPct || 0) + (gs.allPct || 0)) / 100; atk *= 1 + ((gs.atkPct || 0) + (gs.allPct || 0)) / 100; def *= 1 + ((gs.defPct || 0) + (gs.allPct || 0)) / 100; heal *= 1 + (gs.healPct || 0) / 100;
@@ -388,11 +396,9 @@ export class Game {
     p.maxHp = Math.round(hp); p.maxMp = Math.round(mp); p.atk = atk; p.def = def; p.crit = crit; p.critDmg = critDmg; p.baseSpeed = speed; p.level = L;
     p.hp = fill ? p.maxHp : Math.max(1, Math.round(p.maxHp * ratio)); p.mp = fill ? p.maxMp : Math.round(p.maxMp * mratio);
     this.healMod = heal; this.cdr = cdr;
-    const extras = (gs.critDmg || 0) * 4 + (gs.speed || 0) * 10 + (gs.lifesteal || 0) * 25 + (gs.cdr || 0) * 20 + (gs.expGain || 0) * 3 + (gs.goldFind || 0) * 2
-      + (gs.thorns || 0) * 6 + (gs.regen || 0) * 8 + (gs.manaCost || 0) * 6 + [...fxs].reduce((a, id) => a + (EFFECTS[id]?.tier === 'legendary' ? 900 : EFFECTS[id]?.tier === 'set' ? 700 : EFFECTS[id]?.tier === 'ancient' ? 1100 : 350), 0);
-    // Battle Rating (a guide only): level x 100 + item stats x tier multiplier + average mastery x 50
-    this.br = this.calcBR ? this.calcBR() : Math.round(p.maxHp * 0.55 + atk * 9 + def * 7);
-    void petBR; void spBR; void mountBR; void extras;
+    // Combat Power (a guide only): level x 100 + item stats x tier multiplier + average mastery x 50 + pet, sprite,
+    // mounts, guild and codex, and Attribute Stars
+    this.br = this.calcBR({ pet: petBR, sprite: spBR, mount: mountBR, system: X.br, stars: this.starCP() });
     if (this.refreshGearGlow && this.player) this.refreshGearGlow();
     if (this.refreshWeaponFx && this.player) this.refreshWeaponFx();
     this.ui.refreshPlayer && this.ui.refreshPlayer();
@@ -685,7 +691,7 @@ export class Game {
     dst.hp -= dmg;
     const head = dst.pos.clone().setY(dst.pos.y + dst.height * 0.9);
     const mine = src === this.player || src.kind === 'pet';
-    if (dst === this.player) { if (dmg) this.fx.text(head, '-' + dmg, 'hurt'); this.sfx.play('hurt'); this.lastCombat = this.time; if (dmg > 0) { this.setPowersHurt(src); this.cbHurt(src, dmg); } }
+    if (dst === this.player) { if (dmg) this.fx.text(head, '-' + dmg, 'hurt'); this.sfx.play('hurt'); this.lastCombat = this.time; if (dmg > 0) { this.setPowersHurt(src); this.cbHurt(src, dmg); this.lbOnHurt(); } }
     else if (mine) {
       this.fx.text(head, String(dmg), o.cls || (src.kind === 'pet' ? 'pet' : crit ? 'crit' : 'dmg'));
       if (!o.proc) this.sfx.play(crit ? 'crit' : 'hit');
@@ -703,7 +709,7 @@ export class Game {
       if (!dst.target || dst.target.dead) dst.target = src.kind === 'pet' ? this.player : src;
       dst.returning = false;
     }
-    if (src === this.player && !o.proc && dmg > 0) this.onPlayerHit(dst, dmg, crit, o.sk);
+    if (src === this.player && !o.proc && dmg > 0) { this.onPlayerHit(dst, dmg, crit, o.sk); this.lbOnHit(o.sk); }
     if (dst === this.player && src.kind === 'monster' && dmg > 0 && !src.dead) {
       let back = dmg * Math.min(60, this.stat('thorns')) / 100;
       if (this.hasFx('thorn_aura')) back += this.defOf(this.player) * 0.4;
@@ -818,6 +824,7 @@ export class Game {
     m.respawnT = m.dungeon || m.summoned || m.wb || d.structure ? Infinity : d.war ? 7 : d.boss ? 90 : m.uid ? 9 + mobRng(m, 13)() * 6 : rnd(9, 15);
     m.dots = [];
     if (m.uid) { if (m.tagged) this.partyMobKill(m); m.gen++; } // party members see it die too
+    if (m.tagged) this.lbOnKill(m); // Limit Break gauge (limit.js)
     if (m.gmId) this.gmMobKill(m); // a Game Master's monster falls for everyone (gmnet.js)
     if (p.target === m) { this.setTarget(null); }
     if (this.pet && this.pet.target === m) this.pet.target = null;
@@ -978,7 +985,7 @@ export class Game {
     const S = this.S;
     if (S.level >= MAX_LEVEL) return;
     S.exp += Math.max(0, n);
-    let leveled = false, block = null;
+    let leveled = false, block = null; const from = S.level;
     while (S.level < MAX_LEVEL && S.exp >= needExp(S.level)) {
       block = this.levelBlock(S.level);
       if (block) { S.exp = needExp(S.level); break; }
@@ -996,7 +1003,7 @@ export class Game {
       if (S.level === 100 && S.awaken == null) { this.ui.banner('AWAKENING', 'Choose your path in the Skills window (K)', 'level'); this.ui.markMenu('skills'); }
       if (this.skillPtsLeft() > 0) this.ui.markMenu('skills');
       if (S.level >= 10 && S.title < 3) { S.title = 3; this.refreshPlayerPlate(); }
-      this.questLevelUp();
+      this.questLevelUp(); this.starsLevelUp(from);
       if (S.level >= MAX_LEVEL) { this.unlockTitle('Legend of Hiraya'); this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached the maximum level ${MAX_LEVEL}!`); }
       else if (S.level % 25 === 0) this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached Level ${S.level}!`);
       this.ui.refreshSkills();
@@ -1258,11 +1265,14 @@ export class Game {
   }
 
   toggleAuto(force) {
-    if ((force === undefined ? !this.auto : force) && !this.autoAllowed()) { this.ui.toast('Auto-hit is off in dungeons and trials: every attack, dodge and skill is yours', 'warn'); return; }
+    if ((force === undefined ? !this.auto : force) && !this.autoAllowed()) { this.ui.toast('Auto-fight is off in dungeons, trials and guild wars: every attack, dodge and skill is yours', 'warn'); return; }
     this.auto = force !== undefined ? force : !this.auto;
     this.ui.setAutoBattle(this.auto);
-    if (this.auto) { this.autoAnchor = this.player.pos.clone(); this.engage = true; this.ui.toast('Auto-hit ON: attacks enemies within reach, never moves you', 'good'); }
-    else { this.autoPref = null; this.ui.toast('Auto-hit OFF'); }
+    if (this.auto) {
+      this.autoAnchor = this.player.pos.clone(); this.engage = true; this.bot = {};
+      const q = this.botQuestType();
+      this.ui.toast(q ? `Auto-fight ON: hunting ${MONSTERS[q].name} for your quest` : this.botMoves() ? `Auto-fight ON: hunting within ${this.botSet('botRange')} m of here` : 'Auto-fight ON: fights what is within reach', 'good');
+    } else { this.player.path = []; this.autoPathing = false; this.ui.setAutoPath(false); this.ui.toast('Auto-fight OFF'); }
   }
 
   // ============================================================== quests
@@ -1452,7 +1462,6 @@ export class Game {
     this.sfx.play('quest');
     this.ui.toast(`Quest objective complete! Return to ${this.npcName(d.turnin)}`, 'good');
     this.ui.chat('system', `<b>${esc(d.name)}</b>: objective complete. Return to ${esc(this.npcName(d.turnin))}.`);
-    if (this.auto && this.autoPref === d.target) { this.toggleAuto(false); this.autoQuest('main'); }
   }
   bountyUnlocked() { const i = QUESTS.findIndex((x) => x.id === this.S.quest.id); return i === -1 || i >= 5; }
   takeBounty() {
@@ -1505,20 +1514,32 @@ export class Game {
   }
 
   // ============================================================== activities
+  // days signed in a row that still count today (a missed day starts the streak over at Day 1)
+  signinStreak() {
+    const s = this.S.signin, y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    return s.last === today() || s.last === y ? s.streak || 0 : 0;
+  }
   claimSignin() {
     const S = this.S;
     if (S.signin.last === today()) { this.ui.toast('Already claimed today — come back tomorrow!', 'warn'); return; }
-    const r = SIGNIN[S.signin.count % 7];
-    S.signin.count++; S.signin.last = today();
+    const broke = (S.signin.streak || 0) > 0 && !this.signinStreak(), streak = this.signinStreak();
+    const r = SIGNIN[streak % 7];
+    S.signin.count++; S.signin.streak = streak + 1; S.signin.last = today();
     this.grant(r);
-    this.ui.toast(`Day ${r.day} reward: ${r.label}`, 'good'); this.sfx.play('quest');
+    this.ui.toast(`${broke ? 'A day was missed, so the streak started over. ' : ''}Day ${r.day} reward: ${r.label}`, broke ? 'warn' : 'good'); this.sfx.play('quest');
+    if (S.signin.streak % SIGNIN_BONUS.every === 0) {
+      this.grant(SIGNIN_BONUS);
+      this.ui.banner(`${S.signin.streak}-DAY STREAK!`, SIGNIN_BONUS.label, 'loot5'); this.sfx.play('legend');
+    }
     this.ui.refreshPanel(); this.ui.refreshActs(); this.save();
   }
   grant(r) {
     const S = this.S;
     if (r.gold) S.gold += r.gold;
     if (r.diamonds) S.diamonds += r.diamonds;
+    if (r.lucky) S.lucky = (S.lucky || 0) + r.lucky;
     if (r.items) for (const [id, q] of r.items) this.addItem(id, q);
+    if (r.mats) for (const [id, q] of r.mats) this.addMat(id, q, true);
     if (r.pet) { if (S.pets[r.pet]) { S.gold += 1000; this.ui.toast('Duplicate pet converted to 1,000 Gold', 'good'); } else this.gainPet(r.pet); }
     if (r.mount) { if (S.mounts.includes(r.mount)) S.gold += 2000; else this.gainMount(r.mount); }
     this.ui.refreshWallet();
@@ -1649,6 +1670,7 @@ export class Game {
       let dx = fx * -kz + rx * kx, dz = fz * -kz + rz * kx; const L = Math.hypot(dx, dz); dx /= L; dz /= L;
       this.moveEnt(p, p.pos.x + dx * 3, p.pos.z + dz * 3, speed, dt);
       moving = true; this.pendingSkill = null; this.pendingTalk = null; this.pendingPortal = null; this.engage = this.auto ? this.engage : false;
+      if (this.auto) this.botSteered();
     }
     // pending skill: approach
     const t = p.target;
@@ -1668,7 +1690,7 @@ export class Game {
       const basic = this.basicSkill();
       const d = flat(p.pos, t.pos) - t.radius;
       if (d > this.skRange(basic)) {
-        if (this.auto) { /* auto-hit never moves your hero */ }
+        if (this.auto && !this.botMoves()) { /* auto-fight that stays in place */ }
         else if (this.map.lineClear(p.pos.x, p.pos.z, t.pos.x, t.pos.z)) { this.moveEnt(p, t.pos.x, t.pos.z, speed, dt); moving = true; }
         else if (!p.path.length) p.path = this.map.findPath(p.pos.x, p.pos.z, t.pos.x, t.pos.z);
       } else if (p.actT <= 0 && this.skillReady(basic) && !this.casting && !this.channel) {
@@ -1705,7 +1727,7 @@ export class Game {
     const rate = ooc && !this.trial ? (zoneSafe ? 0.06 : 0.025) : 0; // no resting inside a trial
     if (rate) { p.hp = Math.min(p.maxHp, p.hp + p.maxHp * rate * dt); }
     p.mp = Math.min(p.maxMp, p.mp + p.maxMp * (ooc ? 0.03 : 0.012) * dt);
-    if (S.settings.autoPotion && p.hp < p.maxHp * 0.35 && this.countPotions('hp_potion') && this.potionCD <= this.time) this.usePotion('hp_potion');
+    if (S.settings.autoPotion && p.hp < p.maxHp * (this.auto ? this.botSet('botPot') : 35) / 100 && this.countPotions('hp_potion') && this.potionCD <= this.time) this.usePotion('hp_potion');
     if (S.settings.autoPotion && p.mp < p.maxMp * 0.15 && this.countPotions('mp_potion') && this.potionCD <= this.time) this.usePotion('mp_potion');
     // gear effects that tick over time
     const regen = this.stat('regen') + (this.hasFx('worldtree') ? p.maxHp * 0.012 : 0);
@@ -1725,34 +1747,6 @@ export class Game {
       this.fx.emit(hp, { count: 1, color: RARITY[wq].color, speed: 0.5, life: 0.7, size: 0.45, up: 1.2, jitter: 0.6 });
     }
     // enhanced and infused weapons glow on the blade itself: weaponfx.js
-  }
-
-  autoBattle() {
-    const p = this.player;
-    let t = p.target;
-    if (!t || t.dead || t.kind !== 'monster') {
-      const anchor = this.autoAnchor || p.pos;
-      t = this.nearestEnemy(14, this.autoPref, p.pos) || this.nearestEnemy(40, this.autoPref, anchor) || (this.autoPref ? null : this.nearestEnemy(40, null, anchor));
-      if (t) { this.setTarget(t); this.engage = true; }
-      else if (this.autoAnchor && flat(p.pos, this.autoAnchor) > 6 && !p.path.length) p.path = this.map.findPath(p.pos.x, p.pos.z, this.autoAnchor.x, this.autoAnchor.z);
-      return;
-    }
-    this.engage = true;
-    if (p.actT > 0) return;
-    const list = this.skillList();
-    // heal / buffs first
-    for (let i = list.length - 1; i >= 1; i--) {
-      const sk = list[i];
-      if (this.S.level < sk.lvl || (this.cd[sk.id] || 0) > this.time || p.mp < this.mpCost(sk)) continue;
-      if (sk.kind === 'heal' && p.hp > p.maxHp * 0.6) continue;
-      if (sk.kind === 'buff' && p.buffs.some((b) => b.id === sk.id)) continue;
-      if (sk.kind === 'zone' && p.hp > p.maxHp * 0.8 && flat(p.pos, t.pos) > sk.radius) continue;
-      if (sk.kind === 'aoeSelf' && flat(p.pos, t.pos) > sk.radius) continue;
-      const d = flat(p.pos, t.pos) - t.radius;
-      if (['target', 'dash', 'proj', 'aoeTarget'].includes(sk.kind) && d > (sk.range || 3)) continue;
-      this.useSkill(i);
-      return;
-    }
   }
 
   moveEnt(e, tx, tz, speed, dt) {
@@ -2401,6 +2395,10 @@ installAggro(Game);
 installGm(Game);
 installGmNet(Game);
 installDrops(Game);
+installStars(Game);
+installWish(Game);
+installLimit(Game);
+installAutoFight(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);

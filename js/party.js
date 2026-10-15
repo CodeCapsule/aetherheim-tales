@@ -11,8 +11,11 @@ import { CLASSES } from './data.js';
 import { curveStats, MAX_LEVEL } from './data-world.js';
 import { lookFor } from './life.js';
 import { expScale, gapMult } from './progress.js';
+import { SKILL_BY_ID } from './data-classes.js';
 
 const PARTY_MAX = 5;
+const BUFF_MODS = new Set(['atk', 'def', 'speed', 'dmgTaken']), BUFF_FLAGS = new Set(['cannotDie', 'ccImmune']);
+const SKILL_NAME = (id) => SKILL_BY_ID[id]?.name || 'party buff';
 const PARTY_RANGE = 60; // members this close to a kill (world units, open world only) share its EXP
 const PARTY_BONUS = 0.1; // +10% total EXP per extra member nearby
 const INVITE_SECS = 30;
@@ -146,6 +149,56 @@ const G = {
       const e = this.rplayers.find((x) => x.peerId === from); if (e && !e.netHidden) this.mpBubble(e, text);
     } else if (t === 'xp') this.partyGetExp(m);
     else if (t === 'mob') this.partyMobMsg(m, from);
+    else if (t === 'heal') this.partyGotHeal(m, name);
+    else if (t === 'buff') this.partyGotBuff(m, name);
+  },
+  // a party buff (banners, barriers, Last Bastion) for every member within 20 m; shields are a share of the caster's HP
+  partyBuff(sk, dur) {
+    if (!mp.party.id) return;
+    const p = this.player, near = (this.rplayers || []).filter((e) => !e.netHidden && this.partyHas(e.peerId) && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) <= 20);
+    if (!near.length) return;
+    const mods = sk.mods ? Object.fromEntries(Object.entries(sk.mods).filter(([k]) => BUFF_MODS.has(k))) : null;
+    const flags = sk.flags ? Object.fromEntries(Object.entries(sk.flags).filter(([k]) => BUFF_FLAGS.has(k))) : null;
+    for (const e of near) this.partySend('buff', { to: e.peerId, party: mp.party.id, id: sk.id, dur, mods, flags, sh: sk.shieldPct ? Math.round(p.maxHp * sk.shieldPct) : 0 });
+  },
+  partyGotBuff(m, name) {
+    if (!mp.party.id || m.party !== mp.party.id || this.trial || this.war) return;
+    const p = this.player; if (p.dead) return;
+    const id = str(m.id, 24), dur = num(m.dur, 1, 30, 8);
+    if (!/^[a-z0-9_]+$/.test(id)) return;
+    const mods = {}, flags = {};
+    for (const [k, v] of Object.entries(m.mods || {})) if (BUFF_MODS.has(k)) mods[k] = num(v, 0.4, 1.6, 1);
+    for (const k of Object.keys(m.flags || {})) if (BUFF_FLAGS.has(k)) flags[k] = 1;
+    const b = { id: 'pb_' + id, icon: id, until: this.time + dur, mods: Object.keys(mods).length ? mods : null, flags: Object.keys(flags).length ? flags : null };
+    const sh = num(m.sh, 0, 1e7);
+    if (sh) { p.shield = (p.shield || 0) + sh; b.shield = true; }
+    p.buffs = p.buffs.filter((x) => x.id !== b.id); p.buffs.push(b);
+    if (flags.ccImmune) p.stun = 0;
+    this.fx.buff(p, '#ffe07a');
+    this.ui.toast(`${name}: ${SKILL_NAME(id)}`, 'good');
+  },
+  // ------------------------------------------------------------ heals, shields and revives from party healers
+  // h: { pct, shieldPct, cleanse, hot: [pct per second, seconds], revive: HP share } (healParty, k_heal)
+  partySendHeal(to, h) {
+    if (!mp.party.id) return;
+    this.partySend('heal', { to, party: mp.party.id, pct: h.pct || 0, sh: h.shieldPct || 0, cl: h.cleanse ? 1 : 0, hot: h.hot || 0, rv: h.revive || 0 });
+  },
+  partyGotHeal(m, name) {
+    if (!mp.party.id || m.party !== mp.party.id || this.trial || this.war) return;
+    const p = this.player, pct = num(m.pct, 0, 1), sh = num(m.sh, 0, 1), rv = num(m.rv, 0, 1);
+    if (p.dead) {
+      if (!rv) return;
+      p.dead = false; p.state = 'idle'; p.hp = Math.max(1, Math.round(p.maxHp * rv)); p.mp = Math.max(p.mp, Math.round(p.maxMp * rv));
+      this.ui.closeModal(); this.ui.modalPersistent = false;
+      this.fx.pillar(p.pos, 0x9ad8ff, 2, 12, 1.1); this.fx.heal(p); this.sfx.play('level');
+      this.ui.toast(`${name} revived you!`, 'good'); this.ui.chat('party', `<b>${esc(name)}</b> revived you.`);
+      return;
+    }
+    if (pct > 0) this.heal(p, p.maxHp * pct);
+    if (sh > 0) { p.shield = (p.shield || 0) + p.maxHp * sh; p.buffs = p.buffs.filter((x) => x.id !== 'ally_shield'); p.buffs.push({ id: 'ally_shield', icon: 'tw_coral', until: this.time + 10, shield: true }); }
+    if (Array.isArray(m.hot) && m.hot.length === 2) this.addHot(p, num(m.hot[0], 0, 0.2), num(m.hot[1], 1, 20) | 0, 'ally_hot');
+    if (m.cl) this.cleanse();
+    if (pct > 0 || sh > 0 || m.hot) this.fx.heal(p);
   },
   // presence changed: announce who joined or left, who leads, and recolour party members
   partySync() {

@@ -778,12 +778,29 @@ const M = {
     this.sfx.play('level'); this.fx.buff(this.player, '#c8a0ff');
     this.ui.toast(msg, 'good'); this.ui.refreshPanel(); this.save();
   },
+  // the first reforge each day is free; the new bonuses can be kept or the old ones taken back until the next reforge
+  reforgeFree() { return this.S.reforgeDay !== dayKey(); },
   reforge(ref) {
-    const eq = this.refItem(ref); if (!eq) return;
-    if (!RARITY[eq.quality].affixes) { this.ui.toast('Only Rare or better gear has affixes to reforge', 'warn'); return; }
-    if (!this.pay(reforgeCost(eq))) return;
+    const S = this.S, eq = this.refItem(ref); if (!eq) return;
+    if (!RARITY[eq.quality].affixes) { this.ui.toast('Common gear has no bonus affixes to reforge', 'warn'); return; }
+    const free = this.reforgeFree();
+    if (!free && !this.pay(reforgeCost(eq))) return;
+    if (free) S.reforgeDay = dayKey();
+    const old = eq.affixes.map((a) => ({ ...a }));
     reforgeItem(eq);
-    this.afterUpgrade(ref, `${eq.name} reforged!`);
+    S.reforgePend = { uid: eq.uid, old };
+    this.afterUpgrade(ref, `${eq.name} reforged${free ? ' (free daily reforge)' : ''}! Keep the new bonuses or take back the old ones`);
+  },
+  // keep: true keeps the new bonuses, false puts the old ones back
+  reforgeKeep(ref, keep) {
+    const S = this.S, P = S.reforgePend, eq = this.refItem(ref);
+    if (!P || !eq || eq.uid !== P.uid) { S.reforgePend = null; return; }
+    if (!keep) eq.affixes = P.old;
+    S.reforgePend = null;
+    if (ref.where === 'equip') this.recalc();
+    this.sfx.play(keep ? 'upgrade' : 'click');
+    this.ui.toast(keep ? 'New bonuses kept' : 'Old bonuses restored', 'good');
+    this.ui.refreshPanel(); this.save();
   },
   retemper(ref) {
     const eq = this.refItem(ref), L = this.S.level; if (!eq) return;

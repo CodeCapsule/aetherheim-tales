@@ -119,6 +119,26 @@ add('srv_pilipinas', svg(rg('z-spi-a', ['#fffbe0', '#ffe066', '#f5b820', '#c07a0
 ${[[32, 11], [14, 43], [50, 43]].map(([x, y]) => `<path d="M${starPts(5, 4.8, 2, x, y)}Z" fill="#ffe066" ${INK2}/>`).join('')}${glint(28, 27, 2.2)}`));
 add('qa_less', svg('', '<path d="M17 39L32 24L47 39" fill="none" stroke="#eef3fb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'));
 add('qa_down', svg('', '<path d="M17 26L32 41L47 26" fill="none" stroke="#eef3fb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'));
+// Lucky Ticket: a gold ticket with a four-leaf clover
+add('lucky_ticket', svg(lg('z-lucky_ticket-t', ['#fff6c8', '#ffd04a', '#d08a10']),
+  `<path d="M6 18H58V27A5 5 0 0 0 58 37V46H6V37A5 5 0 0 0 6 27Z" fill="url(#z-lucky_ticket-t)" ${INK} transform="rotate(-8 32 32)"/>
+<path d="M44 18V46" stroke="${C}" stroke-width="2" stroke-dasharray="3 3" opacity=".55" transform="rotate(-8 32 32)"/>
+${[0, 90, 180, 270].map((a) => `<ellipse cx="24" cy="26" rx="4.6" ry="6" fill="#4ad06a" ${INK2} transform="rotate(${a} 24 32.5) rotate(-8 32 32)"/>`).join('')}
+<circle cx="24" cy="32.5" r="2.4" fill="#2a8a3a" transform="rotate(-8 32 32)"/>${spark(50, 31, 4, '#fff')}${spark(56, 10, 3)}`));
+// Star Wish: a shooting star over a wishing orb
+add('wish', svg(rg('z-wish-o', ['#ffffff', '#d8c8ff', '#8a6ae8', '#3a2a8a'], '38%', '30%', '75%') + lg('z-wish-s', ['#fffbe0', '#ffd84a', '#e8900a']),
+  `<path d="M14 58H50L44 50H20Z" fill="#c8862a" ${INK}/><circle cx="32" cy="34" r="17" fill="url(#z-wish-o)" ${INK}/>
+<path d="M4 6Q20 10 30 20" fill="none" stroke="#ffe27a" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+<path d="M${starPts(5, 10, 4.2, 38, 26)}Z" fill="url(#z-wish-s)" ${INK2}/>${glint(25, 28, 2.6)}${spark(52, 46, 3.4)}${spark(12, 30, 2.6)}`));
+// Limit Break: a burst of rays around a blazing core
+add('limit_break', svg(rg('z-limit_break-c', ['#ffffff', '#fff2a0', '#ffb02a', '#d0400a'], '50%', '45%', '60%'),
+  `<path d="M${starPts(12, (i) => (i % 2 ? 22 : 29), 9)}Z" fill="#ffd84a" ${INK2}/><circle cx="32" cy="32" r="13" fill="url(#z-limit_break-c)" ${INK2}/>
+<path d="M27 25L36 31L29 33L37 40" fill="none" stroke="#c0400a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>${glint(27, 26, 2.4)}${spark(54, 10, 3.6)}${spark(10, 52, 3)}`));
+// Attribute Stars: three linked stars
+add('attr_stars', svg(lg('z-attr_stars-a', ['#fffbe0', '#ffd84a', '#e8900a']) + lg('z-attr_stars-b', ['#f0e0ff', '#b48aff', '#5a3ad8']),
+  `<path d="M18 40L32 20L46 40" fill="none" stroke="#ffe27a" stroke-width="3" opacity=".7"/>
+<path d="M${starPts(5, 13, 5.5, 32, 20)}Z" fill="url(#z-attr_stars-a)" ${INK2}/><path d="M${starPts(5, 10, 4.2, 16, 44)}Z" fill="url(#z-attr_stars-b)" ${INK2}/>
+<path d="M${starPts(5, 10, 4.2, 48, 44)}Z" fill="url(#z-attr_stars-b)" ${INK2}/>${spark(54, 12, 3.4)}`));
 
 // soulstones: one per named power
 const SOUL_LOOK = {

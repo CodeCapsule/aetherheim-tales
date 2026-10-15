@@ -2,12 +2,12 @@
 // festival and leaderboards). installSystemsUI(UI) mixes these into UI.prototype.
 import { CLASSES, MONSTERS, ITEMS, SLOTS, SLOT_INFO, TITLES, DUNGEONS } from './data.js';
 import {
-  MATERIALS, GEMS, GEM_LV, GEM_MAX, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, ENH_MAX, ENH_RATE, ENH_LUCK, enhCost, enhRisk, REFINE,
+  MATERIALS, GEMS, GEM_LV, GEM_MAX, gemId, parseGem, parseSoul, SOULS, soulId, SOUL_FORGE, SOCKET_MAX, DRILL_MAX, drillCost, ENH_MAX, ENH_RATE, ENH_LUCK, enhCost, enhRisk, REFINE, LUCKY_GAIN, perfectCost,
   RECIPES, SOCKETS, GEM_COMBINE, ASCEND, reforgeCost, retemperCost, salvageYield, CODEX_MILESTONES,
   DAILY_CHESTS, WEEKLY_CHESTS, GUILD_LIST, GUILD_EXP, GUILD_MAX, GUILD_CREATE, GUILD_JOIN_LV, guildBuff, GUILD_DONATE, GUILD_SHOP, WAR, WORLD_BOSS, WB_REWARDS, MARKET, EVENTS, nextEvent, eventEnds, seasonInfo, PASS, passReward, SEASON_RANK_REWARDS,
   secsToDayEnd, secsToWeekEnd, fmtDur,
 } from './systems-data.js';
-import { RARITY, NAMED_LIST, EFFECTS, iconKey, enhMult, enhAffixMult } from './loot.js';
+import { RARITY, NAMED_LIST, EFFECTS, iconKey, enhMult, enhAffixMult, affixLabel } from './loot.js';
 import { missionDef, matName } from './systems.js';
 import { fmt, esc } from './game.js';
 import { ico } from './icons.js';
@@ -440,7 +440,16 @@ const P = {
         const r = h('div', 'row slim', `<div class="ic">${ico(icon)}</div><div class="tx"><b>${title}</b>${desc}${cost ? `<div class="cost">${costChips(g, cost)}</div>` : ''}</div>`);
         const b = h('button', 'btn small', label); b.disabled = disabled || (cost && !g.canAfford(cost)); b.onclick = fn; r.appendChild(b); L.appendChild(r);
       };
-      action('reforge', 'Reforge', RARITY[eq.quality].affixes ? `Reroll all ${RARITY[eq.quality].affixes} bonus affixes${eq.effect ? ' (the named power stays)' : ''}` : 'Common and Uncommon gear has no affixes', reforgeCost(eq), 'Reforge', () => g.reforge(ref), !RARITY[eq.quality].affixes);
+      const nA = RARITY[eq.quality].affixes, free = g.reforgeFree(), P = S.reforgePend && S.reforgePend.uid === eq.uid ? S.reforgePend : null;
+      action('reforge', `Reforge${free && nA ? ' <span class="free-tag">Free today</span>' : ''}`, nA ? `Reroll ${nA === 1 ? 'its bonus affix' : `all ${nA} bonus affixes`}${eq.effect ? ' (the named power stays)' : ''}. Afterwards keep the new bonuses or take back the old ones. The first reforge each day is free.` : 'Common gear has no bonus affixes', free ? null : reforgeCost(eq), 'Reforge', () => g.reforge(ref), !nA || !!P);
+      if (P) {
+        const line = (list) => list.map((a) => `<div>${esc(affixLabel(a, eq.enh || 0))}</div>`).join('') || '<div class="muted">none</div>';
+        const r = h('div', 'reforge-pick', `<div class="rp-col"><b>Before</b>${line(P.old)}</div><div class="rp-col new"><b>New</b>${line(eq.affixes)}</div>`);
+        const acts = h('div', 'acts-row');
+        const keep = h('button', 'btn small green', 'Keep new'); keep.onclick = () => g.reforgeKeep(ref, true);
+        const back = h('button', 'btn small gray', 'Take back old'); back.onclick = () => g.reforgeKeep(ref, false);
+        acts.append(keep, back); r.appendChild(acts); L.appendChild(r);
+      }
       action('levelup', `Re-temper to Lv ${S.level}`, eq.lvl >= S.level ? 'Already at your level' : `Raise item level ${eq.lvl} → ${S.level}; stats and affixes grow with it`, eq.lvl < S.level ? retemperCost(eq, S.level) : null, 'Re-temper', () => g.retemper(ref), eq.lvl >= S.level);
       const A = eq.set ? null : ASCEND[eq.quality];
       if (eq.set) action('ascend', 'Ascend', 'Set pieces keep their set bonus, so they cannot be ascended. Reforge, re-temper and enhance them instead.', null, 'Ascend', () => {}, true);
@@ -503,6 +512,16 @@ const P = {
       acts.appendChild(go); info.appendChild(acts); body.appendChild(info);
       info.querySelector('#en-luck').onchange = (ev) => { o.luck = ev.target.checked; this.renderPanel(); };
       const pr = info.querySelector('#en-prot'); if (pr) pr.onchange = (ev) => { o.protect = ev.target.checked; this.renderPanel(); };
+      // Lucky Points: every failed try adds some; spend them on a Perfect Enhancement that cannot fail
+      const lp = g.S.lucky || 0, need = perfectCost(target);
+      let maxTo = e, left = lp; while (maxTo < ENH_MAX && left >= perfectCost(maxTo + 1)) { left -= perfectCost(maxTo + 1); maxTo++; }
+      const luck = h('div', 'detail lucky-box');
+      luck.innerHTML = `<div class="dtx">${ico('lucky_ticket', 'ico inl')} <b>Lucky Points: ${fmt(lp)}</b> <span class="muted">· a failed try adds ${LUCKY_GAIN[target - 1] || 0} here</span><br>
+        <span class="muted">Perfect Enhancement: 100% success, no stones or Gold. +${target} costs ${need} points.</span></div>`;
+      const la = h('div', 'acts');
+      const one = h('button', 'btn small', `Perfect +${target}`); one.disabled = lp < need; one.onclick = () => g.perfectEnhance(ref, false);
+      const all = h('button', 'btn small', maxTo > target ? `Perfect to +${maxTo}` : 'Perfect to max'); all.disabled = maxTo <= target; all.onclick = () => g.perfectEnhance(ref, true);
+      la.append(one, all); luck.appendChild(la); body.appendChild(luck);
     }
     this.refinery(body);
   },
@@ -693,7 +712,7 @@ const P = {
   // ------------------------------------------------------------ leaderboards
   panel_rank(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'rankTab', [['br', 'Battle Rating'], ['level', 'Level'], ['wboss', 'World Boss'], ['dungeon', 'Dungeon Speed'], ['season', 'Season'], ['war', 'Guild War'], ['guild', 'Guilds']]);
+    const tab = this.tabs(body, 'rankTab', [['br', 'Combat Power'], ['level', 'Level'], ['wboss', 'World Boss'], ['dungeon', 'Dungeon Speed'], ['season', 'Season'], ['war', 'Guild War'], ['guild', 'Guilds']]);
     if (tab === 'dungeon') {
       const ch = h('div', 'chips');
       for (const d of DUNGEONS) { const b = h('button', 'chip' + ((this.sel.lbDungeon || 'd1') === d.id ? ' sel' : ''), esc(d.name)); b.onclick = () => { this.sel.lbDungeon = d.id; this.renderPanel(); }; ch.appendChild(b); }
@@ -701,7 +720,7 @@ const P = {
     }
     const { rows, fmtv } = g.lbRows(tab);
     const t = h('div', 'rank-table');
-    const valHead = { br: 'BR', level: 'Level', wboss: 'Best damage', dungeon: 'Best time', season: 'Points', war: 'Wins', guild: 'Power' }[tab];
+    const valHead = { br: 'Combat Power', level: 'Level', wboss: 'Best damage', dungeon: 'Best time', season: 'Points', war: 'Wins', guild: 'Power' }[tab];
     t.appendChild(h('div', 'rank-row hd', `<span class="rk">#</span><span>${tab === 'guild' ? 'Guild' : 'Name'}</span><span class="cls">${tab === 'guild' ? 'Level' : 'Class'}</span><span style="text-align:right">${valHead}</span>`));
     rows.slice(0, 20).forEach((r, i) => t.appendChild(this.rankRow(r, i, tab, fmtv)));
     const mi = rows.findIndex((r) => r.me);

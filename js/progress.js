@@ -1,5 +1,5 @@
 // Earned levels: the XP curve, diminishing returns per monster type, the level-gap penalty, discovery XP, the soul
-// marker left on death, the three masteries (Weapon, Defense, Survival), the trial walls every 20 levels, rested XP, the mentor bonus, the seasonal catch-up, Battle Rating and the explored-map grid.
+// marker left on death, the three masteries (Weapon, Defense, Survival), the trial walls every 20 levels, rested XP, the mentor bonus, the seasonal catch-up, Combat Power and the explored-map grid.
 import * as THREE from 'three';
 import { CLASSES, RACES } from './data-classes.js';
 import { glowTexture } from './toon.js';
@@ -28,7 +28,7 @@ export function gapMult(me, mon) { const d = me - mon; return d <= 2 ? 1 : d <= 
 export const DISCOVERY = { zone: 0.02, hidden: 0.08, lore: 0.03, elite: 0.1, waystone: 0.05 };
 // the explored-map grid: 16 m cells over the 800 x 800 m world
 export const FOG = { size: 800, cell: 16, n: 50 };
-// tier multipliers used by Battle Rating
+// tier multipliers used by Combat Power
 const TIER_MULT = [1.0, 1.2, 1.5, 1.9, 2.4, 3.0, 3.8, 5.0];
 
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -76,7 +76,7 @@ const P = {
       const lv = enemy.level || 1;
       if (lv < S.level - 5 && !this.mentorActive()) return;
       pts *= 1 + lv / 20;
-      if (this.auto && !this.dg && !this.trial) pts *= 0.5; // auto-hit gives half
+      if (this.auto && !this.dg && !this.trial) pts *= 0.5; // auto-fight gives half
     } else if (enemy) return; // other players (PvP) do not train masteries
     else pts *= 1 + S.level / 20; // gathering, crafting, exploring: higher-level work is worth more
     if (type === 'survival') pts *= 1 + (RACES[S.app?.race]?.mods.survival || 0);
@@ -228,8 +228,9 @@ const P = {
   },
   saveFog() { if (this.fogDirty) { this.S.fog = encodeFog(this.fogBits); this.fogDirty = false; } },
 
-  // ================================================================ Battle Rating (a guide only; content gates never use it)
-  calcBR() {
+  // ================================================================ Combat Power (a guide only; content gates never use it)
+  // more: what pets, sprites, mounts, the guild, the codex and Attribute Stars add ({ pet, sprite, mount, system, stars })
+  calcBR(more = {}) {
     const S = this.S;
     let items = 0;
     for (const eq of Object.values(S.equip || {})) {
@@ -240,7 +241,9 @@ const P = {
       items += v * (TIER_MULT[eq.quality] || 1) * (1 + 0.06 * (eq.enh || 0));
     }
     const ms = ['weapon', 'defense', 'survival'].map((t) => this.masteryLv(t));
-    return Math.round(S.level * 100 + items + (ms[0] + ms[1] + ms[2]) / 3 * 50);
+    const P = this.cpParts = { level: S.level * 100, gear: Math.round(items), mastery: Math.round((ms[0] + ms[1] + ms[2]) / 3 * 50) };
+    for (const k of ['pet', 'sprite', 'mount', 'system', 'stars']) P[k] = Math.round(more[k] || 0);
+    return Object.values(P).reduce((a, v) => a + v, 0);
   },
   // what to do next, for the Hero panel
   nextGoal() {

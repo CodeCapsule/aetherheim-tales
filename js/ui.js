@@ -1,6 +1,6 @@
 // HUD, panels, dialogs, chat, minimap and world map.
 import {
-  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, QUESTS, SIGNIN, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
+  CLASSES, MONSTERS, SPAWNS, ZONES, PETS, SPRITES, MOUNTS, ITEMS, SLOT_INFO, QUESTS, SIGNIN, SIGNIN_BONUS, ONLINE_GIFTS, MALL, DUNGEONS, WEAPON_ICONS,
 } from './data.js';
 import { needExp, fmt, esc, PET_TIER, bagCat } from './game.js';
 import { RARITY, LEGENDARY_ITEMS, EFFECTS, itemLines, itemScore, itemStats, namedBySource } from './loot.js';
@@ -18,6 +18,10 @@ import { setOfDungeon } from './data-sets.js';
 import { PET_ABILITIES, PET_MAX_LV, petAbilityText } from './data-pets.js';
 import { CLASS_SKILLS, SKILL_BY_ID, rankMult, RACES } from './data-classes.js';
 import { MAX_LEVEL, SHOPS, DUNGEON_RULES } from './data-world.js';
+import { STAR_START, STAR_MAX, installStarsUI } from './stars.js';
+import { installWishUI } from './wish.js';
+import { LIMIT_BREAK, LB_MAX } from './limit.js';
+import { BOT_RANGES, BOT_POTS } from './autofight.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 import { DZ } from './data-dz.js';
 import { MASTERY, MASTERY_MAX, masteryNeed, FOG } from './progress.js';
@@ -62,10 +66,14 @@ export class UI {
     const bar = $('skillbar'); bar.innerHTML = '';
     this.slots = [];
     for (let i = 1; i <= 7; i++) {
-      const b = h('button', 'slot' + (i === 7 ? ' ult' : '')); b.dataset.i = i; b.setAttribute('aria-label', i === 7 ? 'Ultimate skill' : 'Skill ' + i);
-      b.innerHTML = `<span class="ic"></span><span class="key">${i}</span><span class="cd"></span><span class="cdt"></span>`;
+      const b = h('button', 'slot' + (i === 7 ? ' ult' : '')); b.dataset.i = i; b.setAttribute('aria-label', i === 7 ? 'Ultimate skill or Limit Break' : 'Skill ' + i);
+      b.innerHTML = `<span class="ic"></span><span class="key">${i}</span><span class="cd"></span><span class="cdt"></span>${i === 7 ? '<span class="lbg"></span>' : ''}`;
       b.addEventListener('click', () => g.useSkill(i));
-      this.tip(b, () => { const sk = g.skillList()[i]; return sk ? this.skillTip(sk) : `<b>${i === 7 ? 'Ultimate' : 'Empty slot'}</b>${i === 7 ? 'Your ultimate unlocks at Lv 200.' : 'Choose a skill for this slot in the Skills window (K).'}`; });
+      this.tip(b, () => {
+        const sk = g.skillList()[i], lb = `<br><span class="ts">Limit Break gauge ${Math.floor(g.lb || 0)}% · fills as you hit, get hit and defeat monsters</span>`;
+        if (i === 7) return sk ? `${this.skillTip(sk)}<br>A full Limit Break gauge readies it at once.${lb}` : `<b>Limit Break</b>${LIMIT_BREAK.desc}. Your ultimate takes this slot at Lv 200.${lb}`;
+        return sk ? this.skillTip(sk) : '<b>Empty slot</b>Choose a skill for this slot in the Skills window (K).';
+      });
       bar.appendChild(b); this.slots.push(b);
     }
     // the second skill page: swaps the six skills on the bar
@@ -142,7 +150,7 @@ export class UI {
     this.setMenuMin(min, false);
     // activities (top right): Online, Missions, Dungeon and the World Boss timer stay out; the rest sit behind More
     const acts = $('hud-acts'); acts.innerHTML = ''; acts.className = 'qa';
-    const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
+    const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['wish', 'Star Wish'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
     const ACT_PIN = ['online', 'missions', 'dungeon', 'worldboss'];
     this.acts = {};
     for (const [n, label] of A) {
@@ -268,10 +276,11 @@ export class UI {
     this.slots.forEach((b) => {
       if (b.dataset.potion) { b.querySelector('.cnt').textContent = g.countPotions(b.dataset.potion); return; }
       const sk = list[+b.dataset.i];
-      const icEl = b.querySelector('.ic'), key = sk ? sk.id : 'empty';
-      if (icEl.dataset.k !== key) { icEl.dataset.k = key; icEl.innerHTML = sk ? ico(sk.id) : ''; }
-      b.classList.toggle('empty', !sk);
-      b.classList.toggle('locked', !sk && +b.dataset.i === 7);
+      const lbs = !sk && +b.dataset.i === 7; // the Limit Break until the ultimate
+      const icEl = b.querySelector('.ic'), key = sk ? sk.id : lbs ? 'limit_break' : 'empty';
+      if (icEl.dataset.k !== key) { icEl.dataset.k = key; icEl.innerHTML = sk ? ico(sk.id) : lbs ? ico('limit_break') : ''; }
+      b.classList.toggle('empty', !sk && !lbs);
+      b.classList.toggle('lbslot', lbs);
     });
   }
   refreshSkillCD() {}
@@ -325,6 +334,8 @@ export class UI {
     const canSign = S.signin.last !== new Date().toISOString().slice(0, 10);
     this.acts.signin.classList.toggle('glow', canSign);
     this.setBadge(this.acts.signin, canSign);
+    const wishFree = this.g.wishFreeLeft() > 0;
+    this.acts.wish.classList.toggle('glow', wishFree); this.setBadge(this.acts.wish, wishFree);
     this.acts.gift.hidden = S.gift.idx >= ONLINE_GIFTS.length;
     this.acts.bounty.classList.toggle('glow', !!(S.bounty && S.bounty.status === 'complete'));
     const anyEntry = DUNGEONS.some((d) => S.level >= d.lv - 2 && this.g.dungeonEntries(d) > 0);
@@ -431,6 +442,9 @@ export class UI {
       if (rem > 0) { cd.style.background = `conic-gradient(rgba(0,0,0,.7) ${(rem / total) * 360}deg, transparent 0)`; if (cdt) this.txt(cdt, rem > 1 ? String(Math.ceil(rem)) : rem.toFixed(1)); }
       else if (cd.style.background) { cd.style.background = ''; if (cdt) this.txt(cdt, ''); }
     }
+    // the Limit Break gauge on slot 7
+    const lbv = Math.floor(g.lb || 0);
+    if (lbv !== this.lbShown) { this.lbShown = lbv; const s7 = this.slots[6]; s7.style.setProperty('--lb', lbv + '%'); s7.classList.toggle('lbfull', lbv >= LB_MAX); }
     // buffs
     const bf = $('pf-buffs');
     const elx = g.activeElixirs ? g.activeElixirs() : [];
@@ -749,8 +763,8 @@ export class UI {
     const dot = this.menuBtns[name]?.querySelector('.dotn'); if (dot) dot.remove();
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
-      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts', gm: 'Game Master' };
-    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520, gm: 660 };
+      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts', gm: 'Game Master', stars: 'Attribute Stars', wish: 'Star Wish' };
+    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520, gm: 660, stars: 560, wish: 560 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(var(--lw, 1vw) * 100 - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -816,7 +830,12 @@ export class UI {
     wrap.appendChild(port);
     wrap.appendChild(col(['boots', 'necklace', 'ring']));
     const st = h('div', 'stats-col');
-    st.appendChild(h('div', 'br-big', `<span class="flame"></span>${fmt(g.br)}`));
+    const cpb = h('div', 'br-big', `<span class="flame"></span><small>CP</small>${fmt(g.br)}`); cpb.title = 'Combat Power';
+    const CPP = g.cpParts || {};
+    this.tip(cpb, () => `<b>Combat Power ${fmt(g.br)}</b>${[['level', 'Level'], ['gear', 'Gear'], ['mastery', 'Masteries'], ['stars', 'Attribute Stars'], ['pet', 'Pet'], ['sprite', 'Sprite'], ['mount', 'Mounts'], ['system', 'Guild & Codex']].map(([k, n]) => `${n}: ${fmt(CPP[k] || 0)}`).join('<br>')}`);
+    st.appendChild(cpb);
+    const sb = h('button', 'btn small star-open', `★ Attribute Stars${S.level >= STAR_START ? ` ${(S.stars || []).filter(Boolean).length}/${STAR_MAX}` : ` (Lv ${STAR_START})`}`);
+    sb.onclick = () => this.togglePanel('stars', true); st.appendChild(sb);
     const RC = RACES[S.app?.race] || RACES.human;
     st.appendChild(h('div', 'stats', `
       <span>Class</span><span>${C.name}</span><span>${S.awaken != null ? 'Path' : 'Race'}</span><span>${S.awaken != null ? esc(C.paths[S.awaken]) : esc(RC.name)}</span>
@@ -835,7 +854,7 @@ export class UI {
       const be = h('button', 'btn', (eq.enh || 0) < 15 ? `Enhance +${(eq.enh || 0) + 1}` : 'Enhance'); be.onclick = () => { this.sel.forgeRef = { where: 'equip', slot: s }; this.sel.fgTab = 'enhance'; this.togglePanel('forge', true); }; acts.appendChild(be);
       const bu = h('button', 'btn gray', 'Unequip'); bu.onclick = () => { g.unequip(s); this.sel.eqSlot = null; }; acts.appendChild(bu);
       det.appendChild(acts);
-    } else det.innerHTML = '<div class="dtx">Select an equipment slot. Gorm the Blacksmith says: enhanced gear raises your Battle Rating! Reforge, ascend and socket gems at the Forge (Y).</div>';
+    } else det.innerHTML = '<div class="dtx">Select an equipment slot. Gorm the Blacksmith says: enhanced gear raises your Combat Power! Reforge, ascend and socket gems at the Forge (Y).</div>';
     body.appendChild(det);
     this.titleChooser(body);
   }
@@ -903,21 +922,21 @@ export class UI {
     const ok = eq.lvl <= g.S.level + 5 && !(g.equipBlock && g.equipBlock(eq));
     return `<span class="upg${ok ? '' : ' no'}" title="${ok ? 'Better than what you wear' : 'Better, but you cannot wear it yet'}">▲</span>`;
   }
-  // the selected bag item: its Battle Rating against what you wear, every stat that changes, and its full stat list
+  // the selected bag item: its Combat Power against what you wear, every stat that changes, and its full stat list
   gearCard(eq) {
     const g = this.g, S = g.S, cur = S.equip[eq.slot];
     const lines = itemLines(eq, S.equip, g.gearCtx ? g.gearCtx() : null);
     const sc = itemScore(eq), d = cur ? Math.round(sc - itemScore(cur)) : null;
     const box = h('div', 'bs-card');
     const verdict = d == null ? '<span class="up">Slot empty: a free upgrade</span>' : d > 0 ? `<span class="up">▲ ${fmt(d)} better than equipped</span>` : d < 0 ? `<span class="down">▼ ${fmt(-d)} weaker than equipped</span>` : '<span class="muted">Same as equipped</span>';
-    box.innerHTML = `<div class="bs-head"><span class="bs-sub">${esc(lines[1]?.text || '')}</span><span class="bs-br">BR <b>${fmt(sc)}</b></span></div><div class="bs-verdict">${verdict}</div>`;
+    box.innerHTML = `<div class="bs-head"><span class="bs-sub">${esc(lines[1]?.text || '')}</span><span class="bs-br">CP <b>${fmt(sc)}</b></span></div><div class="bs-verdict">${verdict}</div>`;
     // the stats that change if you swap (green gains, red losses)
     if (cur) {
       const a = itemStats(eq), b = itemStats(cur), NAMES = { atk: 'Attack', def: 'Defense', hp: 'Max HP', crit: 'Crit %', critDmg: 'Crit Dmg %', speed: 'Speed %', lifesteal: 'Lifesteal %', cdr: 'Cooldown %', expGain: 'EXP %', goldFind: 'Gold %', thorns: 'Thorns %', regen: 'Regen', manaCost: 'MP Cost %', atkPct: 'Attack %', defPct: 'Defense %', hpPct: 'Max HP %', allPct: 'All Stats %', bossPct: 'Boss Dmg %', firePct: 'Fire Dmg %', healPct: 'Healing %', atkSpeed: 'Attack Speed %', regenPct: 'Regen %' };
       const chips = Object.keys(NAMES).map((k) => [k, (a[k] || 0) - (b[k] || 0)]).filter(([, v]) => Math.abs(v) >= 0.05)
         .map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${NAMES[k]} ${v > 0 ? '▲' : '▼'}${fmt1(Math.abs(v))}</span>`);
       if (chips.length) box.appendChild(h('div', 'bs-diff', chips.join('')));
-      box.appendChild(h('div', 'bs-cur', `Equipped: <b style="color:${RARITY[cur.quality].color}">${esc(cur.name)}${cur.enh ? ` +${cur.enh}` : ''}</b> · BR ${fmt(itemScore(cur))}`));
+      box.appendChild(h('div', 'bs-cur', `Equipped: <b style="color:${RARITY[cur.quality].color}">${esc(cur.name)}${cur.enh ? ` +${cur.enh}` : ''}</b> · CP ${fmt(itemScore(cur))}`));
     }
     box.appendChild(h('div', 'bs-lines', lines.slice(2).map((l) => `<div style="color:${l.color || 'var(--muted)'}">${esc(l.text)}</div>`).join('')));
     return box;
@@ -926,7 +945,7 @@ export class UI {
     const cur = this.g.S.equip[eq.slot];
     if (!cur) return '<div style="color:#7aff7a">Slot is empty: equip for a free upgrade!</div>';
     const d = Math.round(itemScore(eq) - itemScore(cur));
-    return `<div style="color:${d >= 0 ? '#7aff7a' : '#ff7a7a'}">Battle Rating ${d >= 0 ? '+' : ''}${fmt(d)} vs equipped</div>`;
+    return `<div style="color:${d >= 0 ? '#7aff7a' : '#ff7a7a'}">Combat Power ${d >= 0 ? '+' : ''}${fmt(d)} vs equipped</div>`;
   }
 
   panel_skills(body) {
@@ -1062,7 +1081,7 @@ export class UI {
       const lv = own ? own.lv : 1, k = 1 + 0.15 * (lv - 1);
       det.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${own ? esc(pd.name) : '???'}</b> <span style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]} ${esc(pd.species)}</span><br>${own ? `Level ${lv} · Attack ${fmt(pd.atk * k)} · HP +${fmt(pd.hp * k)}` : `How to obtain: ${esc(pd.src)}`}
         <div class="pet-ab"><b>${ico('paw', 'ico inl')}${esc(PET_ABILITIES[pd.id].name)}</b> ${esc(petAbilityText(PET_ABILITIES[pd.id], lv))}<small>${lv < PET_MAX_LV ? `Grows each time you feed ${own ? esc(pd.name) : 'this pet'} · at Lv ${PET_MAX_LV}: ${esc(petAbilityText(PET_ABILITIES[pd.id], PET_MAX_LV))}` : 'Fully grown'}</small></div>
-        Pets fight beside you, add to your Battle Rating and lend you their ability while summoned.</div>`;
+        Pets fight beside you, add to your Combat Power and lend you their ability while summoned.</div>`;
       if (own) {
         const acts = h('div', 'acts');
         if (S.activePet === pd.id) { const b = h('button', 'btn gray', 'Recall'); b.onclick = () => g.setPet(null); acts.appendChild(b); }
@@ -1097,7 +1116,7 @@ export class UI {
     body.appendChild(cards);
     const md = MOUNTS.find((x) => x.id === (this.sel.mount || S.activeMount || MOUNTS[0].id)), own = S.mounts.includes(md.id);
     const det = h('div', 'detail');
-    det.innerHTML = `<img alt="" src="${g.mountIcon(md.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${esc(md.name)}</b><br>Move speed +${Math.round((md.speed - 1) * 100)}% · Battle Rating +${md.br}<br>${own ? 'Every mount you own adds to your Battle Rating.' : `How to obtain: ${esc(md.src)}`}</div>`;
+    det.innerHTML = `<img alt="" src="${g.mountIcon(md.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${esc(md.name)}</b><br>Move speed +${Math.round((md.speed - 1) * 100)}% · Combat Power +${md.br}<br>${own ? 'Every mount you own adds to your Combat Power.' : `How to obtain: ${esc(md.src)}`}</div>`;
     if (own) {
       const acts = h('div', 'acts');
       if (S.activeMount !== md.id) { const b = h('button', 'btn green', 'Set Active'); b.onclick = () => g.setMount(md.id); acts.appendChild(b); }
@@ -1268,7 +1287,7 @@ export class UI {
     det.innerHTML = `
       <div class="dg-hero"><img alt="" src="${g.monsterIcon(cur.rooms[cur.rooms.length - 1].boss)}"><div><div class="dg-name">${esc(cur.name)}</div><div class="dg-sub">Boss: <b>${esc(boss.name)}</b> · Lv ${boss.lvl[0]}</div><p>${esc(cur.desc)}</p></div></div>
       <div class="dg-stats">
-        <span>Recommended</span><span>Lv ${cur.lv} · BR <b style="color:${brOk ? '#7aff7a' : '#ff8a7a'}">${fmt(cur.recBR)}</b> (yours ${fmt(g.br)})</span>
+        <span>Recommended</span><span>Lv ${cur.lv} · CP <b style="color:${brOk ? '#7aff7a' : '#ff8a7a'}">${fmt(cur.recBR)}</b> (yours ${fmt(g.br)})</span>
         <span>Entries today</span><span><b>${left}</b> / ${cur.entries}${left ? '' : ' · then a Dungeon Ticket or 30 Diamonds'}</span>
         <span>Chambers</span><span>${cur.rooms.length} · ${esc(mons.join(', '))}</span>
         <span>Best rating</span><span>${S.dgn.best[cur.id] || '—'} · Clears ${S.dgn.clears[cur.id] || 0}</span>
@@ -1306,13 +1325,36 @@ export class UI {
     }
     row('Show other players', 'others'); row('Auto-use potions at low HP', 'autoPotion'); row('Auto-collect loot', 'autoLoot'); row('Real-time shadows', 'shadows'); row('Weather effects (rain, snow, petals, leaves)', 'weather'); row('Sound & music', 'sound'); row('Sound captions (trial cues as text)', 'captions');
     body.appendChild(s);
+    // auto-fight (T): what the helper does (autofight.js)
+    body.appendChild(h('div', 'set-head', `${ico('auto', 'ico inl')} Auto-fight <small>(T or the Auto button · open world only)</small>`));
+    const bs = h('div', 'settings');
+    const brow = (label, key) => {
+      const on = !!g.botSet(key);
+      bs.appendChild(h('span', '', label));
+      const b = h('button', 'switch' + (on ? ' on' : '')); b.setAttribute('aria-label', label); b.setAttribute('aria-pressed', on);
+      b.onclick = () => { g.setSetting(key, !on); this.renderPanel(); };
+      bs.appendChild(b);
+    };
+    const chips = (label, key, list, unit) => {
+      bs.appendChild(h('span', '', label));
+      const c = h('div', 'chips set-chips');
+      for (const v of list) { const b = h('button', 'chip' + (g.botSet(key) === v ? ' sel' : ''), `${v}${unit}`); b.onclick = () => { g.setSetting(key, v); this.renderPanel(); }; c.appendChild(b); }
+      bs.appendChild(c);
+    };
+    brow('Hunt: walk to monsters nearby', 'botHunt');
+    chips('Hunting range', 'botRange', BOT_RANGES, ' m');
+    brow('Quests: hunt what your quest or bounty needs', 'botQuest');
+    brow('Hand in finished quests and take the next one', 'botTurnIn');
+    chips('Drink a Healing potion at', 'botPot', BOT_POTS, '% HP');
+    brow('Leave elites and bosses alone', 'botSkipElite');
+    body.appendChild(bs);
     const acts = h('div', 'acts'); acts.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap';
     const sv = h('button', 'btn blue', 'Save Game'); sv.onclick = () => { g.save(); this.toast('Game saved', 'good'); }; acts.appendChild(sv);
     if (this.openAdmin && this.adminAllowed && this.adminAllowed()) { const ad = h('button', 'btn', 'Game Master Console'); ad.onclick = () => { this.closePanels(); this.openAdmin(); }; acts.appendChild(ad); }
     const del = h('button', 'btn gray', 'New Character'); del.onclick = () => this.modal('Start over?', 'This deletes your saved hero and returns to character creation.', [{ label: 'Delete & Restart', fn: () => { try { localStorage.removeItem('alfheim_tales_save_v1'); } catch { /* ignore */ } location.reload(); } }, { label: 'Cancel', cls: 'gray' }]);
     acts.appendChild(del);
     body.appendChild(acts);
-    body.appendChild(h('div', '', '<p style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:14px">Controls: click to move · click monsters to attack · drag to rotate camera · scroll or pinch to zoom · WASD to walk · 1–7 skills · Q/E potions · R mount · T auto battle · Shift dodge roll · Space jump · hold right mouse button to block (Guardians) · Tab next target · F talk · Enter chat.</p>'));
+    body.appendChild(h('div', '', '<p style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:14px">Controls: click to move · click monsters to attack · drag to rotate camera · scroll or pinch to zoom · WASD to walk · 1–7 skills · Q/E potions · R mount · T auto-fight · Shift dodge roll · Space jump · hold right mouse button to block (Guardians) · Tab next target · F talk · Enter chat.</p>'));
   }
 
   panel_mall(body) {
@@ -1336,10 +1378,15 @@ export class UI {
   panel_signin(body) {
     const g = this.g, S = g.S;
     const can = S.signin.last !== new Date().toISOString().slice(0, 10);
-    const cur = S.signin.count % 7;
+    const streak = g.signinStreak(), cur = streak % 7, broke = can && (S.signin.streak || 0) > 0 && !streak;
+    const toBonus = SIGNIN_BONUS.every - (streak % SIGNIN_BONUS.every);
+    body.appendChild(h('div', 'si-streak', `<b>${streak}</b> day${streak === 1 ? '' : 's'} in a row
+      <div class="bar"><i style="width:${(streak % SIGNIN_BONUS.every) / SIGNIN_BONUS.every * 100}%"></i></div>
+      <span>${can && toBonus === 1 ? 'Sign in today for' : `${toBonus} more day${toBonus === 1 ? '' : 's'} to`} the ${SIGNIN_BONUS.every}-day bonus: ${esc(SIGNIN_BONUS.label)}</span>
+      <span class="muted">${broke ? 'A day was missed: the streak starts over at Day 1.' : 'Sign in every day: missing one starts the streak over at Day 1.'}</span>`));
     const grid = h('div', 'signin');
     SIGNIN.forEach((r, i) => {
-      const claimed = i < cur || (!can && i === (cur + 6) % 7 && S.signin.count > 0 && cur === 0);
+      const claimed = i < cur || (!can && i === (cur + 6) % 7 && streak > 0 && cur === 0);
       const icon = r.pet ? `<img alt="" src="${g.petIcon(r.pet)}" style="width:44px;height:44px">` : r.mount ? `<img alt="" src="${g.mountIcon(r.mount)}" style="width:44px;height:44px">` : r.gold ? ico('gold') : r.diamonds ? ico('diamond') : ico(r.items[0][0]);
       grid.appendChild(h('div', 'sday' + (i === cur && can ? ' today' : '') + (claimed ? ' claimed' : ''), `Day ${r.day}<div class="si">${icon}</div>${esc(r.label)}`));
     });
@@ -1372,6 +1419,8 @@ installTradeUI(UI);
 installSocialUI(UI);
 installGuideUI(UI);
 installGmUI(UI);
+installStarsUI(UI);
+installWishUI(UI);
 
 // the dungeon's set: pieces you own and its bonuses
 function setBlock(dungeonId, S) {
