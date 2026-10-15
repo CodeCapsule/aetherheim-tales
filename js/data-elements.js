@@ -20,6 +20,12 @@ export const ZONE_ELEMENT = {
   'Sunpetal Plains': 'light', 'Whispering Marsh': 'storm', 'Ember Canyon': 'fire', 'Frostpeak Highlands': 'frost', 'Crystal Wilds': 'storm',
   'Shadow Fen': 'shadow', 'Starfall Plateau': 'light', 'Yggdrasil Gate': 'earth', 'Bloodmoon Wastes': 'fire',
 };
+// the element wheel: each element beats the next one (+25% damage), and is beaten by the one before it (-15%);
+// Light and Shadow beat each other. Monsters take the element of the land they live in (ZONE_ELEMENT).
+export const ELEMENT_BEATS = { fire: 'frost', frost: 'wind', wind: 'earth', earth: 'storm', storm: 'fire', light: 'shadow', shadow: 'light' };
+export const ELEM_STRONG = 1.25, ELEM_WEAK = 0.85;
+export const elemAdv = (att, def) => (!att || !def || att === def ? 1 : ELEMENT_BEATS[att] === def ? ELEM_STRONG : ELEMENT_BEATS[def] === att ? ELEM_WEAK : 1);
+export const ELEMENT_WHEEL = ['fire', 'frost', 'wind', 'earth', 'storm'];
 export const INFUSE_CRYSTALS = 3;
 export const infuseGold = (eq) => 2000 + (eq?.lvl || 1) * 100;
 // drop chance per kill: field monsters, elites, bosses (bosses always drop one or two)

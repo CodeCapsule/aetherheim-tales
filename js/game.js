@@ -26,6 +26,13 @@ import { installStars } from './stars.js';
 import { installWish } from './wish.js';
 import { installLimit } from './limit.js';
 import { installAutoFight } from './autofight.js';
+import { installCompanions } from './companions.js';
+import { installFireworks } from './fireworks.js';
+import { installDuel } from './duel.js';
+import { installEvents } from './events.js';
+import { installMiniGames } from './minigames.js';
+import { installUnlocks } from './unlocks.js';
+import { ZONE_ELEMENT, elemAdv } from './data-elements.js';
 import { installTrade } from './trade.js';
 import { installSocial, cleanFriends } from './social.js';
 import { installGuide, initGuideSave } from './guide.js';
@@ -156,7 +163,7 @@ export class Game {
     this.initProgress();
     this.createPlayer();
     this.dzInit();
-    this.gmNetInit(); this.dropsInit(); this.starsInit();
+    this.gmNetInit(); this.dropsInit(); this.starsInit(); this.compInit(); this.arenaInit();
     let p = S.pos || { x: 0, z: 9 };
     if (Math.abs(p.x) > 380 || Math.abs(p.z) > 380) p = { x: 0, z: 9 };
     this.player.pos.set(p.x, this.world.heightAt(p.x, p.z), p.z);
@@ -299,6 +306,7 @@ export class Game {
     if (inner.userData.humanoid) e.humanoid = inner;
     e.map = o.map || this.world; e.dungeon = !!o.dungeon; e.room = o.room ?? -1; e.summoned = !!o.summoned; e.fixed = o.fixed || null;
     e.uid = o.uid || null; e.gen = 0; // world spawns: the same id and life count in every browser
+    e.el = !o.dungeon && e.map === this.world && !d.war && !d.structure ? ZONE_ELEMENT[this.world.zoneAt(sp.x, sp.z, ZONES)?.name] || null : null; // the element wheel
     if (d.dz) { e.dz = true; this.dzTint(e); }
     const cls = 'monster' + (d.aggressive ? ' aggr' : '') + (d.elite ? ' elite' : '') + (d.boss ? ' boss' : '');
     this.nameplate(e, `<div class="n"></div>`, cls, true);
@@ -352,15 +360,16 @@ export class Game {
     this.awakenIds = G.awaken || [];
     hp += gs.hp || 0; atk += gs.atk || 0; def += gs.def || 0; crit += gs.crit || 0; critDmg += (gs.critDmg || 0) / 100;
     let petBR = 0;
-    if (S.activePet) { const pd = PETS.find((x) => x.id === S.activePet), lv = S.pets[S.activePet]?.lv || 1; hp += pd.hp * (1 + 0.15 * (lv - 1)); petBR = (pd.atk * 12 + pd.hp) * (1 + 0.15 * (lv - 1)); }
+    if (S.activePet) { const pd = PETS.find((x) => x.id === S.activePet), lv = S.pets[S.activePet]?.lv || 1, k = (1 + 0.15 * (lv - 1)) * this.petEvoMult(S.activePet); hp += pd.hp * k; petBR = (pd.atk * 12 + pd.hp) * k; }
     let spBR = 0;
     if (S.activeSprite) {
-      const sd = SPRITES.find((x) => x.id === S.activeSprite), m = sd.mods || {};
-      atk *= m.atk || 1; def *= m.def || 1; speed *= m.speed || 1; crit += m.crit || 0; spBR = 260;
+      const sd = SPRITES.find((x) => x.id === S.activeSprite), m = this.spriteMods(sd); // grows with the sprite's level (companions.js)
+      atk *= m.atk; def *= m.def; speed *= m.speed; crit += m.crit; spBR = this.spriteCP();
     }
     if (S.wings) { hp *= 1.05; atk *= 1.05; }
     const X = this.systemMods ? this.systemMods() : { atk: 0, hp: 0, br: 0 };
     hp *= 1 + X.hp; atk *= 1 + X.atk;
+    const PB = this.petBook(); hp *= 1 + PB.hp / 100; atk *= 1 + PB.atk / 100; petBR += PB.cp; // the Pet Book's collection bonus
     const EL = this.elixirMods ? this.elixirMods() : {};
     atk *= EL.atk || 1; def *= EL.def || 1; speed *= EL.speed || 1;
     if (fxs.has('worldtree')) hp *= 1.2;
@@ -378,7 +387,7 @@ export class Game {
     // passive class skills and race bonuses
     if (this.syncSkills().length && this.ui?.refreshSkills) this.ui.refreshSkills();
     const PA2 = this.pAgg = this.passiveAgg(), ps = PA2.stat;
-    this.addStarStats(ps); // Attribute Stars
+    this.addStarStats(ps); this.addSpriteStats(ps); // Attribute Stars, sprite talents
     hp *= 1 + (ps.hpPct || 0) / 100; mp *= 1 + (ps.mpPct || 0) / 100; atk *= 1 + (ps.atkPct || 0) / 100; def *= 1 + (ps.defPct || 0) / 100;
     // gear percentages (set bonuses and Special passives)
     hp *= 1 + ((gs.hpPct || 0) + (gs.allPct || 0)) / 100; atk *= 1 + ((gs.atkPct || 0) + (gs.allPct || 0)) / 100; def *= 1 + ((gs.defPct || 0) + (gs.allPct || 0)) / 100; heal *= 1 + (gs.healPct || 0) / 100;
@@ -389,7 +398,7 @@ export class Game {
     if (fxs.has('swift')) speed *= 1.12;
     cdr = Math.min(0.5, cdr + (gs.cdr || 0) / 100);
     this.mods = { stats: gs, effects: fxs };
-    const mountBR = S.mounts.reduce((a, id) => a + (MOUNTS.find((m) => m.id === id)?.br || 0), 0);
+    const mountBR = this.mountCP(); // trained mounts count more
     const ratio = p.maxHp > 1 ? p.hp / p.maxHp : 1, mratio = p.maxMp > 1 ? p.mp / p.maxMp : 1;
     if (this.trial) ({ hp, mp, atk, def, crit, critDmg, speed } = this.trialStats(ps)); // the same for every hero of the class
     else if (S.gm) ({ hp, mp, atk, def, crit, critDmg, speed } = this.gmStatMods({ hp, mp, atk, def, crit, critDmg, speed })); // stats set in the GM editor
@@ -407,7 +416,9 @@ export class Game {
   // the summoned pet's ability with its number at the pet's level, or null
   petAbility() {
     const id = this.S.activePet, ab = id && PET_ABILITIES[id];
-    return ab ? { ...ab, v: petAbilityValue(ab, this.S.pets[id]?.lv || 1) } : null;
+    if (!ab) return null;
+    const v = petAbilityValue(ab, this.S.pets[id]?.lv || 1) * this.petEvo(id).ab;
+    return { ...ab, v: ab.hi >= 20 ? Math.round(v) : Math.round(v * 10) / 10 };
   }
   petIs(kind) { return this.petFx?.kind === kind; }
   stat(k) { return this.mods.stats[k] || 0; }
@@ -417,7 +428,7 @@ export class Game {
   defOf(e) { return e.def * this.buffMod(e, 'def') * (e === this.player ? this.defStanceMult() : e.kind === 'monster' ? this.monsterDefMult(e) : 1); }
   critOf(e) { let c = e.crit; for (const b of e.buffs) if (b.mods && b.mods.crit) c += b.mods.crit; return c; }
   speedOf(e) {
-    if (e === this.player) return e.baseSpeed * this.buffMod(e, 'speed') * (this.rule('nightwalker') && this.pflag('stealth') ? 1.3 : 1) * (this.mounted ? (MOUNTS.find((m) => m.id === this.S.activeMount)?.speed || 1.4) : 1);
+    if (e === this.player) return e.baseSpeed * this.buffMod(e, 'speed') * (this.rule('nightwalker') && this.pflag('stealth') ? 1.3 : 1) * (this.mounted ? this.mountSpeed(this.S.activeMount) : 1);
     return e.speed * (e.mounted ? e.mountSpeed : 1);
   }
 
@@ -680,6 +691,7 @@ export class Game {
     if (this.hasFx('set_covenant') && o.fixed == null) { if (src === this.player || src.kind === 'pet') base *= 1.15; else if (dst === this.player) base *= 0.85; }
     if (dst === this.player && o.fixed == null && (this.petIs('guard') || this.petIs('guardian'))) base *= 1 - this.petFx.v / 100;
     if (dst.guard && src === this.player) base *= 0.25; // a Twin Blade on guard
+    if (dst.kind === 'monster' && dst.el && o.fixed == null && (src === this.player || src.kind === 'pet')) base *= elemAdv(src === this.player ? this.S.equip.weapon?.el : this.petEl(), dst.el); // the element wheel
     const K = 50 + 8 * (src.level || 1); // armor matters relative to the attacker's level, so it scales to Lv 200
     let dmg = o.fixed != null ? Math.max(1, Math.round(o.fixed)) : o.pct != null ? Math.max(1, Math.round(base)) : Math.max(1, Math.round(base * K / (K + this.defOf(dst))));
     if (dst === this.player && dmg > 0) dmg = Math.round(this.manaShield(dmg));
@@ -688,6 +700,7 @@ export class Game {
       if (dst === this.player && ab > 0) this.fx.text(dst.pos.clone().setY(dst.pos.y + dst.height), 'Absorb', 'miss');
       if (dst.shield <= 0) dst.buffs = dst.buffs.filter((b) => !b.shield);
     }
+    if (dst === this.player && dmg >= dst.hp && this.duelGuard()) return 0; // duels and arena fights end at 1 HP (duel.js)
     dst.hp -= dmg;
     const head = dst.pos.clone().setY(dst.pos.y + dst.height * 0.9);
     const mine = src === this.player || src.kind === 'pet';
@@ -832,8 +845,11 @@ export class Game {
     if (m.warUnit) this.onWarKill(m);
     if (m.wb) this.onWorldBossKilled(m);
     if (m.trialMob) { this.cbOnKill(m); this.gearOnKill(m); this.onTrialKill(m); return; }
+    if (m.realm) { this.realmWon(m); return; } // the Sprite Realm's guardian (companions.js)
+    if (m.arena) { this.arenaWon(m); return; } // an arena champion (duel.js)
     if (!m.tagged) return;
     m.tagged = false;
+    this.petKill(m); this.compOnKill(m); this.rushKill(m); // pet XP, Evolution Stones, Sprite Essence, Monster Rush
     const K = this.killScale(d, m.level);
     // exp
     const cs = d.curve ? curveStats(m.level, d.curve) : null;
@@ -1003,7 +1019,8 @@ export class Game {
       if (S.level === 100 && S.awaken == null) { this.ui.banner('AWAKENING', 'Choose your path in the Skills window (K)', 'level'); this.ui.markMenu('skills'); }
       if (this.skillPtsLeft() > 0) this.ui.markMenu('skills');
       if (S.level >= 10 && S.title < 3) { S.title = 3; this.refreshPlayerPlate(); }
-      this.questLevelUp(); this.starsLevelUp(from);
+      this.questLevelUp(); this.starsLevelUp(from); this.featuresLevelUp(from);
+      if (Math.floor(S.level / 10) > Math.floor(from / 10)) this.fwLevel(); // a rocket for every 10th level
       if (S.level >= MAX_LEVEL) { this.unlockTitle('Legend of Hiraya'); this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached the maximum level ${MAX_LEVEL}!`); }
       else if (S.level % 25 === 0) this.ui.chat('announce', `<b>[Announcement]</b> ${esc(S.name)} reached Level ${S.level}!`);
       this.ui.refreshSkills();
@@ -1112,6 +1129,7 @@ export class Game {
     const it = ITEMS[b.id];
     if (b.id === 'hp_potion' || b.id === 'mp_potion' || b.id.startsWith('potion_')) return this.usePotion(b.id, true);
     if (this.useUpgradeItem(b.id)) return;
+    if (b.id === 'firework' || b.id === 'firework_grand') { this.useFirework(b.id); return; }
     if (this.useLifeItem(b.id)) return;
     if (b.id === 'pet_egg') {
       const pool = PETS.filter((pd) => pd.rarity <= 2 && !pd.event && !S.pets[pd.id]);
@@ -1202,7 +1220,8 @@ export class Game {
     const e = this.makeEnt('pet', inner, { name: pd.name, radius: 0.5, shadowR: 0.45 });
     const pp = this.player.pos;
     e.pos.set(pp.x - 1.5, pp.y, pp.z - 1); e.data = pd; e.speed = 8; e.attackCD = 1;
-    this.nameplate(e, `<div class="n" style="color:#ffb8e8;font-size:11px">${esc(pd.name)}</div>`, 'pet');
+    this.petLook(e, pd.id); // evolved pets are bigger and glow (companions.js)
+    this.nameplate(e, `<div class="n" style="color:#ffb8e8;font-size:11px">${esc(this.petName(pd.id))}${'★'.repeat(S.pets[pd.id]?.evo || 0)}</div>`, 'pet');
     this.pet = e;
     this.fx.spawnPuff(e.pos, 0xffb8e8);
   }
@@ -1625,7 +1644,7 @@ export class Game {
     this.updateCombat(dt);
     this.updateSoul(dt); this.updateFog(); this.updateNavigation(dt); this.gearTick(dt);
     this.skyUpdate(dt);
-    this.dzUpdate(dt); this.dropsUpdate(dt);
+    this.dzUpdate(dt); this.dropsUpdate(dt); this.huntUpdate(dt); this.realmUpdate(dt); this.fwUpdate(dt); this.duelUpdate(dt); this.arenaUpdate(dt); this.evUpdate(dt);
     this.updateSprite(dt);
     for (const m of this.monsters) this.updateMonster(m, dt);
     for (const n of this.npcs) this.updateNPC(n, dt);
@@ -1770,7 +1789,7 @@ export class Game {
     e.attackCD -= dt;
     const pd = e.data, lv = this.S.pets[pd.id]?.lv || 1;
     e.level = p.level;
-    e.atk = pd.atk * (1 + 0.15 * (lv - 1)) + p.atk * 0.15; e.crit = 5; e.critDmg = 0.5;
+    e.atk = (pd.atk * (1 + 0.15 * (lv - 1)) + p.atk * 0.15) * this.petAtkMult(); e.crit = 5; e.critDmg = 0.5;
     const t = p.target && p.target.kind === 'monster' && !p.target.dead && this.time - this.lastCombat < 4 ? p.target : null;
     let moving = false;
     if (flat(e.pos, p.pos) > 30) { e.pos.set(p.pos.x - 1, p.pos.y, p.pos.z - 1); }
@@ -1854,7 +1873,7 @@ export class Game {
     const sd = s.userData.def;
     if (sd.regen) {
       this.spriteRegenT -= dt;
-      if (this.spriteRegenT <= 0) { this.spriteRegenT = 4; if (p.hp < p.maxHp && !p.dead) { this.heal(p, p.maxHp * sd.regen); } }
+      if (this.spriteRegenT <= 0) { this.spriteRegenT = 4; if (p.hp < p.maxHp && !p.dead) { this.heal(p, p.maxHp * sd.regen * this.spriteK(sd.id)); } }
     }
   }
 
@@ -2399,6 +2418,12 @@ installStars(Game);
 installWish(Game);
 installLimit(Game);
 installAutoFight(Game);
+installCompanions(Game);
+installFireworks(Game);
+installDuel(Game);
+installEvents(Game);
+installMiniGames(Game);
+installUnlocks(Game);
 installTrade(Game);
 installSocial(Game);
 installGuide(Game);

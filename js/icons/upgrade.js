@@ -134,6 +134,36 @@ add('wish', svg(rg('z-wish-o', ['#ffffff', '#d8c8ff', '#8a6ae8', '#3a2a8a'], '38
 add('limit_break', svg(rg('z-limit_break-c', ['#ffffff', '#fff2a0', '#ffb02a', '#d0400a'], '50%', '45%', '60%'),
   `<path d="M${starPts(12, (i) => (i % 2 ? 22 : 29), 9)}Z" fill="#ffd84a" ${INK2}/><circle cx="32" cy="32" r="13" fill="url(#z-limit_break-c)" ${INK2}/>
 <path d="M27 25L36 31L29 33L37 40" fill="none" stroke="#c0400a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>${glint(27, 26, 2.4)}${spark(54, 10, 3.6)}${spark(10, 52, 3)}`));
+// Evolution Stone: a swirling egg-shaped gem
+add('evo_stone', svg(rg('z-evo_stone-g', ['#ffffff', '#ffb0e8', '#c46bff', '#5a2a9a'], '40%', '30%', '75%'),
+  `<path d="M32 6C44 6 52 22 52 36C52 50 43 58 32 58C21 58 12 50 12 36C12 22 20 6 32 6Z" fill="url(#z-evo_stone-g)" ${INK}/>
+<path d="M22 38C24 28 34 26 38 32C41 37 35 42 31 39" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+${glint(25, 18, 2.6)}${spark(50, 12, 3.6)}${spark(14, 50, 2.6)}`));
+// Sprite Essence: a glowing wisp in a tiny vial
+add('sprite_essence', svg(lg('z-sprite_essence-v', ['#e8fff8', '#8af0e0', '#3ab8c8']) + rg('z-sprite_essence-w', ['#ffffff', '#c8fff0', 'rgba(90,240,200,0)'], '50%', '50%', '50%'),
+  `<rect x="26" y="6" width="12" height="8" rx="2" fill="#c8862a" ${INK2}/><path d="M24 14H40V22C48 26 52 33 52 41C52 51 43 58 32 58C21 58 12 51 12 41C12 33 16 26 24 22Z" fill="url(#z-sprite_essence-v)" ${INK}/>
+<circle cx="32" cy="41" r="13" fill="url(#z-sprite_essence-w)"/><path d="M28 44C26 38 32 34 35 38C37 41 34 44 32 42" fill="none" stroke="#2a8a7a" stroke-width="2.4" stroke-linecap="round"/>
+${glint(22, 34, 2.2)}${spark(50, 14, 3.4)}`));
+// Fireworks: a rocket, and a bundle of three for the grand one
+const rocket = (x, y, s, c, id) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -22L7 -12V10H-7V-12Z" fill="url(#${id})" ${INK2}/><path d="M-7 -12H7" ${INK2}/><path d="M-3 10L-6 18M3 10L6 18M0 10V20" stroke="#c8862a" stroke-width="2.4" stroke-linecap="round"/><circle cx="0" cy="-3" r="3" fill="${c}" ${INK2}/></g>`;
+add('firework', svg(lg('z-firework-r', ['#ff9aa8', '#ff3a5a', '#a01030']),
+  `${rocket(26, 34, 1.15, '#ffd84a', 'z-firework-r')}${spark(48, 14, 5, '#ffd84a')}${spark(54, 30, 3, '#fff')}${spark(42, 8, 2.4, '#ff9ae8')}`));
+add('firework_grand', svg(lg('z-firework_grand-a', ['#ffe8a0', '#ffb02a', '#b8600a']) + lg('z-firework_grand-b', ['#b8e8ff', '#3a9aff', '#1a4aa8']),
+  `${rocket(18, 38, 0.95, '#fff', 'z-firework_grand-b')}${rocket(46, 38, 0.95, '#fff', 'z-firework_grand-b')}${rocket(32, 32, 1.1, '#ff4a5a', 'z-firework_grand-a')}${spark(32, 6, 4.6, '#ffd84a')}${spark(54, 12, 3, '#fff')}${spark(10, 14, 3, '#ff9ae8')}`));
+// Arena: crossed swords on a laurel ring
+add('arena', svg(lg('z-arena-b', ['#ffffff', '#c8d4e8', '#6a7a9a']) + lg('z-arena-h', ['#ffe8a0', '#e8a030', '#8a5010']),
+  `<circle cx="32" cy="34" r="22" fill="none" stroke="#4ac86a" stroke-width="5" stroke-dasharray="6 3" ${'opacity=".9"'}/>
+<path d="M14 12L44 42" stroke="url(#z-arena-b)" stroke-width="7" stroke-linecap="round"/><path d="M50 12L20 42" stroke="url(#z-arena-b)" stroke-width="7" stroke-linecap="round"/>
+<path d="M14 12L44 42M50 12L20 42" fill="none" stroke="${C}" stroke-width="1.6" opacity=".5"/>
+<path d="M38 46L48 36M26 46L16 36" stroke="url(#z-arena-h)" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="50" r="4" fill="#e8a030" ${INK2}/><circle cx="14" cy="50" r="4" fill="#e8a030" ${INK2}/>${spark(32, 8, 3.6)}`));
+// Mini-games: a card and a little tower
+add('games', svg(lg('z-games-c', ['#ffffff', '#e8eef8', '#b8c4d8']) + lg('z-games-t', ['#d8c8a8', '#a08a6a', '#6a5a3a']),
+  `<rect x="8" y="14" width="26" height="36" rx="4" fill="url(#z-games-c)" ${INK} transform="rotate(-10 21 32)"/><path d="M21 24L25 32L21 40L17 32Z" fill="#ff4a6a" transform="rotate(-10 21 32)"/>
+<path d="M38 56V26H56V56Z" fill="url(#z-games-t)" ${INK}/><path d="M36 26V18H40V22H44V18H50V22H54V18H58V26Z" fill="#c8b48a" ${INK2}/><rect x="44" y="42" width="6" height="14" rx="3" fill="#4a3a2a"/>${spark(52, 8, 3.4)}`));
+// Timetable: a clock with a star
+add('timetable', svg(rg('z-timetable-f', ['#ffffff', '#f0f4fb', '#c8d4e8']) + lg('z-timetable-r', ['#ffe8a0', '#e8a030', '#8a5010']),
+  `<circle cx="30" cy="34" r="22" fill="url(#z-timetable-r)" ${INK}/><circle cx="30" cy="34" r="16" fill="url(#z-timetable-f)" ${INK2}/>
+<path d="M30 22V34L38 39" fill="none" stroke="${C}" stroke-width="3.2" stroke-linecap="round"/><path d="M${starPts(5, 9, 3.8, 50, 14)}Z" fill="#ffd84a" ${INK2}/>`));
 // Attribute Stars: three linked stars
 add('attr_stars', svg(lg('z-attr_stars-a', ['#fffbe0', '#ffd84a', '#e8900a']) + lg('z-attr_stars-b', ['#f0e0ff', '#b48aff', '#5a3ad8']),
   `<path d="M18 40L32 20L46 40" fill="none" stroke="#ffe27a" stroke-width="3" opacity=".7"/>

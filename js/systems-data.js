@@ -110,6 +110,8 @@ for (const [type, g] of Object.entries(GEMS)) {
 
 for (const [fx, name] of Object.entries(SOULS)) MATERIALS[soulId(fx)] = { name: `${name} Soulstone`, icon: soulId(fx), quality: 5, price: 25000, soul: fx, desc: 'Socket into gear (one Soulstone per item) to gain its named power.' };
 MATERIALS.enh_stone = { name: 'Enhancement Stone', icon: 'enh_stone', quality: 2, price: 400, desc: 'Enhances gear from +1 to +5. Five refine into a Greater stone.' };
+MATERIALS.evo_stone = { name: 'Evolution Stone', icon: 'evo_stone', quality: 4, price: 3000, desc: 'Evolves a pet at Lv 20 and Lv 40. From elites, bosses, the Sprite Realm, treasure hunts and Mimi.' };
+MATERIALS.sprite_essence = { name: 'Sprite Essence', icon: 'sprite_essence', quality: 3, price: 800, desc: 'Levels up sprites. From treasure hunts, the Sprite Realm and now and then from monsters.' };
 MATERIALS.enh_stone2 = { name: 'Greater Enhancement Stone', icon: 'enh_stone2', quality: 3, price: 1600, desc: 'Enhances gear from +6 to +10.' };
 MATERIALS.enh_stone3 = { name: 'Divine Enhancement Stone', icon: 'enh_stone3', quality: 4, price: 6000, desc: 'Enhances gear from +11 to +15.' };
 

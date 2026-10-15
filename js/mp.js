@@ -76,7 +76,7 @@ function cleanInfo(m) {
     x: num(m.x, -400, 400, 0), z: num(m.z, -400, 400, 9),
     party: /^[a-z0-9]{4,16}$/.test(m.party) ? m.party : null, pj: num(m.pj, 0, 1e13, 0),
     aura: /^#[0-9a-f]{6}$/i.test(m.aura) ? m.aura : null, pr: cleanFirsts(m.pr), gt: num(m.gt, 0, 7, 0) | 0, dawn: !!m.dawn,
-    wg: num(m.wg, 0, 4, 0) | 0, we: isElement(m.we) ? m.we : null, gm: !!m.gm, bv: num(m.bv, 0, 1e14, 0),
+    wg: num(m.wg, 0, 4, 0) | 0, we: isElement(m.we) ? m.we : null, gm: !!m.gm, bv: num(m.bv, 0, 1e14, 0), ar: num(m.ar, 0, 5000, 1000) | 0,
   };
 }
 
@@ -118,6 +118,8 @@ const M = {
     on('w', (p) => this.wbNetMsg(p)); // the world boss's health and threat (aggro.js)
     on('g', (p) => this.gmNetMsg(p)); // a Game Master's monsters (gmnet.js)
     on('d', (p) => this.dropMsg(p)); // items dropped on the ground (drops.js)
+    on('x', (p) => this.fwMsg(p)); // fireworks (fireworks.js)
+    on('v', (p) => this.duelMsg(p)); // duels (duel.js)
     ch.subscribe((status, err) => {
       if (mp.channel !== ch) return;
       if (status === 'SUBSCRIBED') this.mpJoined();
@@ -198,7 +200,7 @@ const M = {
       id: mp.id, name: S.name, cls: S.cls, gender: S.gender, hair: S.hair, eye: S.eye, app: S.app, level: S.level, guild: S.guild?.name || null,
       wings: !!S.wings, wingColor: S.wingColor || null, costume: S.costume || {}, mount: this.mounted ? S.activeMount : null, pet: S.activePet || null,
       zone: this.trial ? 'Breakthrough Trial' : this.dg ? this.dg.def.name : this.war ? 'Guild War' : (this.zone?.name || 'Carlyle'), map: where, br: this.br || 0,
-      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, ...(this.weaponLook ? this.weaponLook() : {}), dawn: !!(this.hasFx && this.hasFx('six_dawn6')), gm: !!S.gm, bv: BUILD,
+      party: mp.party.id, pj: mp.party.pj, aura: this.myAuraColor ? this.myAuraColor() : null, pr: this.prestigeInfo ? this.prestigeInfo() : {}, gt: this.gearGlowTier ? this.gearGlowTier() : 0, ...(this.weaponLook ? this.weaponLook() : {}), dawn: !!(this.hasFx && this.hasFx('six_dawn6')), gm: !!S.gm, bv: BUILD, ar: S.arena?.r || 1000,
     };
     if (!stable) { info.x = Math.round(p.pos.x * 10) / 10; info.z = Math.round(p.pos.z * 10) / 10; }
     return info;

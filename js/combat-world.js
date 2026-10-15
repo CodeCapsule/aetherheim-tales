@@ -102,7 +102,7 @@ const W = {
   enemiesIn(c, r) {
     const out = [], Wm = this.map;
     for (const m of this.monsters) if (!m.dead && (m.map || this.world) === Wm && flat(m.pos, c) < r + m.radius * 0.5 && !(this.dg && m.dungeon && m.room > this.dg.cleared.size)) out.push(m);
-    if (this.dzIn) for (const e of this.rplayers || []) if (this.pvpFoe(e) && flat(e.pos, c) < r + 0.5) out.push(e);
+    if (this.dzIn || this.duel?.live) for (const e of this.rplayers || []) if (this.pvpFoe(e) && flat(e.pos, c) < r + 0.5) out.push(e);
     return out;
   },
   inCone(e, o, yaw, r, ang) {

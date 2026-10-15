@@ -22,8 +22,15 @@ import { STAR_START, STAR_MAX, installStarsUI } from './stars.js';
 import { installWishUI } from './wish.js';
 import { LIMIT_BREAK, LB_MAX } from './limit.js';
 import { BOT_RANGES, BOT_POTS } from './autofight.js';
+import { installCompanionsUI, PET_EVO } from './companions.js';
+import { installDuelUI } from './duel.js';
+import { installEventsUI } from './events.js';
+import { installMiniGamesUI } from './minigames.js';
+import { FEATURES } from './unlocks.js';
+import { dirWord } from './nav-world.js';
 import { WORLD_BOSS, MATERIALS } from './systems-data.js';
 import { DZ } from './data-dz.js';
+import { ELEMENTS, elemAdv } from './data-elements.js';
 import { MASTERY, MASTERY_MAX, masteryNeed, FOG } from './progress.js';
 import { SURVEY_MIN_MASTERY, SURVEY_COVER } from './data-nav.js';
 import { trialLabel } from './data-trials.js';
@@ -80,6 +87,7 @@ export class UI {
     const pg = $('skill-page');
     pg.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v13M3 13l4 4 4-4M17 20V7M13 11l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b>`;
     pg.onclick = () => g.swapSkillPage();
+    this.placePageBtn(); // main.js onResize places it again
     this.tip(pg, () => `<b>Skill page ${g.S.page + 1} of 2</b>Swaps the six skills on the bar for your other six.<br><span class="ts">Hotkey [ or ] · set both pages in the Skills window (K)</span>`);
     for (const [id, key] of [['hp_potion', 'Q'], ['mp_potion', 'E']]) {
       const b = h('button', 'slot potion'); b.innerHTML = `${ico(id)}<span class="key">${key}</span><span class="cnt"></span><span class="cd"></span>`;
@@ -150,7 +158,7 @@ export class UI {
     this.setMenuMin(min, false);
     // activities (top right): Online, Missions, Dungeon and the World Boss timer stay out; the rest sit behind More
     const acts = $('hud-acts'); acts.innerHTML = ''; acts.className = 'qa';
-    const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['wish', 'Star Wish'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
+    const A = [['online', 'Online'], ['missions', 'Missions'], ['dungeon', 'Dungeon'], ['worldboss', 'World Boss'], ['war', 'Guild War'], ['event', 'Festival'], ['season', 'Season'], ['farm', 'Farm'], ['signin', 'Sign-In'], ['timetable', 'Timetable'], ['wish', 'Star Wish'], ['arena', 'Arena'], ['games', 'Mini-games'], ['gift', 'Gift'], ['mall', 'Mall'], ['rank', 'Ranking'], ['bounty', 'Bounty'], ['teleport', 'Teleport']];
     const ACT_PIN = ['online', 'missions', 'dungeon', 'worldboss'];
     this.acts = {};
     for (const [n, label] of A) {
@@ -284,6 +292,17 @@ export class UI {
     });
   }
   refreshSkillCD() {}
+  // the desktop bar keeps the page swap in the round action pill (mount, auto-fight, roll); phones keep it beside the
+  // skill arc. The desktop layout is the one where the dock is a grid (its media query, rescaled by touchfit.js).
+  placePageBtn() {
+    const pg = $('skill-page'), pill = document.querySelector('#hud-bar .side-btns'), bar = $('hud-bar'), dock = $('hud-dockbar');
+    if (!pg || !pill || !bar || !dock) return;
+    const desk = getComputedStyle(dock).display === 'grid';
+    let sep = pill.querySelector('.pill-sep');
+    if (desk && pg.parentElement !== pill) { if (!sep) { sep = h('span', 'pill-sep'); sep.setAttribute('aria-hidden', 'true'); } pill.append(sep, pg); }
+    else if (!desk && pg.parentElement !== bar) { sep?.remove(); bar.insertBefore(pg, $('skillbar')); }
+    pg.classList.toggle('inpill', desk);
+  }
   refreshTools() {
     const g = this.g; if (!g || !this.toolSlots) return;
     for (const [k, b] of Object.entries(this.toolSlots)) {
@@ -322,7 +341,9 @@ export class UI {
         const tag = t.def0.boss ? '<em>BOSS</em>' : t.def0.elite ? '<em>ELITE</em>' : '';
         // hunting one type over and over pays less: show what a kill is worth now
         const dr = g.diminishInfo ? g.diminishInfo(t.type) : 1;
-        $('tg-name').innerHTML = `Lv${t.level} ${esc(t.def0.name)}${tag}${dr < 1 ? ` <small class="tg-dr" title="Repeated kills of this monster type give less EXP; it recovers while you hunt elsewhere">EXP ${Math.round(dr * 100)}%</small>` : ''}`;
+        const E = t.el && ELEMENTS[t.el], adv = E ? elemAdv(g.S.equip.weapon?.el, t.el) : 1;
+        const elt = E ? ` <small class="tg-el${adv > 1 ? ' up' : adv < 1 ? ' down' : ''}" style="--el:${E.color}" title="${E.name} monster${adv > 1 ? ': your weapon\'s element beats it (+25% damage)' : adv < 1 ? ': it resists your weapon\'s element (-15% damage)' : ''}">${E.name}${adv > 1 ? ' ▲' : adv < 1 ? ' ▼' : ''}</small>` : '';
+        $('tg-name').innerHTML = `Lv${t.level} ${esc(t.def0.name)}${tag}${elt}${dr < 1 ? ` <small class="tg-dr" title="Repeated kills of this monster type give less EXP; it recovers while you hunt elsewhere">EXP ${Math.round(dr * 100)}%</small>` : ''}`;
       } else {
         $('tg-img').src = g.heroIcon(t);
         $('tg-name').innerHTML = `Lv${t.level} ${esc(t.name)} <em style="color:#9ad0ff">${CLASSES[t.cls]?.name || ''}</em>`;
@@ -334,8 +355,11 @@ export class UI {
     const canSign = S.signin.last !== new Date().toISOString().slice(0, 10);
     this.acts.signin.classList.toggle('glow', canSign);
     this.setBadge(this.acts.signin, canSign);
-    const wishFree = this.g.wishFreeLeft() > 0;
+    const wishFree = this.g.wishFreeLeft() > 0 && this.g.featureOn('wish');
     this.acts.wish.classList.toggle('glow', wishFree); this.setBadge(this.acts.wish, wishFree);
+    // newer features stay off the bar until their level (unlocks.js)
+    for (const f of FEATURES) if (f.act && this.acts[f.act]) this.acts[f.act].hidden = !this.g.featureOn(f.id);
+    if (this.acts.timetable) this.acts.timetable.classList.toggle('glow', !!this.g.evLive() && this.g.featureOn('events'));
     this.acts.gift.hidden = S.gift.idx >= ONLINE_GIFTS.length;
     this.acts.bounty.classList.toggle('glow', !!(S.bounty && S.bounty.status === 'complete'));
     const anyEntry = DUNGEONS.some((d) => S.level >= d.lv - 2 && this.g.dungeonEntries(d) > 0);
@@ -579,6 +603,13 @@ export class UI {
     } else if (g.bountyUnlocked()) {
       list.appendChild(h('div', 'qt-item', `<span class="qtag bounty">Bounty</span><div class="qo">Visit <u>Captain Elena</u> for a bounty</div>`)).onclick = () => g.talkTo(g.npcById('elena'), true);
     }
+    if (S.hunt && g.map === g.world) {
+      const d = Math.round(Math.hypot(S.hunt.x - g.player.pos.x, S.hunt.z - g.player.pos.z));
+      const it = h('div', 'qt-item', `<span class="qtag hunt">Treasure</span><span class="qn">Sprite's Treasure Hunt</span><div class="qo">${d < 4 ? 'Dig here!' : `<u>${d} m ${dirWord(S.hunt.x - g.player.pos.x, S.hunt.z - g.player.pos.z)}</u>`}</div>`);
+      it.title = 'Click to walk to the treasure'; it.onclick = () => { g.sfx.play('click'); g.pathTo(S.hunt.x, S.hunt.z, true, true); };
+      list.appendChild(it);
+    }
+    this.eventTracker(list);
     this.guideTracker(list);
     this.questExtras(list);
     if (this.panelName === 'quests') this.renderPanel();
@@ -763,8 +794,8 @@ export class UI {
     const dot = this.menuBtns[name]?.querySelector('.dotn'); if (dot) dot.remove();
     const titles = { char: 'Character', bag: 'Bag', skills: 'Skills', pets: 'Pets & Sprites', mounts: 'Mount Stable', quests: 'Quest Log', map: this.g.dg ? this.g.dg.def.name : this.g.war ? 'Spirit Crystal Arena' : 'World Map of Carlyle', settings: 'Settings', mall: 'Mall', signin: 'Daily Sign-In', gift: 'Online Gifts', rank: 'Leaderboards', dungeons: 'Dungeons',
       online: 'Players Online', life: 'Professions', collect: 'Relic Collection', wardrobe: 'Wardrobe', shop: SHOPS[this.sel.shop]?.name || 'Shop', auction: 'Auction House',
-      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts', gm: 'Game Master', stars: 'Attribute Stars', wish: 'Star Wish' };
-    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520, gm: 660, stars: 560, wish: 560 };
+      missions: 'Daily & Weekly Missions', guild: this.g.S.guild ? `Guild · ${this.g.S.guild.name}` : 'Guilds of Carlyle', market: 'Carlyle Market', forge: this.stationNext?.npc === 'opal' || this.station?.npc === 'opal' ? "Opal's Gem Workshop" : "Gorm's Forge", codex: 'Legendary Codex', season: 'Season Pass', event: this.g.event ? this.g.event.name : 'Festivals', worldboss: 'World Boss', trials: 'Breakthrough Trials', cooking: 'Campfire Cooking', prestige: 'Hall of Firsts', gm: 'Game Master', stars: 'Attribute Stars', wish: 'Star Wish', arena: 'Arena', timetable: 'Event Timetable', games: 'Mini-games' };
+    const widths = { char: 600, bag: 412, skills: 720, pets: 520, mounts: 520, quests: 480, map: 600, settings: 400, mall: 560, signin: 560, gift: 420, rank: 560, dungeons: 620, missions: 600, guild: 600, market: 620, forge: 600, codex: 620, season: 660, event: 600, worldboss: 600, online: 520, life: 620, collect: 600, wardrobe: 600, shop: 560, auction: 640, trade: 640, trials: 680, cooking: 540, prestige: 520, gm: 660, stars: 560, wish: 560, arena: 560, timetable: 520, games: 540 };
     const p = h('div', 'panel frame');
     p.style.width = `min(${widths[name]}px, calc(var(--lw, 1vw) * 100 - 24px))`;
     p.innerHTML = `<div class="ptitle">${titles[name]}</div><button class="x-close" aria-label="Close"></button><div class="pbody"></div>`;
@@ -836,6 +867,8 @@ export class UI {
     st.appendChild(cpb);
     const sb = h('button', 'btn small star-open', `★ Attribute Stars${S.level >= STAR_START ? ` ${(S.stars || []).filter(Boolean).length}/${STAR_MAX}` : ` (Lv ${STAR_START})`}`);
     sb.onclick = () => this.togglePanel('stars', true); st.appendChild(sb);
+    const nx = g.featuresNext(3);
+    if (nx.length) st.appendChild(h('div', 'coming', `<b>Coming up</b>${nx.map((f) => `<span>Lv ${f.lv} · ${esc(f.name)}</span>`).join('')}`));
     const RC = RACES[S.app?.race] || RACES.human;
     st.appendChild(h('div', 'stats', `
       <span>Class</span><span>${C.name}</span><span>${S.awaken != null ? 'Path' : 'Race'}</span><span>${S.awaken != null ? esc(C.paths[S.awaken]) : esc(RC.name)}</span>
@@ -1065,22 +1098,23 @@ export class UI {
 
   panel_pets(body) {
     const g = this.g, S = g.S;
-    const tab = this.tabs(body, 'petTab', [['pets', `Pets (${Object.keys(S.pets).length}/${PETS.length})`], ['sprites', `Sprites (${S.sprites.length}/${SPRITES.length})`]]);
+    const tab = this.tabs(body, 'petTab', [['pets', `Pets (${Object.keys(S.pets).length}/${PETS.length})`], ['book', 'Pet Book'], ['sprites', `Sprites (${S.sprites.length}/${SPRITES.length})`]]);
+    if (tab === 'book') { this.petBookPanel(body); return; }
     if (tab === 'pets') {
       const cards = h('div', 'cards');
       for (const pd of PETS) {
         const own = S.pets[pd.id];
         const c = h('button', 'card' + (own ? '' : ' locked') + (this.sel.pet === pd.id ? ' sel' : ''));
-        c.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}"><div>${own ? esc(pd.name) : '???'}</div><div class="rar" style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]}</div><div class="pab">${esc(PET_ABILITIES[pd.id].name)}</div>${S.activePet === pd.id ? '<span class="on">OUT</span>' : ''}`;
+        c.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}"><div>${own ? esc(pd.name) + (own.evo ? ` <span class="evo">${'★'.repeat(own.evo)}</span>` : '') : '???'}</div><div class="rar" style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]}</div><div class="pab">${esc(PET_ABILITIES[pd.id].name)}</div>${S.activePet === pd.id ? '<span class="on">OUT</span>' : ''}`;
         c.onclick = () => { this.sel.pet = pd.id; this.renderPanel(); };
         cards.appendChild(c);
       }
       body.appendChild(cards);
       const pd = PETS.find((x) => x.id === (this.sel.pet || S.activePet || PETS[0].id)), own = S.pets[pd.id];
       const det = h('div', 'detail');
-      const lv = own ? own.lv : 1, k = 1 + 0.15 * (lv - 1);
-      det.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${own ? esc(pd.name) : '???'}</b> <span style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]} ${esc(pd.species)}</span><br>${own ? `Level ${lv} · Attack ${fmt(pd.atk * k)} · HP +${fmt(pd.hp * k)}` : `How to obtain: ${esc(pd.src)}`}
-        <div class="pet-ab"><b>${ico('paw', 'ico inl')}${esc(PET_ABILITIES[pd.id].name)}</b> ${esc(petAbilityText(PET_ABILITIES[pd.id], lv))}<small>${lv < PET_MAX_LV ? `Grows each time you feed ${own ? esc(pd.name) : 'this pet'} · at Lv ${PET_MAX_LV}: ${esc(petAbilityText(PET_ABILITIES[pd.id], PET_MAX_LV))}` : 'Fully grown'}</small></div>
+      const lv = own ? own.lv : 1, k = (1 + 0.15 * (lv - 1)) * (own ? PET_EVO[own.evo || 0].mult : 1);
+      det.innerHTML = `<img alt="" src="${g.petIcon(pd.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${own ? esc(g.petName(pd.id)) : '???'}</b> <span style="color:${RARC[pd.rarity]}">${RAR[pd.rarity]} ${esc(pd.species)}</span><br>${own ? `Level ${lv} · Attack ${fmt(pd.atk * k)} · HP +${fmt(pd.hp * k)}` : `How to obtain: ${esc(pd.src)}`}
+        <div class="pet-ab"><b>${ico('paw', 'ico inl')}${esc(PET_ABILITIES[pd.id].name)}</b> ${esc(own && S.activePet === pd.id && g.petFx ? PET_ABILITIES[pd.id].text.replace(/\{2v\}/g, String(Math.round(g.petFx.v * 20) / 10)).replace(/\{v\}/g, String(g.petFx.v)) : petAbilityText(PET_ABILITIES[pd.id], lv))}<small>${lv < PET_MAX_LV ? `Grows each time you feed ${own ? esc(pd.name) : 'this pet'} · at Lv ${PET_MAX_LV}: ${esc(petAbilityText(PET_ABILITIES[pd.id], PET_MAX_LV))}` : 'Fully grown'}</small></div>
         Pets fight beside you, add to your Combat Power and lend you their ability while summoned.</div>`;
       if (own) {
         const acts = h('div', 'acts');
@@ -1088,21 +1122,13 @@ export class UI {
         else { const b = h('button', 'btn green', 'Summon'); b.onclick = () => g.setPet(pd.id); acts.appendChild(b); }
         const f = h('button', 'btn', `Feed · <span class="coin" style="display:inline-block;vertical-align:-3px"></span> ${fmt(150 * lv * lv)}`); f.onclick = () => g.feedPet(pd.id); acts.appendChild(f);
         det.appendChild(acts);
+        const gb = this.petGrowBox(pd); if (gb) det.appendChild(gb);
       }
       body.appendChild(det);
     } else {
-      const list = h('div', 'list');
-      for (const sd of SPRITES) {
-        const own = S.sprites.includes(sd.id);
-        const r = h('div', 'row');
-        r.innerHTML = `<div class="ic"><img alt="" src="${g.spriteIcon(sd.id)}"></div><div class="tx"><b>${esc(sd.name)} <span style="color:var(--cyan);font-size:12px">${sd.element} Sprite</span></b>${esc(sd.desc)}${own ? '' : '<br><span style="color:var(--dim)">Locked — earned from the Spirit Guide for your element</span>'}</div>`;
-        if (own) { const b = h('button', S.activeSprite === sd.id ? 'btn gray small' : 'btn green small', S.activeSprite === sd.id ? 'Active' : 'Call'); b.onclick = () => g.setSprite(sd.id); r.appendChild(b); }
-        list.appendChild(r);
-      }
-      body.appendChild(list);
+      this.spritePanel(body);
     }
   }
-
   panel_mounts(body) {
     const g = this.g, S = g.S;
     const cards = h('div', 'cards');
@@ -1116,12 +1142,13 @@ export class UI {
     body.appendChild(cards);
     const md = MOUNTS.find((x) => x.id === (this.sel.mount || S.activeMount || MOUNTS[0].id)), own = S.mounts.includes(md.id);
     const det = h('div', 'detail');
-    det.innerHTML = `<img alt="" src="${g.mountIcon(md.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${esc(md.name)}</b><br>Move speed +${Math.round((md.speed - 1) * 100)}% · Combat Power +${md.br}<br>${own ? 'Every mount you own adds to your Combat Power.' : `How to obtain: ${esc(md.src)}`}</div>`;
+    det.innerHTML = `<img alt="" src="${g.mountIcon(md.id)}" ${own ? '' : 'style="filter:grayscale(1) brightness(.5)"'}><div class="dtx"><b>${esc(md.name)}</b><br>Move speed +${Math.round(((own ? g.mountSpeed(md.id) : md.speed) - 1) * 100)}% · Combat Power +${fmt(own ? md.br * (1 + 0.15 * (g.mountLv(md.id) - 1)) : md.br)}<br>${own ? 'Every mount you own adds to your Combat Power.' : `How to obtain: ${esc(md.src)}`}</div>`;
     if (own) {
       const acts = h('div', 'acts');
       if (S.activeMount !== md.id) { const b = h('button', 'btn green', 'Set Active'); b.onclick = () => g.setMount(md.id); acts.appendChild(b); }
       const r = h('button', 'btn blue', g.mounted ? 'Dismount' : 'Ride (R)'); r.onclick = () => { if (S.activeMount !== md.id) g.setMount(md.id); g.toggleMount(); this.closePanels(); }; acts.appendChild(r);
       det.appendChild(acts);
+      det.appendChild(this.mountTrainBox(md));
     }
     body.appendChild(det);
   }
@@ -1421,6 +1448,10 @@ installGuideUI(UI);
 installGmUI(UI);
 installStarsUI(UI);
 installWishUI(UI);
+installCompanionsUI(UI);
+installDuelUI(UI);
+installEventsUI(UI);
+installMiniGamesUI(UI);
 
 // the dungeon's set: pieces you own and its bonuses
 function setBlock(dungeonId, S) {

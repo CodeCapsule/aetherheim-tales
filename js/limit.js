@@ -14,7 +14,7 @@ const GAIN = { hit: 1.2, skillHit: 2, hurt: 3, kill: 5, elite: 14, boss: 30 };
 
 const G = {
   lbGain(n) {
-    if (this.trial || this.player.dead || !(n > 0)) return;
+    if (this.trial || this.player.dead || !(n > 0) || !this.featureOn('limit')) return;
     const was = this.lb || 0; this.lb = Math.min(LB_MAX, was + n);
     if (was < LB_MAX && this.lb >= LB_MAX) {
       this.ui.toast(this.S.ult ? `Limit Break ready: press 7 to ready ${SKILL_BY_ID[this.S.ult]?.name || 'your ultimate'}` : 'Limit Break ready! Press 7', 'good');
@@ -30,6 +30,7 @@ const G = {
     const p = this.player, S = this.S;
     if (p.dead || p.stun > 0 || this.rolling) return false;
     if (this.trial) { this.ui.toast('No Limit Break in a trial: every hero fights with the same strength', 'warn'); return false; }
+    if (!this.featureGate('limit')) return false;
     if (!this.lbFull()) { this.ui.toast(`Limit Break gauge ${Math.floor(this.lb || 0)}% — fight to fill it`, 'warn'); this.sfx.play('error'); return false; }
     this.lb = 0;
     const col = CLASSES[S.cls].elemColor, hex = typeof col === 'string' ? new THREE.Color(col).getHex() : col;

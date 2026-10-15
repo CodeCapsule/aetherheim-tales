@@ -203,6 +203,7 @@ const U = {
     add('inspect', 'Inspect Character', () => g.inspect(key));
     add('party_add', 'Invite to Party', () => g.partyInvite(key), inParty ? 'Already in your party' : info.party ? 'Already in a party' : '');
     add('trade', 'Trade', () => g.tradeRequest(key), g.tr ? 'Finish your trade first' : '');
+    add('arena', 'Challenge to a Duel', () => g.duelAsk(key), g.S.level < 20 ? 'Duels open at Lv 20' : info.level < 20 ? 'They need Lv 20' : g.duel ? 'You are dueling' : '');
     // next to where you clicked, inside the screen
     const W = el.offsetWidth, H = el.offsetHeight; // x, y are screen px; the HUD may be zoomed (touchfit.js)
     const px = x != null ? x / UIZ.k : vw() / 2 - W / 2, py = y != null ? y / UIZ.k : 90;

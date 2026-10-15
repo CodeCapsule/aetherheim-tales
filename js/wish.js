@@ -53,6 +53,7 @@ const G = {
   wishFreeLeft() { return Math.max(0, WISH_FREE - this.wishState().free); },
   // n: 1 or 10; a single wish uses a free one first. Returns the prize indexes.
   wish(n = 1) {
+    if (!this.featureGate('wish')) return null;
     const W = this.wishState();
     const free = n === 1 && this.wishFreeLeft() > 0;
     if (!free && !this.pay(n === 10 ? WISH_TEN : WISH_ONE)) return null;
@@ -129,7 +130,7 @@ const U = {
       F.done = true;
       const top = WISH_PRIZES[best];
       g.sfx.play(top.grand ? 'legend' : top.rare ? 'rare' : 'coin');
-      if (top.grand) { this.banner('STAR WISH!', prizeLabel(top), 'loot5'); g.fx.shake && g.fx.shake(0.3); }
+      if (top.grand) { this.banner('STAR WISH!', prizeLabel(top), 'loot5'); g.fx.shake && g.fx.shake(0.3); g.fwLevel(); }
       this.toast(res.length === 1 ? `Star Wish: ${prizeLabel(top)}` : `Ten wishes granted · best: ${prizeLabel(top)}`, 'good');
       if (this.panelName === 'wish') this.renderPanel();
     };

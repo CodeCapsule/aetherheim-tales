@@ -109,6 +109,7 @@ const Z = {
   // ============================================================ PvP
   // a remote player you may attack right now: both inside, not in your party, alive
   pvpFoe(e) {
+    if (this.duelFoe(e) && !this.player.dead) return true; // a duel (duel.js)
     if (!e || e.kind !== 'rp' || e.netHidden || !this.dzIn || this.player.dead) return false;
     const pr = mp.peers.get(e.peerId); if (!pr || this.S.gm || pr.info.gm) return false; // nobody fights a Game Master
     return inDZ(e.pos.x, e.pos.z) && !this.partyHas(e.peerId) && pr.net.s !== 4 && (pr.net.h ?? 100) > 0;
@@ -143,9 +144,10 @@ const Z = {
   // another player's hit on you
   pvpTakeHit(pr, m) {
     const p = this.player;
-    if (p.dead || !this.dzIn || this.S.gm || pr.info.gm) return;
+    const duel = this.duel?.live && this.duel.peer === pr.info.id; // a duel (duel.js)
+    if (p.dead || (!this.dzIn && !duel) || this.S.gm || pr.info.gm) return;
     const e = this.rplayers.find((x) => x.peerId === pr.info.id);
-    if (!e || !inDZ(e.pos.x, e.pos.z) || this.partyHas(e.peerId)) return;
+    if (!e || (!duel && (!inDZ(e.pos.x, e.pos.z) || this.partyHas(e.peerId)))) return;
     const raw = num(m.raw, 0, 1e9, 0); if (!raw) return;
     if (Math.random() * 100 < this.ps('dodge') || (this.petIs('dodge') && Math.random() * 100 < this.petFx.v)) { this.fx.text(p.pos.clone().setY(p.pos.y + p.height), 'Dodge', 'miss'); return; }
     const K = 50 + 8 * num(m.lv, 1, 200, 1);

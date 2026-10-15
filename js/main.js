@@ -105,6 +105,7 @@ async function init() {
 function onResize() {
   fitTouch();
   ui && ui.fitPhoneHud && ui.fitPhoneHud();
+  ui && ui.placePageBtn && ui.placePageBtn(); // the page swap: in the action pill on the desktop bar, by the arc on phones
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   fx.setViewport(innerHeight);

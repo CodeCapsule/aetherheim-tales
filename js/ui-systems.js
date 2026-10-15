@@ -11,7 +11,7 @@ import { RARITY, NAMED_LIST, EFFECTS, iconKey, enhMult, enhAffixMult, affixLabel
 import { missionDef, matName } from './systems.js';
 import { fmt, esc } from './game.js';
 import { ico } from './icons.js';
-import { ELEMENTS, ELEMENT_IDS, INFUSE_CRYSTALS, crystalId, isElement } from './data-elements.js';
+import { ELEMENTS, ELEMENT_IDS, ELEMENT_WHEEL, INFUSE_CRYSTALS, crystalId, isElement } from './data-elements.js';
 import { CLASS_GLOW, GLOW_NAME, GLOW_STEP, glowTier } from './weaponfx.js';
 
 const $ = (id) => document.getElementById(id);
@@ -550,7 +550,10 @@ const P = {
       card.appendChild(b); grid.appendChild(card);
     }
     body.appendChild(grid);
-    body.appendChild(h('div', 'note', how));
+    // the element wheel: each beats the next (+25%), and takes 15% less from the one before it
+    const wheel = ELEMENT_WHEEL.map((el) => `<span class="el-tag" style="--el:${ELEMENTS[el].color}">${ELEMENTS[el].name}</span>`).join('<span class="ar">➜</span>');
+    body.appendChild(h('div', 'el-wheel', `<b>Element wheel:</b> ${wheel}<span class="ar">➜</span><span class="el-tag" style="--el:${ELEMENTS.fire.color}">Fire</span> · <span class="el-tag" style="--el:${ELEMENTS.light.color}">Light</span><span class="ar">⇄</span><span class="el-tag" style="--el:${ELEMENTS.shadow.color}">Shadow</span>`));
+    body.appendChild(h('div', 'note', 'Monsters take the element of the land they live in (shown on their target frame). A weapon whose element beats theirs deals 25% more damage (▲); one whose element they beat deals 15% less (▼). Pets use their own element. ' + how));
   },
   refinery(body) {
     const g = this.g;

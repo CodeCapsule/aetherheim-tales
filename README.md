@@ -46,8 +46,8 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   Lv 1, 3, 7, 10, 15, 20, 30, 35, 40, 50, 55, 60, 70, 75, 80 and 90 so the bar fills early, and two awakening paths
   from Lv 100 with a new skill every 10 levels up to an ultimate at Lv 200. You get one skill point per level and three
   per cleared trial; each skill has 10 ranks, and ranks above 5 need weapon mastery of 10 x the rank. Passives are
-  always on. Your loadout has **two pages** of 6 actives plus the ultimate (keys 1-7): the **⇅** button beside the bar
-  (on phones, beside the skill buttons) or the [ and ] keys swap the page on the bar, so 12 skills are always a tap
+  always on. Your loadout has **two pages** of 6 actives plus the ultimate (keys 1-7): the gold **⇅** button in the round
+  action pill above the bar, with the page number on it (on phones, beside the skill buttons), or the [ and ] keys swap the page on the bar, so 12 skills are always a tap
   away; new skills fill the free slots of either page, and the Skills window (K) sets both. Respec is free in town once
   a day; switching paths costs a Trial Sigil.
   New in each class (Lv 3, 7, 15, 35, 55, 75): Guardian Shield Slam, Defensive Stance, Lunging Strike, Shield Spin,
@@ -120,6 +120,25 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   (Mushy poisons, Pengu freezes, Cinder splashes fire, Ribbit attacks faster, Fluffle stomps, Twinkle calls falling
   stars, Kohaku throws fox fire, Frostbite breathes frost) and finders (Mochi more gear drops, Kitsu more EXP, Pumpkin
   Pip more Gold). The Pets panel shows each ability and what it becomes at Lv 60.
+- **Pets grow, evolve and collect**: the summoned pet earns XP from every kill (more from elites and bosses; feeding
+  with Gold still raises a level). At Lv 20 a pet can evolve into its **Evolved** form (3 Evolution Stones, 20,000
+  Gold: stats x1.3, ability x1.15) and at Lv 40 into its **Awakened** form (8 stones, 2 Star Essence, 80,000 Gold:
+  stats x1.7, ability x1.35); each stage is bigger, with a glow at its feet and stars on its name. Every pet has an
+  element (Fire, Lightning, Frost, Wind, Earth, Light or Shadow) and fights 25% harder in the lands of that element.
+  The **Pet Book** tab shows all 27 pets in their three stages; each pet owned adds +0.4% Max HP and each evolution
+  stage +0.2% Attack to your hero, plus Combat Power. Evolution Stones drop from elites and bosses, the Sprite Realm and
+  treasure hunts, and Mimi sells them.
+- **Sprites grow too**: Sprite Essence levels a sprite up to Lv 30 (its bonus grows 5% a level) and opens a talent row
+  at Lv 10, 20 and 30 (Might or Ward, Focus or Vigor, Arcana or Fury; changing one costs 10,000 Gold). The active
+  sprite senses buried treasure three times a day (**Treasure Hunt**: the tracker shows how far and which way; walk
+  there and it is dug up for Sprite Essence, Gold and sometimes an Evolution Stone, a Gem Pouch or Diamonds). In the
+  **Sprite Realm** (outside towns, three times a day) each sprite's guardian, a boss at your level, can be challenged:
+  beating it wins its sprite the first time, so all four sprites can be earned, plus Sprite Essence.
+- **Mount training**: every mount trains from Lv 1 to 10 with Gold and Spirit Shards in the Mount Stable, +1% speed
+  and +15% of its Combat Power a level.
+- **Fireworks**: Hilda sells Fireworks (5 for 1,500 Gold) and Grand Fireworks (five big rockets, 20 Diamonds). Use
+  one from the bag and everyone nearby sees it burst. Every in-game midnight a short show lights the sky over Sylvan
+  Haven, and every 10th level (and a Star Wish Unicorn) goes up with a rocket.
 - **Costumes**: 23 cosmetic outfits, hats and wings in Coco the Costume Tailor's Wardrobe. They change only your look,
   never your stats. Buy them at Coco's Boutique, find them in Wardrobe Boxes, or sew them yourself.
 - **Tailoring (costumes from ingredients)**: Coco's Wardrobe has a Tailoring tab where every costume has a pattern:
@@ -350,6 +369,29 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
   (no XP or progress for sale), world and guild chat, minimap and world map.
 - **Daily sign-in streak**: the seven-day rewards follow your streak of days in a row; missing a day starts it over at
   Day 1, and every 10th day in a row adds 150 Diamonds, 2 Lucky Tickets and 3 Star Essence.
+- **Feature schedule**: the newer systems open as you level, so a new hero is not shown everything at once: Star
+  Wish at Lv 5, Mini-games at Lv 8, the Event Timetable and Limit Break at Lv 10, Treasure Hunts at Lv 12, the Sprite
+  Realm at Lv 15, Pet Evolution and the Arena at Lv 20 and Attribute Stars at Lv 34. Locked activities stay off the
+  bar, reaching the level announces the feature, and the Hero window lists what opens next.
+- **Element wheel**: Fire beats Frost, Frost beats Wind, Wind beats Earth, Earth beats Lightning and Lightning beats
+  Fire; Light and Shadow beat each other. Monsters take the element of the land they live in (shown on their target
+  frame with ▲ or ▼). A weapon whose element beats theirs deals 25% more damage, one they beat deals 15% less, and
+  pets use their own element. Gorm's Infuse tab shows the wheel.
+- **Duels and the Arena** (Lv 20): challenge a player from the player menu or the Arena window. A ring of light opens,
+  a 3-second count, then 1 v 1: nobody dies; falling to 1 HP, stepping out of the ring or leaving loses, and after 90
+  seconds the one with more HP left wins. Duels move both players' Arena rating (Elo, from 1000). The Arena ladder
+  lists twelve arena champions, the players online and you, with tiers from Bronze to Champion; champions fight at your
+  level as strong as their rating (five rated fights a day, Gold for a win).
+- **Event Timetable** (Lv 10): every hour on the shared clock, the same for every player: **Monster Rush** (:00-:08,
+  waves of monsters at your level in the meadow east of town, paid by kills when it ends), the **Carlyle Quiz**
+  (:20-:25, ten questions in a box on screen, Gold for each right answer and a Lucky Ticket for eight) and
+  **Hide-and-Seek** (:40-:48, Pip the Sly Sprite hides in Sylvan Haven and drops a hint every minute and a half; walk
+  up to it for Gold, Diamonds and Sprite Essence). The Timetable window lists what comes next, and the quest tracker
+  follows the live event.
+- **Mini-games** (Lv 8): **Spirit Cards** (find eight pairs of pets within 24 flips: Gold per pair, a Lucky Ticket for
+  the whole board) and **Tower Defense** (build Arrow, Frost and Cannon towers on stone pads with the coins the
+  monsters drop, upgrade them to Lv 3, and hold ten waves at the town gate: Gold per wave, a Lucky Ticket and Star
+  Essence for all ten). The first three games of each kind every day pay rewards.
 - **Star Wish**: a daily lottery wheel in the activities (top right). Two free wishes every day, then 30 Diamonds a
   wish or 270 for ten. Twelve prizes sit around the board (Gold, Lucky Points and Tickets, Enhancement Stones, Star
   Essence, a Lucky Charm, a Pet Egg, Diamonds) and the grand prize is the **Starlight Unicorn**, about 1 in 300; the
@@ -435,6 +477,12 @@ market buyers and auction bids are simulated, so those systems also work solo.
 | `js/wish.js` | The Star Wish lottery: prizes, free and paid wishes, the sure Unicorn and the wheel |
 | `js/autofight.js` | Auto-fight: hunting, quest monsters, handing in quests, potions and its settings |
 | `js/limit.js` | The Limit Break gauge, the burst on slot 7 and readying the ultimate |
+| `js/companions.js` | Pet XP, evolution, elements and the Pet Book; sprite levels, talents, treasure hunts and the Sprite Realm; mount training |
+| `js/fireworks.js` | Fireworks from the bag, the midnight show and level-up rockets, sent to players nearby |
+| `js/duel.js` | Duels between players, the arena champions and the Arena ladder (Elo ratings, tiers) |
+| `js/events.js` | The hourly event timetable: Monster Rush, the Carlyle Quiz and Hide-and-Seek |
+| `js/minigames.js` | Spirit Cards and Tower Defense |
+| `js/unlocks.js` | The feature schedule: which systems open at which level |
 | `js/build.js`, `js/update.js` | The published version and the Update bar |
 | `js/mp.js`, `js/mp-config.js` | Real-time multiplayer over Supabase Realtime: other players, chat, Online panel |
 | `js/party.js` | Parties: invitations, party frame and chat, shared EXP, shared monsters (HP, fights, kills, respawns) |
