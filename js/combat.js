@@ -23,14 +23,21 @@ const CB = {
   syncSkills(announce = false) {
     const S = this.S;
     S.skills = S.skills || {}; S.loadout = Array.isArray(S.loadout) && S.loadout.length === 6 ? S.loadout : [null, null, null, null, null, null];
+    S.loadout2 = Array.isArray(S.loadout2) && S.loadout2.length === 6 ? S.loadout2 : [null, null, null, null, null, null]; // the other skill page
     const fresh = [];
     for (const sk of this.allSkills()) if (this.skillUnlocked(sk) && !S.skills[sk.id]) { S.skills[sk.id] = 1; fresh.push(sk); }
     for (const id of Object.keys(S.skills)) { const sk = SKILL_BY_ID[id]; if (!sk || sk.cls !== S.cls || !this.skillUnlocked(sk)) delete S.skills[id]; }
-    S.loadout = S.loadout.map((id) => (id && S.skills[id] && SKILL_BY_ID[id].type === 'active' ? id : null));
-    for (const sk of fresh) if (sk.type === 'active' && !S.loadout.includes(sk.id)) { const i = S.loadout.indexOf(null); if (i >= 0) S.loadout[i] = sk.id; }
+    const ok = (id) => (id && S.skills[id] && SKILL_BY_ID[id].type === 'active' ? id : null);
+    S.loadout = S.loadout.map(ok); S.loadout2 = S.loadout2.map(ok);
+    // a new active skill goes into a free slot: this page first, then the other one
+    for (const sk of fresh) {
+      if (sk.type !== 'active' || S.loadout.includes(sk.id) || S.loadout2.includes(sk.id)) continue;
+      const i = S.loadout.indexOf(null), j = S.loadout2.indexOf(null);
+      if (i >= 0) S.loadout[i] = sk.id; else if (j >= 0) S.loadout2[j] = sk.id;
+    }
     if (S.ult && !S.skills[S.ult]) S.ult = null;
     if (!S.ult) { const u = this.allSkills().find((s) => s.type === 'ultimate' && S.skills[s.id]); if (u) S.ult = u.id; }
-    if (announce) for (const sk of fresh) this.ui.chat('system', `New ${sk.type === 'passive' ? 'passive' : sk.type === 'ultimate' ? 'ultimate' : 'active'} skill: <b>${sk.name}</b> (${sk.desc}).${sk.type === 'active' && !S.loadout.includes(sk.id) ? ' Put it in your loadout in the Skills window (K).' : ''}`);
+    if (announce) for (const sk of fresh) this.ui.chat('system', `New ${sk.type === 'passive' ? 'passive' : sk.type === 'ultimate' ? 'ultimate' : 'active'} skill: <b>${sk.name}</b> (${sk.desc}).${sk.type !== 'active' ? '' : S.loadout.includes(sk.id) ? '' : S.loadout2.includes(sk.id) ? ' It is on your other skill page (the ⇅ button).' : ' Put it on a skill page in the Skills window (K).'}`);
     return fresh;
   },
   skillPtsTotal() { return skillPointsFor(this.S.level, this.trialsCleared ? this.trialsCleared() : 0); },
@@ -90,12 +97,22 @@ const CB = {
     this.recalc(); this.ui.refreshPanel(); this.ui.refreshSkills(); this.save();
     return true;
   },
+  // slot: 0-5 on the page on the bar, 'b0'-'b5' on the other page, or 'ult'
   setLoadout(slot, id) {
     const S = this.S, sk = id && SKILL_BY_ID[id];
+    const other = typeof slot === 'string' && slot[0] === 'b', L = other ? S.loadout2 : S.loadout, i = other ? +slot.slice(1) : slot;
     if (slot === 'ult') { if (sk && sk.type === 'ultimate' && S.skills[id]) S.ult = id; }
-    else if (!sk) S.loadout[slot] = null;
-    else if (sk.type === 'active' && S.skills[id]) { const j = S.loadout.indexOf(id); if (j >= 0) S.loadout[j] = S.loadout[slot]; S.loadout[slot] = id; }
+    else if (!sk) L[i] = null;
+    else if (sk.type === 'active' && S.skills[id]) { const j = L.indexOf(id); if (j >= 0) L[j] = L[i]; L[i] = id; }
     this.ui.refreshSkills(); this.ui.refreshPanel(); this.save();
+  },
+  // two pages of six skills: swap which one is on the bar (the ⇅ button, or [ and ])
+  swapSkillPage() {
+    const S = this.S;
+    [S.loadout, S.loadout2] = [S.loadout2, S.loadout]; S.page = S.page ? 0 : 1;
+    this.pendingSkill = null;
+    this.ui.refreshSkills(); this.ui.refreshPanel(); this.sfx.play('click');
+    this.ui.toast(`Skill page ${S.page + 1}`, 'good');
   },
   basicSkill() {
     const cls = this.S.cls;

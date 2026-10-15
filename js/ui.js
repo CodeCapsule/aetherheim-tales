@@ -68,6 +68,11 @@ export class UI {
       this.tip(b, () => { const sk = g.skillList()[i]; return sk ? this.skillTip(sk) : `<b>${i === 7 ? 'Ultimate' : 'Empty slot'}</b>${i === 7 ? 'Your ultimate unlocks at Lv 200.' : 'Choose a skill for this slot in the Skills window (K).'}`; });
       bar.appendChild(b); this.slots.push(b);
     }
+    // the second skill page: swaps the six skills on the bar
+    const pg = $('skill-page');
+    pg.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v13M3 13l4 4 4-4M17 20V7M13 11l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b>`;
+    pg.onclick = () => g.swapSkillPage();
+    this.tip(pg, () => `<b>Skill page ${g.S.page + 1} of 2</b>Swaps the six skills on the bar for your other six.<br><span class="ts">Hotkey [ or ] · set both pages in the Skills window (K)</span>`);
     for (const [id, key] of [['hp_potion', 'Q'], ['mp_potion', 'E']]) {
       const b = h('button', 'slot potion'); b.innerHTML = `${ico(id)}<span class="key">${key}</span><span class="cnt"></span><span class="cd"></span>`;
       b.setAttribute('aria-label', ITEMS[id].name);
@@ -259,6 +264,7 @@ export class UI {
   refreshSkills() {
     const g = this.g; if (!g || !this.slots) return;
     const list = g.skillList();
+    const pg = $('skill-page'); if (pg) { pg.querySelector('b').textContent = (g.S.page || 0) + 1; pg.setAttribute('aria-label', `Skill page ${(g.S.page || 0) + 1} of 2: switch`); }
     this.slots.forEach((b) => {
       if (b.dataset.potion) { b.querySelector('.cnt').textContent = g.countPotions(b.dataset.potion); return; }
       const sk = list[+b.dataset.i];
@@ -936,8 +942,8 @@ export class UI {
     head.appendChild(rb); body.appendChild(head);
     // loadout: six actives and the ultimate
     const lo = h('div', 'sk-load');
-    lo.appendChild(h('div', 'sk-ll', 'Loadout<small>6 active skills + 1 ultimate. Select a slot, then a skill.</small>'));
-    const slots = h('div', 'sk-slots');
+    lo.appendChild(h('div', 'sk-ll', 'Loadout<small>Two pages of 6 skills + 1 ultimate. Select a slot, then a skill. The ⇅ button (or [ ]) swaps the page on your bar.</small>'));
+    let slots = h('div', 'sk-slots');
     const mk = (key, id, label) => {
       const sk = id && SKILL_BY_ID[id];
       const b = h('button', 'sk-slot' + (this.sel.skSlot === key ? ' sel' : '') + (key === 'ult' ? ' ult' : ''), `${sk ? ico(sk.id) : ''}<span class="k">${label}</span>`);
@@ -946,9 +952,13 @@ export class UI {
       if (sk) this.tip(b, () => this.skillTip(sk));
       slots.appendChild(b);
     };
-    S.loadout.forEach((id, i) => mk(i, id, String(i + 1)));
-    mk('ult', S.ult, '7');
-    lo.appendChild(slots); body.appendChild(lo);
+    const page = (n, on) => { const r = h('div', 'sk-page' + (on ? ' on' : ''), `<span>Page ${n}${on ? '<small>on the bar</small>' : ''}</span>`); lo.appendChild(r); return r; };
+    const cur = (S.page || 0) + 1, oth = cur === 1 ? 2 : 1;
+    slots = page(cur, true); S.loadout.forEach((id, i) => mk(i, id, String(i + 1))); mk('ult', S.ult, '7');
+    slots = page(oth, false); (S.loadout2 || []).forEach((id, i) => mk('b' + i, id, String(i + 1)));
+    const sw = h('button', 'btn small', `⇅ Put page ${oth} on the bar`); sw.onclick = () => g.swapSkillPage(); slots.appendChild(sw);
+    if (cur === 2) lo.appendChild(lo.querySelector('.sk-page')); // page 1 stays on top
+    body.appendChild(lo);
     // which branch to show
     const pn = C.paths;
     const tab = this.tabs(body, 'skTab', [['core', 'Core · Lv 1-90'], ['p0', `${pn[0]}${S.awaken === 0 ? ' (your path)' : ''}`], ['p1', `${pn[1]}${S.awaken === 1 ? ' (your path)' : ''}`]]);
@@ -990,10 +1000,17 @@ export class UI {
     const acts = h('div', 'sk-acts');
     const lb = h('button', 'btn green small', r >= 10 ? 'Mastered' : 'Rank up'); lb.disabled = !!why; lb.onclick = () => g.rankUp(sk.id); acts.appendChild(lb);
     if (sk.type !== 'passive' && g.skillUnlocked(sk)) {
-      const inUse = sk.type === 'ultimate' ? S.ult === sk.id : S.loadout.includes(sk.id);
+      const inUse = sk.type === 'ultimate' ? S.ult === sk.id : S.loadout.includes(sk.id) || (S.loadout2 || []).includes(sk.id);
       const eb = h('button', 'btn small' + (inUse ? ' gray' : ''), inUse ? 'In loadout' : 'Equip');
       eb.disabled = inUse;
-      eb.onclick = () => { if (sk.type === 'ultimate') g.setLoadout('ult', sk.id); else { const i = typeof this.sel.skSlot === 'number' ? this.sel.skSlot : Math.max(0, S.loadout.indexOf(null)); g.setLoadout(i, sk.id); } this.sel.skSlot = null; };
+      eb.onclick = () => {
+        if (sk.type === 'ultimate') g.setLoadout('ult', sk.id);
+        else { // the slot you picked, else a free one on the bar, else a free one on the other page, else the first
+          const s = this.sel.skSlot, i = S.loadout.indexOf(null), j = (S.loadout2 || []).indexOf(null);
+          g.setLoadout(s != null && s !== 'ult' ? s : i >= 0 ? i : j >= 0 ? 'b' + j : 0, sk.id);
+        }
+        this.sel.skSlot = null;
+      };
       acts.appendChild(eb);
     }
     det.appendChild(acts); body.appendChild(det);

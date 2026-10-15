@@ -42,11 +42,21 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 - **Character creation**: sliders for face shape and width, eyes, nose, build and height, voice, hair style and color,
   beards, makeup, scars and tattoos, with no gender or race lock. Save up to six presets and share them as codes. The
   Wardrobe re-customizes your hero: free once a month, then for gold.
-- **Skills**: every class has 15 core skills (10 active, 5 passive) learned from Lv 1 to 90, and two awakening paths
+- **Skills**: every class has 21 core skills (16 active, 5 passive) learned from Lv 1 to 90, with new actives at
+  Lv 1, 3, 7, 10, 15, 20, 30, 35, 40, 50, 55, 60, 70, 75, 80 and 90 so the bar fills early, and two awakening paths
   from Lv 100 with a new skill every 10 levels up to an ultimate at Lv 200. You get one skill point per level and three
   per cleared trial; each skill has 10 ranks, and ranks above 5 need weapon mastery of 10 x the rank. Passives are
-  always on. Your loadout holds 6 actives and the ultimate (keys 1-7). Respec is free in town once a day; switching
-  paths costs a Trial Sigil.
+  always on. Your loadout has **two pages** of 6 actives plus the ultimate (keys 1-7): the **⇅** button beside the bar
+  (on phones, beside the skill buttons) or the [ and ] keys swap the page on the bar, so 12 skills are always a tap
+  away; new skills fill the free slots of either page, and the Skills window (K) sets both. Respec is free in town once
+  a day; switching paths costs a Trial Sigil.
+  New in each class (Lv 3, 7, 15, 35, 55, 75): Guardian Shield Slam, Defensive Stance, Lunging Strike, Shield Spin,
+  Judgment Hammer, Bulwark Shout; Berserker Brutal Chop, Bull Rush, War Stomp, Blood Axe, Battle Fury, Raging Cyclone;
+  Shadowblade Quick Stab, Throwing Dagger, Shadow Lunge, Eviscerate, Shuriken Storm, Nightfall; Ranger Twin Arrows,
+  Crippling Shot, Bola Shot, Fire Arrow, Rapid Fire, Hawk Strike; Elementalist Spark, Frostbolt, Flame Burst, Ice
+  Shards, Storm Cloud, Comet; Tideweaver Splash, Mending Tide, Geyser, Rolling Tide, Coral Barrier, Torrent; Summoner
+  Thorn Spike, Life Leech, Strangling Vines, Spirit Lance, Spirit Bind, Spirit Tempest; Spellblade Rune Cut, Arcane
+  Bolt, Flash Step, Runic Ward, Arcane Wave, Rune Nova.
 - **Action combat**: a low dodge roll (Shift) with invulnerable frames, where the first 0.2 s is a perfect dodge; Space
   jumps; Guardians block from the front (hold the right mouse button; a just-in-time block stops the hit); parries; aimed skills that land at the cursor
   (or straight ahead); a stamina bar for rolls. Auto-hit (T) fights the nearest enemy from where you stand but never
@@ -356,7 +366,7 @@ Three.js loads from jsDelivr, so the game needs an internet connection.
 | --- | --- |
 | Move / attack / talk | Click (or tap) the ground you can see, a monster or an NPC; WASD also moves |
 | Camera | Drag to rotate, scroll or pinch to zoom |
-| Skills | 1–6, ultimate 7 |
+| Skills | 1–6, ultimate 7; [ or ] (or the ⇅ button) swaps between the two skill pages |
 | Tool belt | 8 Axe, 9 Pickaxe, 0 Sickle (gather the nearest node) |
 | Dodge roll / jump / block | Shift / Space / hold the right mouse button (Guardians) |
 | Potions | Q (HP), E (MP) |

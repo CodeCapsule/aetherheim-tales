@@ -102,6 +102,8 @@ export function migrateSave(S) {
   // heroes from before races and appearance sliders become Sylvans (they always had elf ears)
   if (!S.app) S.app = { race: 'sylvan', body: S.gender === 'm' ? 'a' : 'b', hair: S.hair || '#6a4024', eye: S.eye || '#3a2a20', skin: '#f2cdb4', face: 'round', build: 0.5, height: 0.5, helm: true };
   S.skills = S.skills || {}; if (!Array.isArray(S.loadout) || S.loadout.length !== 6) S.loadout = [null, null, null, null, null, null];
+  if (!Array.isArray(S.loadout2) || S.loadout2.length !== 6) S.loadout2 = [null, null, null, null, null, null]; // the second skill page
+  S.page = S.page === 1 ? 1 : 0;
   if (S.awaken === undefined) S.awaken = null; if (S.ult === undefined) S.ult = null;
   delete S.tree; delete S.talent; delete S.skillLv;
   for (const b of S.bag || []) if (b.eq) normalizeItem(b.eq, S.cls);
@@ -505,6 +507,7 @@ export class Game {
       case 'x': this.ui.togglePanel('codex'); break;
       case 'j': this.ui.togglePanel('season'); break;
       case '`': if (this.S.gm) this.ui.togglePanel('gm'); break;
+      case '[': case ']': this.swapSkillPage(); break; // the other skill page
       case 'z': if (['alchemy', 'smithing', 'red'].includes(this.ui.sel.lifeTab)) this.ui.sel.lifeTab = 'gather'; this.ui.togglePanel('life'); break;
       case 'v': this.ui.togglePanel('wardrobe'); break;
     }

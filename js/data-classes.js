@@ -1,5 +1,5 @@
 // Races, the eight classes and every class skill from the progression design: per class a core branch (Lv 1-90,
-// 10 active + 5 passive skills) and two awakening paths chosen at Lv 100 that add a skill every 10 levels up to an
+// 16 active + 5 passive skills) and two awakening paths chosen at Lv 100 that add a skill every 10 levels up to an
 // ultimate at Lv 200. Pure data; combat.js runs it.
 //
 // Active kinds: strike | proj | cone | nova | blast | line | chain | multi | dash | leap | blink | channel | zone |
@@ -455,6 +455,76 @@ export const CLASS_SKILLS = {
     ]],
   },
 };
+
+// More core skills: six actives per class between the original ones (Lv 3, 7, 15, 35, 55, 75), so the skill bar fills
+// early and both skill pages have something to hold. They join the core branch in level order.
+const MORE_CORE = {
+  knight: [
+    A('gd_slam', 3, 'Shield Slam', 'Slam the ground: hit and slow enemies around you', 8, 8, 'nova', { r: 4, m: 1.0, slow: [0.3, 3], g: 'quake' }),
+    A('gd_guard', 7, 'Defensive Stance', '+25% defense for 8 s', 20, 10, 'buff', { dur: 8, mods: { def: 1.25 }, g: 'armor' }),
+    A('gd_lunge', 15, 'Lunging Strike', 'Dash 8 m and strike, interrupting the target', 10, 10, 'dash', { d: 8, m: 1.4, interrupt: 1, range: 10, g: 'sword' }),
+    A('gd_spin', 35, 'Shield Spin', 'Spin your shield: hit all around and knock enemies back', 12, 14, 'nova', { r: 5, m: 1.6, knock: 3, g: 'spiral' }),
+    A('gd_hammer', 55, 'Judgment Hammer', 'A hammer of light falls on the area and stuns', 16, 18, 'blast', { r: 4, m: 2.4, stun: 1.2, delay: 0.6, range: 14, g: 'fist' }),
+    A('gd_bulwark', 75, 'Bulwark Shout', 'Party shield of 12% of your max HP', 28, 20, 'buff', { dur: 8, party: 1, shieldPct: 0.12, g: 'dome' }),
+  ],
+  berserker: [
+    A('bk_chop', 3, 'Brutal Chop', 'A heavy overhead chop', 6, 8, 'strike', { m: 1.8, g: 'axe' }),
+    A('bk_charge', 7, 'Bull Rush', 'Charge 10 m through enemies', 10, 10, 'dash', { d: 10, m: 1.3, through: 4, range: 12, g: 'boot' }),
+    A('bk_stomp', 15, 'War Stomp', 'Stomp: knock nearby enemies into the air', 12, 12, 'nova', { r: 4.5, m: 1.3, knockup: 0.8, g: 'quake' }),
+    A('bk_bloodaxe', 35, 'Blood Axe', 'Hurl an axe that bounces 3 times and makes them bleed', 10, 14, 'proj', { m: 1.2, bounce: 3, bleed: [0.25, 5], range: 14, color: 0xe04a3a, size: 0.5, g: 'drop' }),
+    A('bk_fury', 55, 'Battle Fury', '+20% damage and +10% attack speed for 8 s', 22, 16, 'buff', { dur: 8, mods: { dmg: 1.2, aspd: 1.1 }, g: 'flame' }),
+    A('bk_cyclone', 75, 'Raging Cyclone', 'Spin for 4 s, pulling enemies in', 18, 22, 'channel', { dur: 4, ticks: 8, sub: 'nova', r: 5.5, m: 0.7, move: 1, pull: 1, g: 'spiral' }),
+  ],
+  assassin: [
+    A('sb_quick', 3, 'Quick Stab', 'Three swift stabs', 5, 6, 'strike', { m: 0.6, hits: 3, gap: 0.1, g: 'dagger' }),
+    A('sb_dagger', 7, 'Throwing Dagger', 'Throw a poisoned dagger', 6, 8, 'proj', { m: 1.1, poison: 1, range: 14, color: 0x9aff7a, size: 0.25, g: 'venom' }),
+    A('sb_lunge', 15, 'Shadow Lunge', 'Dash 9 m to the target and slow it 40%', 10, 10, 'dash', { d: 9, m: 1.5, slow: [0.4, 2], range: 11, g: 'moon' }),
+    A('sb_evis', 35, 'Eviscerate', 'A brutal strike with +25% critical chance', 12, 14, 'strike', { m: 2.4, critAdd: 25, g: 'skull' }),
+    A('sb_shuriken', 55, 'Shuriken Storm', 'Five spinning stars across nearby enemies', 14, 18, 'multi', { n: 5, r: 10, m: 0.8, via: 'proj', color: 0xd8f0ff, g: 'star' }),
+    A('sb_nightfall', 75, 'Nightfall', 'Blades and smoke: hit and blind enemies around you', 22, 20, 'nova', { r: 7, m: 1.5, blind: 2, smoke: 1, g: 'cloud' }),
+  ],
+  ranger: [
+    A('rg_twin', 3, 'Twin Arrows', 'Two arrows at the target', 5, 6, 'multi', { n: 2, r: 16, m: 0.8, via: 'proj', same: 1, color: 0xd8c08a, g: 'arrows' }),
+    A('rg_slowshot', 7, 'Crippling Shot', 'An arrow that slows 40% for 3 s', 7, 8, 'proj', { m: 1.1, slow: [0.4, 3], range: 16, g: 'arrow' }),
+    A('rg_bola', 15, 'Bola Shot', 'A tangling bola roots the target for 2 s', 12, 10, 'proj', { m: 0.9, root: 2, range: 16, color: 0xc8a06a, g: 'web' }),
+    A('rg_fire', 35, 'Fire Arrow', 'A burning arrow that explodes on hit', 12, 14, 'proj', { m: 1.4, splash: 3, burn: [0.3, 4], range: 16, color: 0xff7a2a, el: 'fire', g: 'flame' }),
+    A('rg_rapid', 55, 'Rapid Fire', 'Eight arrows in 2 s', 15, 18, 'channel', { dur: 2, ticks: 8, sub: 'proj', m: 0.45, range: 16, g: 'arrows' }),
+    A('rg_hawk', 75, 'Hawk Strike', 'A spirit hawk dives on an area', 18, 20, 'blast', { r: 4.5, m: 2.6, delay: 0.5, range: 18, g: 'bird' }),
+  ],
+  mage: [
+    A('el_spark', 3, 'Spark', 'Lightning that jumps to 2 targets', 5, 8, 'chain', { n: 2, m: 0.9, el: 'storm', range: 15, g: 'spark' }),
+    A('el_frostbolt', 7, 'Frostbolt', 'A bolt of ice that slows 30%', 6, 10, 'proj', { m: 1.2, slow: [0.3, 3], el: 'frost', range: 15, color: 0xbfe8ff, g: 'snow' }),
+    A('el_flameburst', 15, 'Flame Burst', 'A burst of fire around you that burns', 10, 14, 'nova', { r: 5, m: 1.4, burn: [0.25, 3], el: 'fire', g: 'flame' }),
+    A('el_shards', 35, 'Ice Shards', 'A line of ice shards that slows', 12, 16, 'line', { len: 14, w: 2.4, m: 1.8, shard: 1, slow: [0.3, 3], el: 'frost', range: 14, g: 'snow' }),
+    A('el_field2', 55, 'Storm Cloud', 'A storm cloud strikes the area for 4 s', 18, 20, 'zone', { at: 'target', r: 5, dur: 4, ticks: 8, m: 0.45, el: 'storm', color: 0xc8b8ff, range: 15, g: 'bolt' }),
+    A('el_comet', 75, 'Comet', 'A comet crashes down after 1 s', 20, 24, 'blast', { r: 5, m: 3.4, meteor: 1, delay: 1, el: 'fire', range: 16, g: 'meteor' }),
+  ],
+  priest: [
+    A('tw_splash', 3, 'Splash', 'A water orb that splashes around the target', 6, 8, 'proj', { m: 1.0, splash: 3, range: 14, color: 0x4ab8ff, g: 'drop' }),
+    A('tw_mend', 7, 'Mending Tide', 'You and 2 allies heal 3% max HP each second for 8 s', 14, 14, 'heal', { hot: [0.03, 8], ally: 3, g: 'heart' }),
+    A('tw_geyser', 15, 'Geyser', 'Water bursts up under the target area', 12, 14, 'blast', { r: 3, m: 1.5, knockup: 0.8, wave: 1, range: 14, g: 'wave' }),
+    A('tw_tide', 35, 'Rolling Tide', 'A wave rolls forward and pushes enemies back', 14, 16, 'line', { len: 12, w: 3, m: 1.6, wave: 1, knock: 3, range: 12, g: 'wave' }),
+    A('tw_coral', 55, 'Coral Barrier', 'Party shield of 15% of your max HP', 26, 20, 'buff', { dur: 8, party: 1, shieldPct: 0.15, g: 'dome' }),
+    A('tw_torrent', 75, 'Torrent', 'Four water bolts at the target, healing allies', 14, 20, 'multi', { n: 4, r: 14, m: 0.9, via: 'proj', same: 1, color: 0x4ab8ff, healAllies: 15, g: 'orb' }),
+  ],
+  summoner: [
+    A('sm_thorn', 3, 'Thorn Spike', 'Thorns erupt under the target area and root for 1 s', 6, 8, 'blast', { r: 2.5, m: 1.2, root: 1, range: 14, g: 'leaf' }),
+    A('sm_leech', 7, 'Life Leech', 'Drain the target, healing 30% of the damage', 8, 10, 'strike', { m: 1.2, drain: 1, lifesteal: 30, range: 14, g: 'spirit' }),
+    A('sm_vines', 15, 'Strangling Vines', 'Vines slow and wound enemies in an area for 5 s', 14, 14, 'zone', { at: 'target', r: 4, dur: 5, ticks: 5, m: 0.4, slow: [0.4, 2], color: 0x5ac84a, range: 14, g: 'leaf' }),
+    A('sm_lance', 35, 'Spirit Lance', 'A lance of spirit light pierces a line', 10, 14, 'line', { len: 14, w: 2, m: 1.8, beam: 0x9ae86a, range: 14, g: 'spirit' }),
+    A('sm_bind', 55, 'Spirit Bind', 'Target deals 20% less damage and is slowed 30% for 8 s', 16, 12, 'debuff', { atkdown: [0.2, 8], slow: [0.3, 8], range: 15, g: 'link' }),
+    A('sm_tempest', 75, 'Spirit Tempest', 'Three waves of spirits crash on an area', 18, 22, 'blast', { r: 6, m: 1.0, waves: 3, tentacle: 1, range: 16, g: 'swirl' }),
+  ],
+  spellblade: [
+    A('sp_runecut', 3, 'Rune Cut', 'A quick cut that stores a rune', 5, 6, 'strike', { m: 1.3, runes: 1, g: 'rune' }),
+    A('sp_arcbolt', 7, 'Arcane Bolt', 'A bolt of arcane force', 6, 8, 'proj', { m: 1.2, magic: 1, range: 12, color: 0x5ad8ff, g: 'orb' }),
+    A('sp_flash', 15, 'Flash Step', 'Blink 8 m forward and strike', 10, 10, 'blink', { d: 8, m: 1.2, magic: 1, g: 'moon' }),
+    A('sp_runeward', 35, 'Runic Ward', '+20% defense and +10% damage for 8 s', 22, 14, 'buff', { dur: 8, mods: { def: 1.2, dmg: 1.1 }, g: 'shield' }),
+    A('sp_arcwave', 55, 'Arcane Wave', 'A wave of arcane force in front of you', 12, 16, 'cone', { r: 7, ang: 70, m: 2.0, magic: 1, g: 'swirl' }),
+    A('sp_runenova', 75, 'Rune Nova', 'Runes explode around you and push enemies back', 18, 20, 'nova', { r: 6, m: 2.4, magic: 1, knock: 3, g: 'star' }),
+  ],
+};
+for (const [cls, list] of Object.entries(MORE_CORE)) { CLASS_SKILLS[cls].core.push(...list); CLASS_SKILLS[cls].core.sort((x, y) => x.lv - y.lv); }
 
 // flat index: id -> skill (with cls and path filled in)
 export const SKILL_BY_ID = {};
